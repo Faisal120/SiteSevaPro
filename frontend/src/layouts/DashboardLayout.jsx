@@ -42,6 +42,21 @@ export default function DashboardLayout() {
   const nav = useNavigate();
   const loc = useLocation();
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [pendingApps, setPendingApps] = React.useState(0);
+
+  React.useEffect(() => {
+    if (user?.role !== "SUPER_ADMIN") return;
+    let timer;
+    const tick = async () => {
+      try {
+        const { data } = await import("@/lib/api").then(m => m.api.get("/admin/applications?status=PENDING"));
+        setPendingApps(Array.isArray(data) ? data.length : 0);
+      } catch { /* silent */ }
+      timer = setTimeout(tick, 30000);
+    };
+    tick();
+    return () => timer && clearTimeout(timer);
+  }, [user?.role]);
 
   const role = user?.role;
   const isSuperAdmin = role === "SUPER_ADMIN";
