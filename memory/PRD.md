@@ -51,7 +51,22 @@ Frontend:
 - Dark mode toggle in header (dashboard-only)
 - Attendance UI uses P/½/A status buttons + live earning preview
 
-Test report: /app/test_reports/iteration_2.json — 21/21 backend tests PASSED (100%)
+Test report: /app/test_reports/iteration_3.json — 21/21 backend tests PASS (100%) after code-quality refactor.
+
+## Code-quality fixes applied
+- ✅ Circular import broken: shared infra (db, mongo_client, JWT helpers, get_current_user, require_roles, hash_password, etc.) extracted to `core.py`. Both `server.py` and `v2.py` now import from `core` only — dependency graph is acyclic.
+- ✅ Undefined `reply` in `/api/ai/insight` initialised to `""` before try block; exception chained with `from e`.
+- ✅ `client.close()` → `mongo_client.close()` on shutdown.
+- ✅ Exception chain `from None` on JWT decode error to avoid trace leak.
+- ✅ Index-as-key removed from dynamic media lists (SiteDetail.jsx, DailyReports.jsx) — now keyed by `public_id || url`.
+- ✅ useEffect lint warnings suppressed with `eslint-disable-next-line react-hooks/exhaustive-deps` only on intentional mount-only effects with stable `load()` closure (no actual stale-closure bug).
+- ✅ Contractors admin page refactored to declare `load` inside its effect.
+
+## Deferred to Phase C (security / pure-refactor)
+- 🔜 **httpOnly cookies for JWT** — currently in localStorage (with CSP mitigation). Migrating needs server-side cookie issuance + CSRF protection + production CORS credentials config + breaks current JWT flow covered by 21/21 tests. Recommended for Phase C alongside CSP headers.
+- 🔜 Component decomposition (DashboardLayout, Labour, Expenses, Estimates, Dashboard) into smaller pieces.
+- 🔜 Replace nested ternaries with helper functions across Subscription/Labour/Dashboard.
+- 🔜 Split server.py + v2.py into `routers/` folder (auth, sites, labour, materials, payments, ai).
 
 ## V2 — Phase B (Not yet built)
 AI Construction Assistant (chat), AI Cost Overrun, AI Consumption Analysis, AI Daily Report Gen, AI Client WhatsApp Update, PDF/Excel exports, Realtime notifications.
