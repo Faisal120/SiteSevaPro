@@ -1,38 +1,37 @@
-"""Site Seva Pro - FastAPI backend (single-file)."""
+"""Site Seva Pro - FastAPI backend (main app + V1 routes)."""
 from __future__ import annotations
 
-import asyncio
-import logging
 import os
 import secrets
 import time
-import uuid
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from typing import Annotated, Any, List, Literal, Optional
+from typing import List, Literal, Optional
 
-import bcrypt
 import cloudinary
 import cloudinary.utils
-import jwt
-from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from motor.motor_asyncio import AsyncIOMotorClient
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query
 from pydantic import BaseModel, EmailStr, Field
 from starlette.middleware.cors import CORSMiddleware
 
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / ".env")
-
-# -------- Config --------
-MONGO_URL = os.environ["MONGO_URL"]
-DB_NAME = os.environ["DB_NAME"]
-JWT_SECRET = os.environ["JWT_SECRET"]
-JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
-JWT_EXPIRE_HOURS = int(os.environ.get("JWT_EXPIRE_HOURS", "720"))
-SUPER_ADMIN_EMAIL = os.environ["SUPER_ADMIN_EMAIL"]
-SUPER_ADMIN_PASSWORD = os.environ["SUPER_ADMIN_PASSWORD"]
+# Shared infra — single source of truth for db, auth, helpers
+from core import (
+    db,
+    mongo_client,
+    logger,
+    JWT_SECRET,
+    JWT_ALGORITHM,
+    SUPER_ADMIN_EMAIL,
+    SUPER_ADMIN_PASSWORD,
+    EMERGENT_LLM_KEY,
+    now_iso,
+    new_id,
+    hash_password,
+    verify_password,
+    create_jwt,
+    decode_jwt,
+    get_current_user,
+    require_roles,
+)
 
 cloudinary.config(
     cloud_name=os.environ["CLOUDINARY_CLOUD_NAME"],
@@ -40,38 +39,6 @@ cloudinary.config(
     api_secret=os.environ["CLOUDINARY_API_SECRET"],
     secure=True,
 )
-
-EMERGENT_LLM_KEY = os.environ.get("EMERGENT_LLM_KEY")
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger("siteseva")
-
-# -------- Mongo --------
-client = AsyncIOMotorClient(MONGO_URL)
-db = client[DB_NAME]
-
-# -------- Helpers --------
-def now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
-
-def new_id() -> str:
-    return str(uuid.uuid4())
-
-def hash_password(pw: str) -> str:
-    return bcrypt.hashpw(pw.encode(), bcrypt.gensalt()).decode()
-
-def verify_password(pw: str, hashed: str) -> bool:
-    try:
-        return bcrypt.checkpw(pw.encode(), hashed.encode())
-    except Exception:
-        return False
-
-def create_jwt(payload: dict) -> str:
-    data = {**payload, "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRE_HOURS), "iat": datetime.now(timezone.utc)}
-    return jwt.encode(data, JWT_SECRET, algorithm=JWT_ALGORITHM)
-
-def decode_jwt(token: str) -> dict:
-    return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
 
 def gen_username(company: str) -> str:
     slug = "".join(c.lower() for c in company if c.isalnum())[:10] or "user"
@@ -206,29 +173,7 @@ class AIInsightIn(BaseModel):
     kind: Literal["material_estimate", "progress_summary", "delay_prediction", "expense_analysis"]
     context: dict
 
-# -------- Auth dependency --------
-bearer = HTTPBearer(auto_error=False)
-
-async def get_current_user(creds: Optional[HTTPAuthorizationCredentials] = Depends(bearer)) -> dict:
-    if not creds:
-        raise HTTPException(401, "Missing token")
-    try:
-        payload = decode_jwt(creds.credentials)
-    except jwt.PyJWTError:
-        raise HTTPException(401, "Invalid token")
-    user = await db.users.find_one({"id": payload.get("sub")}, {"_id": 0})
-    if not user:
-        raise HTTPException(401, "User not found")
-    if user.get("blocked"):
-        raise HTTPException(403, "Account blocked")
-    return user
-
-def require_roles(*roles: str):
-    async def dep(user: dict = Depends(get_current_user)) -> dict:
-        if user["role"] not in roles:
-            raise HTTPException(403, f"Requires one of {roles}")
-        return user
-    return dep
+# -------- Auth dependencies are imported from core.py --------
 
 def serialize_user(u: dict) -> dict:
     return {
@@ -877,11 +822,12 @@ async def ai_insight(body: AIInsightIn, user: dict = Depends(require_roles("CONT
         system_message=system,
     ).with_model("anthropic", "claude-sonnet-4-5-20250929")
     msg = UserMessage(text=f"Context:\n{body.context}\n\nProvide your insight now.")
+    reply: str = ""
     try:
         reply = await chat.send_message(msg)
     except Exception as e:
         logger.exception("AI error")
-        raise HTTPException(502, f"AI service error: {e}")
+        raise HTTPException(502, f"AI service error: {e}") from e
     return {"kind": body.kind, "insight": reply, "generated_at": now_iso()}
 
 # ---------- MOUNT ----------
@@ -1037,4 +983,4 @@ async def on_start():
 
 @app.on_event("shutdown")
 async def on_stop():
-    client.close()
+    mongo_client.close()

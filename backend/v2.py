@@ -1,21 +1,19 @@
 """Site Seva Pro — V2 Phase A endpoints (Labour Wallet, Expenses, Vendors, Estimator, BOQ, Audit, QR payments).
 
 Importable as: `from v2 import v2_router, log_audit, recompute_wallet, ATTENDANCE_RATE`
+
+Depends only on `core` — never on `server` — so the import graph is acyclic.
 """
 from __future__ import annotations
 
 import os
-import uuid
 from datetime import datetime, timezone, timedelta
-from typing import Any, List, Literal, Optional
+from typing import List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-# Re-imported from server.py — circular safe because v2 is imported AFTER models/db defined
-from server import (
-    db, get_current_user, require_roles, new_id, now_iso,
-)
+from core import db, get_current_user, require_roles, new_id, now_iso
 
 v2_router = APIRouter(prefix="/api")
 

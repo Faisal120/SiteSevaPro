@@ -23,7 +23,7 @@ export default function Sites() {
     setSites(data);
     setLoading(false);
   };
-  React.useEffect(() => { load(); }, []);
+  React.useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
   const filtered = sites.filter((s) => filter === "ALL" || s.status === filter);
 

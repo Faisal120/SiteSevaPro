@@ -7,13 +7,16 @@ import { toast } from "sonner";
 
 export default function Contractors() {
   const [list, setList] = React.useState([]);
-  const load = async () => { const { data } = await api.get("/admin/contractors"); setList(data); };
-  React.useEffect(() => { load(); }, []);
+  React.useEffect(() => {
+    const load = async () => { const { data } = await api.get("/admin/contractors"); setList(data); };
+    load();
+  }, []);
   const toggleBlock = async (u) => {
     try {
       await api.post(`/admin/contractors/${u.id}/block?blocked=${!u.blocked}`);
       toast.success(u.blocked ? "Unblocked" : "Blocked");
-      load();
+      const { data } = await api.get("/admin/contractors");
+      setList(data);
     } catch { toast.error("Failed"); }
   };
   return (

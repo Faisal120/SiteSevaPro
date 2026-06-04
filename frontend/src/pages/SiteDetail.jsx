@@ -198,9 +198,9 @@ export default function SiteDetail() {
                   <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
                     {r.media_urls.map((m, i) => (
                       m.type === "video" ? (
-                        <video key={i} src={m.url} controls className="rounded-lg h-32 w-full object-cover" />
+                        <video key={m.public_id || m.url} src={m.url} controls className="rounded-lg h-32 w-full object-cover" />
                       ) : (
-                        <img key={i} src={m.url} alt="" className="rounded-lg h-32 w-full object-cover" />
+                        <img key={m.public_id || m.url} src={m.url} alt="" className="rounded-lg h-32 w-full object-cover" />
                       )
                     ))}
                   </div>

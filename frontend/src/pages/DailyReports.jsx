@@ -77,11 +77,11 @@ export default function DailyReports() {
                   )}
                   {r.media_urls?.length > 0 && (
                     <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
-                      {r.media_urls.map((m, i) => (
+                      {r.media_urls.map((m) => (
                         m.type === "video" ? (
-                          <video key={i} src={m.url} controls className="rounded-lg h-32 w-full object-cover bg-black" />
+                          <video key={m.public_id || m.url} src={m.url} controls className="rounded-lg h-32 w-full object-cover bg-black" />
                         ) : (
-                          <img key={i} src={m.url} alt="" className="rounded-lg h-32 w-full object-cover" />
+                          <img key={m.public_id || m.url} src={m.url} alt="" className="rounded-lg h-32 w-full object-cover" />
                         )
                       ))}
                     </div>
@@ -149,8 +149,8 @@ function ReportForm({ sites, onDone }) {
           </label>
           {f.media_urls.length > 0 && (
             <div className="mt-3 grid grid-cols-4 gap-2">
-              {f.media_urls.map((m, i) => (
-                <div key={i} className="relative">
+              {f.media_urls.map((m) => (
+                <div key={m.public_id || m.url} className="relative">
                   {m.type === "video" ? <Video className="h-5 w-5 text-white absolute top-1 left-1" /> : <ImageIcon className="h-5 w-5 text-white absolute top-1 left-1" />}
                   {m.type === "video" ? <video src={m.url} className="h-20 w-full object-cover rounded bg-black" /> : <img src={m.url} alt="" className="h-20 w-full object-cover rounded" />}
                 </div>

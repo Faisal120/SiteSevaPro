@@ -22,7 +22,7 @@ export default function Materials() {
     setSites(sts.data);
     if (!siteId && sts.data[0]) setSiteId(sts.data[0].id);
   };
-  React.useEffect(() => { load(); }, []);
+  React.useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
   React.useEffect(() => {
     if (siteId) api.get(`/materials?site_id=${siteId}`).then((r) => setItems(r.data));
   }, [siteId, openMat, openTxn.open]);
