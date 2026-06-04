@@ -12,20 +12,29 @@ export default function Estimates() {
   const [list, setList] = React.useState([]);
   const [result, setResult] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
-  const [f, setF] = React.useState({ name: "", plot_area_sqft: 1200, floors: 2, construction_type: "RESIDENTIAL", quality: "STANDARD" });
+  const [f, setF] = React.useState({ name: "", plot_area_sqft: 1200, floors: 2, construction_type: "RESIDENTIAL", budget: 4500000 });
 
   const load = async () => { const { data } = await api.get("/estimates"); setList(data); };
   React.useEffect(() => { load(); }, []);
 
+  const builtup = Number(f.plot_area_sqft || 0) * Number(f.floors || 0);
+  const livePsf = builtup > 0 ? Number(f.budget || 0) / builtup : 0;
+
   const compute = async (e) => {
     e.preventDefault();
+    if (Number(f.budget) <= 0) { toast.error("Enter a budget greater than 0"); return; }
     setBusy(true);
     try {
-      const { data } = await api.post("/estimates", { ...f, plot_area_sqft: Number(f.plot_area_sqft), floors: Number(f.floors) });
+      const { data } = await api.post("/estimates", {
+        ...f,
+        plot_area_sqft: Number(f.plot_area_sqft),
+        floors: Number(f.floors),
+        budget: Number(f.budget),
+      });
       setResult(data);
       toast.success("Estimate generated");
       load();
-    } catch { toast.error("Failed"); }
+    } catch (err) { toast.error(err?.response?.data?.detail || "Failed"); }
     finally { setBusy(false); }
   };
 
@@ -64,15 +73,18 @@ export default function Estimates() {
                 </SelectContent>
               </Select>
             </div>
-            <div><label className="text-xs font-bold uppercase text-gray-500">Quality</label>
-              <Select value={f.quality} onValueChange={(v)=>setF({...f, quality:v})}>
-                <SelectTrigger className="mt-1" data-testid="est-quality"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="BASIC">Basic</SelectItem>
-                  <SelectItem value="STANDARD">Standard</SelectItem>
-                  <SelectItem value="PREMIUM">Premium</SelectItem>
-                </SelectContent>
-              </Select>
+            <div><label className="text-xs font-bold uppercase text-gray-500">Budget (₹)</label>
+              <input type="number" required min="1" className="ss-input mt-1" value={f.budget} onChange={(e)=>setF({...f, budget:e.target.value})} data-testid="est-budget" />
+            </div>
+          </div>
+          <div className="rounded-lg bg-gray-50 p-3 flex items-center justify-between text-sm">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Built-up</div>
+              <div className="font-display font-extrabold">{builtup.toLocaleString("en-IN")} sqft</div>
+            </div>
+            <div className="text-right">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Derived rate</div>
+              <div className="font-display font-extrabold text-[#F97316]">₹{livePsf.toFixed(0)}/sqft</div>
             </div>
           </div>
           <button type="submit" disabled={busy} className="ss-btn-accent" data-testid="est-submit"><Calculator className="h-4 w-4" /> {busy ? "Calculating…" : "Generate Estimate"}</button>
@@ -118,13 +130,14 @@ export default function Estimates() {
         ) : (
           <div className="overflow-x-auto">
             <table className="ss-table">
-              <thead><tr><th>Name</th><th>Built-up</th><th>Type / Quality</th><th>Created</th><th className="text-right">Total</th></tr></thead>
+              <thead><tr><th>Name</th><th>Built-up</th><th>Type</th><th>Rate</th><th>Created</th><th className="text-right">Total</th></tr></thead>
               <tbody>
                 {list.map((e) => (
                   <tr key={e.id} data-testid={`est-row-${e.id}`}>
                     <td className="font-semibold">{e.name}</td>
                     <td>{e.builtup_sqft} sqft</td>
-                    <td><Chip className="bg-gray-100 text-gray-700">{e.input.construction_type} · {e.input.quality}</Chip></td>
+                    <td><Chip className="bg-gray-100 text-gray-700">{e.input.construction_type}{e.quality_band ? ` · ${e.quality_band}` : ""}</Chip></td>
+                    <td>{inr(e.rate_per_sqft)}/sqft</td>
                     <td className="text-gray-500">{fmtDate(e.created_at)}</td>
                     <td className="text-right font-bold">{inr(e.total)}</td>
                   </tr>

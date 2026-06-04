@@ -228,23 +228,44 @@ class EstimateIn(BaseModel):
     plot_area_sqft: float
     floors: int = 1
     construction_type: Literal["RESIDENTIAL", "COMMERCIAL", "INDUSTRIAL"] = "RESIDENTIAL"
-    quality: Literal["BASIC", "STANDARD", "PREMIUM"] = "STANDARD"
+    budget: float  # total budget in INR
 
-QUALITY_RATE = {"BASIC": 1500, "STANDARD": 1800, "PREMIUM": 2400}  # ₹ per sqft
 TYPE_FACTOR = {"RESIDENTIAL": 1.0, "COMMERCIAL": 1.15, "INDUSTRIAL": 1.25}
+
+def quality_band(rate_psf: float) -> str:
+    """Classify the derived ₹/sqft into Basic / Standard / Premium / Luxury."""
+    if rate_psf < 1500:
+        return "ECONOMY"
+    if rate_psf < 2000:
+        return "BASIC"
+    if rate_psf < 2700:
+        return "STANDARD"
+    if rate_psf < 3500:
+        return "PREMIUM"
+    return "LUXURY"
 
 @v2_router.post("/estimates")
 async def create_estimate(body: EstimateIn, user: dict = Depends(require_roles("CONTRACTOR"))):
+    if body.budget <= 0:
+        raise HTTPException(400, "Budget must be greater than 0")
+    if body.plot_area_sqft <= 0 or body.floors <= 0:
+        raise HTTPException(400, "Plot area and floors must be > 0")
+
     builtup = body.plot_area_sqft * body.floors
     # Material formulas (per sqft of built-up area)
-    cement_bags = round(builtup * 0.4, 2)            # 0.4 bag / sqft
-    steel_kg = round(builtup * 4.0, 2)               # 4 kg / sqft
-    sand_cft = round(builtup * 0.85, 2)              # 0.85 cft / sqft
-    aggregate_cft = round(builtup * 0.65, 2)         # 0.65 cft / sqft
-    bricks_pcs = round(builtup * 8.0, 2)             # 8 / sqft
+    cement_bags = round(builtup * 0.4, 2)
+    steel_kg = round(builtup * 4.0, 2)
+    sand_cft = round(builtup * 0.85, 2)
+    aggregate_cft = round(builtup * 0.65, 2)
+    bricks_pcs = round(builtup * 8.0, 2)
 
-    rate_psf = QUALITY_RATE[body.quality] * TYPE_FACTOR[body.construction_type]
-    total = round(builtup * rate_psf, 2)
+    # Derive rate from budget; normalize against construction-type factor so the
+    # quality band still reflects the user's INTENT (a 1.25x industrial multiplier
+    # at the same ₹/sqft is a richer build than residential at the same rate).
+    rate_psf = body.budget / builtup
+    quality = quality_band(rate_psf / TYPE_FACTOR[body.construction_type])
+
+    total = round(body.budget, 2)
     material_cost = round(total * 0.55, 2)
     labour_cost = round(total * 0.30, 2)
     overhead = round(total - material_cost - labour_cost, 2)
@@ -256,7 +277,8 @@ async def create_estimate(body: EstimateIn, user: dict = Depends(require_roles("
         "name": body.name,
         "input": body.model_dump(),
         "builtup_sqft": builtup,
-        "rate_per_sqft": rate_psf,
+        "rate_per_sqft": round(rate_psf, 2),
+        "quality_band": quality,
         "materials": {
             "cement_bags": cement_bags,
             "steel_kg": steel_kg,
@@ -272,7 +294,7 @@ async def create_estimate(body: EstimateIn, user: dict = Depends(require_roles("
         "created_at": now_iso(),
     }
     await db.estimates.insert_one(dict(doc))
-    await log_audit(user, "CREATE", "estimate", doc["id"], {"total": total})
+    await log_audit(user, "CREATE", "estimate", doc["id"], {"total": total, "rate_per_sqft": rate_psf})
     return doc
 
 @v2_router.get("/estimates")
