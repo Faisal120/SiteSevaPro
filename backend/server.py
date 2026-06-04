@@ -553,19 +553,96 @@ async def delete_labour(labour_id: str, user: dict = Depends(require_roles("CONT
 
 @api.post("/attendance")
 async def mark_attendance(body: AttendanceIn, user: dict = Depends(require_roles("CONTRACTOR", "SUPERVISOR"))):
+    # Normalize entries: status takes precedence; fallback legacy `present` bool
+    norm_entries = []
+    for e in body.entries:
+        status = e.get("status")
+        if not status:
+            status = "PRESENT" if e.get("present") else "ABSENT"
+        norm_entries.append({
+            "labour_id": e["labour_id"],
+            "status": status,
+            "overtime_hours": float(e.get("overtime_hours") or 0),
+            "advance": float(e.get("advance") or 0),
+        })
+
     doc = {
         "id": new_id(),
         "company_id": user["company_id"],
+        "site_id": body.site_id,
+        "date": body.date,
+        "entries": norm_entries,
         "marked_by": user["id"],
         "created_at": now_iso(),
-        **body.model_dump(),
     }
-    # Upsert by site + date
     await db.attendance.update_one(
         {"site_id": body.site_id, "date": body.date},
         {"$set": doc},
         upsert=True,
     )
+
+    # ---- Auto earnings → labour_ledger ----
+    from v2 import ATTENDANCE_RATE, recompute_wallet, log_audit
+
+    # 1) Wipe previous ledger entries for this date+site so re-saving is idempotent
+    await db.labour_ledger.delete_many({
+        "ref_type": "ATTENDANCE",
+        "ref_date": body.date,
+        "site_id": body.site_id,
+    })
+
+    # 2) Build new ledger entries
+    labour_ids = [e["labour_id"] for e in norm_entries]
+    labour_cursor = db.labour.find({"id": {"$in": labour_ids}})
+    labour_docs = {l["id"]: l async for l in labour_cursor}
+    touched = set()
+    for e in norm_entries:
+        labour = labour_docs.get(e["labour_id"])
+        if not labour:
+            continue
+        wage = labour.get("daily_wage", 0)
+        factor = ATTENDANCE_RATE.get(e["status"], 0)
+        wage_earned = round(wage * factor, 2)
+        ot_amount = round((wage / 8) * float(e["overtime_hours"] or 0), 2) if e["overtime_hours"] else 0
+        total_earn = wage_earned + ot_amount
+        if total_earn > 0:
+            await db.labour_ledger.insert_one({
+                "id": new_id(),
+                "company_id": user["company_id"],
+                "labour_id": e["labour_id"],
+                "site_id": body.site_id,
+                "type": "EARNING",
+                "amount": total_earn,
+                "note": f"{e['status']} wage{(' + OT ' + str(e['overtime_hours']) + 'h') if ot_amount else ''}",
+                "date": body.date,
+                "ref_type": "ATTENDANCE",
+                "ref_id": doc["id"],
+                "ref_date": body.date,
+                "created_at": now_iso(),
+            })
+            touched.add(e["labour_id"])
+        if e["advance"] and e["advance"] > 0:
+            await db.labour_ledger.insert_one({
+                "id": new_id(),
+                "company_id": user["company_id"],
+                "labour_id": e["labour_id"],
+                "site_id": body.site_id,
+                "type": "ADVANCE",
+                "amount": float(e["advance"]),
+                "note": "Daily advance",
+                "date": body.date,
+                "ref_type": "ATTENDANCE",
+                "ref_id": doc["id"],
+                "ref_date": body.date,
+                "created_at": now_iso(),
+            })
+            touched.add(e["labour_id"])
+
+    # 3) Recompute wallets for affected labour
+    for lid in touched:
+        await recompute_wallet(lid)
+
+    await log_audit(user, "UPDATE", "attendance", doc["id"], {"site_id": body.site_id, "date": body.date, "count": len(norm_entries)})
     return doc
 
 @api.get("/attendance")
@@ -731,7 +808,7 @@ async def my_subscription(user: dict = Depends(require_roles("CONTRACTOR"))):
 
 @api.post("/subscription/upgrade")
 async def upgrade_subscription(plan: Plan, user: dict = Depends(require_roles("CONTRACTOR"))):
-    amounts = {"FREE": 0, "PREMIUM": 4999, "ENTERPRISE": 14999}
+    amounts = {"FREE": 0, "PREMIUM": 499, "ENTERPRISE": 1199}
     amount = amounts.get(plan, 0)
     expires = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
     await db.subscriptions.update_one(
