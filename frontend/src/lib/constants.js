@@ -3,29 +3,38 @@ export const PLAN_FEATURES = {
     name: "Free",
     price: 0,
     color: "bg-white",
-    features: ["1 Site", "Max 2 Supervisors", "Basic Reports", "Limited Storage"],
+    features: ["1 Site", "10 Labour records", "Basic Estimator", "Basic Reports"],
   },
   PREMIUM: {
-    name: "Premium",
-    price: 4999,
+    name: "Pro",
+    price: 499,
     color: "bg-white ring-2 ring-[#F97316]",
     features: [
-      "Unlimited Sites",
-      "Unlimited Supervisors",
-      "Full Reports",
+      "Unlimited Sites & Supervisors",
+      "BOQ Generator",
+      "Labour Wallet & Ledger",
+      "Advanced Analytics",
       "Client Portal",
-      "Material Tracking",
-      "Financial Reports",
-      "AI Insights",
+      "Material & Vendor Tracking",
     ],
   },
   ENTERPRISE: {
-    name: "Enterprise",
-    price: 14999,
+    name: "Pro Plus",
+    price: 1199,
     color: "bg-[#171717] text-white",
-    features: ["ERP Integration", "Dedicated Support", "Team Hierarchy", "White-label Branding"],
+    features: [
+      "Everything in Pro",
+      "AI Construction Assistant",
+      "AI Cost Overrun Prediction",
+      "AI Consumption Analysis",
+      "AI Daily Reports & Client Updates",
+      "Priority Support",
+    ],
   },
 };
+
+export const UPI_ID = "fk1571515@ybl";
+export const UPI_PAYEE_NAME = "Site Seva Pro";
 
 export const SITE_STATUS_COLOR = {
   PLANNING: "bg-yellow-100 text-yellow-800 border border-yellow-200",

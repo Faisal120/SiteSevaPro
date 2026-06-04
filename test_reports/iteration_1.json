@@ -1,0 +1,43 @@
+{
+  "summary": "V2 Phase A backend tests: 19/21 passed (90.5%). All wallet/expenses/vendors/estimates/BOQ/payment-flow/audit/executive/role-isolation/plan-enforcement endpoints work. The new attendance auto-credit-to-wallet flow is NOT implemented in the attendance handler - this is the only critical miss.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "POST /api/attendance",
+        "issue": "Handler in server.py (lines 554-569) only upserts attendance doc; it does NOT create labour_ledger EARNING entries or recompute_wallet. PRESENT/HALF/ABSENT statuses and legacy `present:true` both fail to auto-credit. Wallet snapshot stays at 0 earned even after marking PRESENT. This violates explicit Phase A requirement.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_v2_backend.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Implement attendance auto-credit in POST /api/attendance handler in /app/backend/server.py: for each entry, resolve labour, compute earning = daily_wage * ATTENDANCE_RATE[status] + overtime_hours*(daily_wage/8). Treat legacy `present:true` as status=PRESENT and `present:false` as ABSENT. Delete prior labour_ledger entries for (labour_id, site_id, date, type='EARNING') before inserting fresh ones to maintain idempotency. After all inserts, call recompute_wallet(labour_id) for each labour touched. Also log audit (MARK, attendance, attendance_doc_id).",
+    "Also handle `advance` field in attendance entries: optionally create ADVANCE ledger entry for that date.",
+    "Update server.py /api/subscription/upgrade prices from {PREMIUM:4999, ENTERPRISE:14999} to {PREMIUM:499, ENTERPRISE:1199} to match PLAN_PRICES in v2.py (currently inconsistent).",
+    "Optional: split server.py (964 lines) and v2.py (560 lines) into module folders for maintainability."
+  ],
+  "critical_code_review_comments": [
+    "INCONSISTENT PRICING: server.py L734 has PREMIUM=4999/ENTERPRISE=14999 in /api/subscription/upgrade, but v2.py PLAN_PRICES is 499/1199. Frontend may show wrong amounts depending on which endpoint it hits.",
+    "server.py L222 `raise HTTPException(403, ...)` inside an `except jwt.PyJWTError` is fine, but `raise HTTPException(401, 'Invalid token')` should use `from None` or chain explicitly to avoid leaking trace.",
+    "v2.py recompute_wallet uses $in with PAYMENT/ADVANCE for paid total — correct, but BONUS is grouped with EARNING which is acceptable, just document.",
+    "server.py mark_attendance dictionary contains `_id` because doc is passed via $set after Motor inserts an _id field on dict mutation? No — `$set: doc` could inject created_at duplicates on upsert; consider stripping `id`/`created_at` from `$set` on subsequent upserts to keep original id.",
+    "CORS middleware added AFTER router include in server.py L811-822 — order is fine for Starlette but unusual; OK.",
+    "Files >700 lines: server.py is 964 lines, recommend splitting into routers/{auth,sites,labour,materials,payments,dashboard,ai}.py."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_v2_backend.py",
+    "/app/backend/tests/__init__.py"
+  ],
+  "success_rate": {"backend": "90.5%", "frontend": "N/A"},
+  "test_credentials": "admin@siteseva.pro/Admin@SiteSeva2026, contractor@demo.com/Contractor@2026, supervisor@demo.com/Supervisor@2026, client@demo.com/Client@2026 — all working",
+  "seed_data_creation": "Tests use seeded demo data. Created several TEST_-prefixed estimates/vendors/expenses/payment_requests and one TEST FreeCo {ts} contractor (for FREE plan enforcement). These persist in DB.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run pytest /app/backend/tests/test_v2_backend.py. Only failures should be TestAttendanceWallet::test_attendance_status_creates_earning and test_legacy_present_true once main agent fixes attendance handler to auto-create labour_ledger EARNING entries. The fix must be idempotent (delete prior EARNING for same labour+date+site before re-inserting). Verify with: POST /api/attendance then GET /api/wallet/labour/{id} — ledger should contain EARNING with amount = daily_wage*rate + overtime_hours*(daily_wage/8). Seeded site with labour may not be sites[0] — labour are tied to first site in seed but tests now sort sites by labour presence.",
+  "rca of the issue": "The attendance handler in /app/backend/server.py @api.post('/attendance') performs only an upsert on db.attendance. It does not iterate entries, does not look up labour daily_wage, does not write to db.labour_ledger, and never calls v2.recompute_wallet. Therefore wallet.balance always remains at whatever was set by explicit /api/wallet/pay calls only. To fix: after upsert, loop over body.entries, normalize status (legacy `present:true`->PRESENT, `present:false`->ABSENT), compute earning amount, delete prior matching EARNING entries (idempotent), insert new EARNING entries with date=body.date, then call recompute_wallet(labour_id) for each touched labour."
+}

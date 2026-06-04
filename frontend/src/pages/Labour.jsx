@@ -30,7 +30,13 @@ export default function Labour() {
     api.get(`/labour?site_id=${siteId}`).then((r) => setLabour(r.data));
     api.get(`/attendance?site_id=${siteId}&date=${attDate}`).then((r) => {
       const map = {};
-      (r.data.entries || []).forEach((e) => { map[e.labour_id] = e; });
+      (r.data.entries || []).forEach((e) => {
+        map[e.labour_id] = {
+          status: e.status || (e.present ? "PRESENT" : "ABSENT"),
+          overtime_hours: e.overtime_hours,
+          advance: e.advance,
+        };
+      });
       setAttendance(map);
     });
   }, [siteId, attDate]);
@@ -38,13 +44,13 @@ export default function Labour() {
   const saveAttendance = async () => {
     const entries = labour.map((l) => ({
       labour_id: l.id,
-      present: !!attendance[l.id]?.present,
+      status: attendance[l.id]?.status || "ABSENT",
       overtime_hours: Number(attendance[l.id]?.overtime_hours || 0),
       advance: Number(attendance[l.id]?.advance || 0),
     }));
     try {
       await api.post("/attendance", { site_id: siteId, date: attDate, entries });
-      toast.success("Attendance saved");
+      toast.success("Attendance saved · earnings auto-credited to wallet");
     } catch (e) { toast.error("Failed"); }
   };
 
@@ -111,24 +117,41 @@ export default function Labour() {
             </div>
             <div className="overflow-x-auto">
               <table className="ss-table">
-                <thead><tr><th>Worker</th><th>Present</th><th>OT (hrs)</th><th>Advance</th></tr></thead>
+                <thead><tr><th>Worker</th><th>Status</th><th>OT (hrs)</th><th>Advance</th><th className="text-right">Earning</th></tr></thead>
                 <tbody>
                   {labour.map((l) => {
                     const a = attendance[l.id] || {};
+                    const status = a.status || "ABSENT";
+                    const factor = status === "PRESENT" ? 1 : status === "HALF" ? 0.5 : 0;
+                    const ot = Number(a.overtime_hours || 0) * (l.daily_wage / 8);
+                    const earn = l.daily_wage * factor + ot;
                     return (
                       <tr key={l.id}>
-                        <td><div className="font-semibold">{l.name}</div><div className="text-xs text-gray-500">{l.role}</div></td>
+                        <td><div className="font-semibold">{l.name}</div><div className="text-xs text-gray-500">{l.role} · ₹{l.daily_wage}/day</div></td>
                         <td>
-                          <input
-                            type="checkbox"
-                            checked={!!a.present}
-                            onChange={(e) => setAttendance({ ...attendance, [l.id]: { ...a, present: e.target.checked } })}
-                            data-testid={`att-present-${l.id}`}
-                            className="h-4 w-4 accent-[#F97316]"
-                          />
+                          <div className="flex gap-1">
+                            {["PRESENT", "HALF", "ABSENT"].map((s) => (
+                              <button
+                                key={s}
+                                type="button"
+                                onClick={() => setAttendance({ ...attendance, [l.id]: { ...a, status: s } })}
+                                className={`px-2.5 py-1 rounded text-xs font-semibold border-2 transition ${
+                                  status === s
+                                    ? (s === "PRESENT" ? "bg-emerald-100 text-emerald-700 border-emerald-300" :
+                                       s === "HALF" ? "bg-yellow-100 text-yellow-800 border-yellow-300" :
+                                       "bg-red-100 text-red-700 border-red-300")
+                                    : "bg-gray-50 text-gray-500 border-transparent hover:border-gray-200"
+                                }`}
+                                data-testid={`att-${s.toLowerCase()}-${l.id}`}
+                              >
+                                {s === "PRESENT" ? "P" : s === "HALF" ? "½" : "A"}
+                              </button>
+                            ))}
+                          </div>
                         </td>
                         <td><input type="number" className="ss-input w-24" value={a.overtime_hours || 0} onChange={(e) => setAttendance({ ...attendance, [l.id]: { ...a, overtime_hours: e.target.value } })} /></td>
                         <td><input type="number" className="ss-input w-32" value={a.advance || 0} onChange={(e) => setAttendance({ ...attendance, [l.id]: { ...a, advance: e.target.value } })} /></td>
+                        <td className="text-right font-bold text-emerald-600">₹{earn.toFixed(0)}</td>
                       </tr>
                     );
                   })}

@@ -151,3 +151,38 @@ h1, h2, h3, h4, h5, h6, .font-display {
   background: #f97316;
   color: white;
 }
+
+/* ---- Dashboard Dark Mode (scoped) ---- */
+.ss-dark {
+  --ss-main-bg: #0B0B0C;
+}
+.ss-dark .ss-card {
+  background: #161618;
+  border-color: #262629;
+  color: #E5E7EB;
+}
+.ss-dark .ss-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,0.45); }
+.ss-dark .ss-glass {
+  background: rgba(22, 22, 24, 0.75);
+  border-color: rgba(255,255,255,0.06);
+}
+.ss-dark .ss-input {
+  background: #1B1B1E;
+  border-color: #2A2A2E;
+  color: #F5F5F5;
+}
+.ss-dark .ss-input::placeholder { color: #6B7280; }
+.ss-dark .ss-stat,
+.ss-dark .ss-table thead th { background: #161618; color: #E5E7EB; }
+.ss-dark .ss-table thead th { background: #1B1B1E; border-color: #2A2A2E; color: #9CA3AF; }
+.ss-dark .ss-table tbody td { border-color: #232327; color: #D1D5DB; }
+.ss-dark .ss-table tbody tr:hover td { background: #1B1B1E; }
+.ss-dark .text-\[\#171717\] { color: #F5F5F5 !important; }
+.ss-dark .text-gray-500 { color: #9CA3AF !important; }
+.ss-dark .text-gray-600 { color: #B7BCC4 !important; }
+.ss-dark .text-gray-700 { color: #D1D5DB !important; }
+.ss-dark .bg-gray-50 { background: #1B1B1E !important; }
+.ss-dark .bg-gray-100 { background: #232327 !important; }
+.ss-dark .border-gray-100,
+.ss-dark .border-gray-200 { border-color: #2A2A2E !important; }
+.ss-dark .bg-white { background: #161618 !important; }

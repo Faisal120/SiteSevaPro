@@ -157,7 +157,7 @@ class LabourIn(BaseModel):
 class AttendanceIn(BaseModel):
     site_id: str
     date: str  # YYYY-MM-DD
-    entries: List[dict]  # [{labour_id, present, overtime_hours, advance}]
+    entries: List[dict]  # [{labour_id, status: PRESENT|HALF|ABSENT, present?: bool (legacy), overtime_hours, advance}]
 
 class MaterialIn(BaseModel):
     site_id: str
@@ -809,6 +809,10 @@ async def ai_insight(body: AIInsightIn, user: dict = Depends(require_roles("CONT
 
 # ---------- MOUNT ----------
 app.include_router(api)
+
+# V2 Phase A routes
+from v2 import v2_router  # noqa: E402
+app.include_router(v2_router)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
