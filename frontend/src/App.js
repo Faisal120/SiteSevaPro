@@ -1,53 +1,112 @@
-import { useEffect } from "react";
+import React from "react";
 import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "sonner";
+import { AuthProvider, useAuth } from "@/lib/auth";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import Landing from "@/pages/Landing";
+import Pricing from "@/pages/Pricing";
+import About from "@/pages/About";
+import Contact from "@/pages/Contact";
+import Login from "@/pages/Login";
+import ContractorRegister from "@/pages/ContractorRegister";
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
+import DashboardLayout from "@/layouts/DashboardLayout";
+import Dashboard from "@/pages/Dashboard";
+import Sites from "@/pages/Sites";
+import SiteDetail from "@/pages/SiteDetail";
+import Labour from "@/pages/Labour";
+import Materials from "@/pages/Materials";
+import Payments from "@/pages/Payments";
+import DailyReports from "@/pages/DailyReports";
+import Notifications from "@/pages/Notifications";
+import Subscription from "@/pages/Subscription";
+import Settings from "@/pages/Settings";
 
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
+import AdminDashboard from "@/pages/admin/AdminDashboard";
+import Applications from "@/pages/admin/Applications";
+import Contractors from "@/pages/admin/Contractors";
+import Revenue from "@/pages/admin/Revenue";
 
-  return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
-  );
-};
+function Protected({ children, roles }) {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="p-10 text-center text-gray-500">Loading…</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (roles && !roles.includes(user.role)) return <Navigate to="/app/dashboard" replace />;
+  return children;
+}
 
 function App() {
   return (
-    <div className="App">
+    <AuthProvider>
       <BrowserRouter>
+        <Toaster position="top-right" richColors closeButton />
         <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
+          <Route path="/" element={<Landing />} />
+          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<ContractorRegister />} />
+
+          <Route
+            path="/app"
+            element={
+              <Protected>
+                <DashboardLayout />
+              </Protected>
+            }
+          >
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="sites" element={<Sites />} />
+            <Route path="sites/:siteId" element={<SiteDetail />} />
+            <Route path="labour" element={<Labour />} />
+            <Route path="materials" element={<Materials />} />
+            <Route path="payments" element={<Payments />} />
+            <Route path="reports" element={<DailyReports />} />
+            <Route path="notifications" element={<Notifications />} />
+            <Route path="subscription" element={<Subscription />} />
+            <Route path="settings" element={<Settings />} />
+
+            <Route
+              path="admin"
+              element={
+                <Protected roles={["SUPER_ADMIN"]}>
+                  <AdminDashboard />
+                </Protected>
+              }
+            />
+            <Route
+              path="admin/applications"
+              element={
+                <Protected roles={["SUPER_ADMIN"]}>
+                  <Applications />
+                </Protected>
+              }
+            />
+            <Route
+              path="admin/contractors"
+              element={
+                <Protected roles={["SUPER_ADMIN"]}>
+                  <Contractors />
+                </Protected>
+              }
+            />
+            <Route
+              path="admin/revenue"
+              element={
+                <Protected roles={["SUPER_ADMIN"]}>
+                  <Revenue />
+                </Protected>
+              }
+            />
           </Route>
+
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
-    </div>
+    </AuthProvider>
   );
 }
 
