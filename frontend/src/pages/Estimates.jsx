@@ -12,12 +12,13 @@ export default function Estimates() {
   const [list, setList] = React.useState([]);
   const [result, setResult] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
-  const [f, setF] = React.useState({ name: "", plot_area_sqft: 1200, floors: 2, construction_type: "RESIDENTIAL", budget: 4500000 });
+  const [f, setF] = React.useState({ name: "", plot_area_sqft: 1200, floors: 2, basement: false, construction_type: "RESIDENTIAL", quality: "STANDARD", budget: 4500000 });
 
   const load = async () => { const { data } = await api.get("/estimates"); setList(data); };
   React.useEffect(() => { load(); }, []);
 
-  const builtup = Number(f.plot_area_sqft || 0) * Number(f.floors || 0);
+  const effectiveFloors = Number(f.floors || 0) + (f.basement ? 0.85 : 0);
+  const builtup = Number(f.plot_area_sqft || 0) * effectiveFloors;
   const livePsf = builtup > 0 ? Number(f.budget || 0) / builtup : 0;
 
   const compute = async (e) => {
@@ -62,25 +63,49 @@ export default function Estimates() {
             <div><label className="text-xs font-bold uppercase text-gray-500">Plot area (sqft)</label><input type="number" required className="ss-input mt-1" value={f.plot_area_sqft} onChange={(e)=>setF({...f, plot_area_sqft:e.target.value})} data-testid="est-area" /></div>
             <div><label className="text-xs font-bold uppercase text-gray-500">Floors</label><input type="number" required className="ss-input mt-1" value={f.floors} onChange={(e)=>setF({...f, floors:e.target.value})} data-testid="est-floors" /></div>
           </div>
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-[#F97316]"
+              checked={f.basement}
+              onChange={(e) => setF({ ...f, basement: e.target.checked })}
+              data-testid="est-basement"
+            />
+            <span className="text-sm font-semibold text-[#171717]">Include basement</span>
+            <span className="text-xs text-gray-500">(adds ~0.85 floor + extra steel/cement)</span>
+          </label>
           <div className="grid grid-cols-2 gap-3">
             <div><label className="text-xs font-bold uppercase text-gray-500">Type</label>
               <Select value={f.construction_type} onValueChange={(v)=>setF({...f, construction_type:v})}>
                 <SelectTrigger className="mt-1" data-testid="est-type"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="RESIDENTIAL">Residential</SelectItem>
+                  <SelectItem value="SEMI_COMMERCIAL">Semi-Commercial</SelectItem>
                   <SelectItem value="COMMERCIAL">Commercial</SelectItem>
                   <SelectItem value="INDUSTRIAL">Industrial</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div><label className="text-xs font-bold uppercase text-gray-500">Budget (₹)</label>
-              <input type="number" required min="1" className="ss-input mt-1" value={f.budget} onChange={(e)=>setF({...f, budget:e.target.value})} data-testid="est-budget" />
+            <div><label className="text-xs font-bold uppercase text-gray-500">Quality</label>
+              <Select value={f.quality} onValueChange={(v)=>setF({...f, quality:v})}>
+                <SelectTrigger className="mt-1" data-testid="est-quality"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ECONOMY">Economy</SelectItem>
+                  <SelectItem value="BASIC">Basic</SelectItem>
+                  <SelectItem value="STANDARD">Standard</SelectItem>
+                  <SelectItem value="PREMIUM">Premium</SelectItem>
+                  <SelectItem value="LUXURY">Luxury</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+          </div>
+          <div><label className="text-xs font-bold uppercase text-gray-500">Budget (₹)</label>
+            <input type="number" required min="1" className="ss-input mt-1" value={f.budget} onChange={(e)=>setF({...f, budget:e.target.value})} data-testid="est-budget" />
           </div>
           <div className="rounded-lg bg-gray-50 p-3 flex items-center justify-between text-sm">
             <div>
               <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Built-up</div>
-              <div className="font-display font-extrabold">{builtup.toLocaleString("en-IN")} sqft</div>
+              <div className="font-display font-extrabold">{builtup.toLocaleString("en-IN", { maximumFractionDigits: 0 })} sqft</div>
             </div>
             <div className="text-right">
               <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Derived rate</div>

@@ -7,7 +7,7 @@ export const PLAN_FEATURES = {
   },
   PREMIUM: {
     name: "Pro",
-    price: 499,
+    price: 899,
     color: "bg-white ring-2 ring-[#F97316]",
     features: [
       "Unlimited Sites & Supervisors",
@@ -20,7 +20,7 @@ export const PLAN_FEATURES = {
   },
   ENTERPRISE: {
     name: "Pro Plus",
-    price: 1199,
+    price: 1899,
     color: "bg-[#171717] text-white",
     features: [
       "Everything in Pro",

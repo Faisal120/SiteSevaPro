@@ -227,22 +227,22 @@ class EstimateIn(BaseModel):
     name: str
     plot_area_sqft: float
     floors: int = 1
-    construction_type: Literal["RESIDENTIAL", "COMMERCIAL", "INDUSTRIAL"] = "RESIDENTIAL"
+    basement: bool = False
+    construction_type: Literal["RESIDENTIAL", "COMMERCIAL", "SEMI_COMMERCIAL", "INDUSTRIAL"] = "RESIDENTIAL"
+    quality: Literal["ECONOMY", "BASIC", "STANDARD", "PREMIUM", "LUXURY"] = "STANDARD"
     budget: float  # total budget in INR
 
-TYPE_FACTOR = {"RESIDENTIAL": 1.0, "COMMERCIAL": 1.15, "INDUSTRIAL": 1.25}
+TYPE_FACTOR = {"RESIDENTIAL": 1.0, "SEMI_COMMERCIAL": 1.08, "COMMERCIAL": 1.15, "INDUSTRIAL": 1.25}
 
-def quality_band(rate_psf: float) -> str:
-    """Classify the derived ₹/sqft into Basic / Standard / Premium / Luxury."""
-    if rate_psf < 1500:
-        return "ECONOMY"
-    if rate_psf < 2000:
-        return "BASIC"
-    if rate_psf < 2700:
-        return "STANDARD"
-    if rate_psf < 3500:
-        return "PREMIUM"
-    return "LUXURY"
+# Cost-mix shifts with quality tier: premium projects carry richer finishes (material↑)
+# while economy builds tilt to labour. Tuned from typical Indian-residential ratios.
+QUALITY_MIX = {
+    "ECONOMY":  {"material": 0.48, "labour": 0.36, "overhead": 0.16},
+    "BASIC":    {"material": 0.52, "labour": 0.33, "overhead": 0.15},
+    "STANDARD": {"material": 0.55, "labour": 0.30, "overhead": 0.15},
+    "PREMIUM":  {"material": 0.60, "labour": 0.26, "overhead": 0.14},
+    "LUXURY":   {"material": 0.65, "labour": 0.22, "overhead": 0.13},
+}
 
 @v2_router.post("/estimates")
 async def create_estimate(body: EstimateIn, user: dict = Depends(require_roles("CONTRACTOR"))):
@@ -251,23 +251,28 @@ async def create_estimate(body: EstimateIn, user: dict = Depends(require_roles("
     if body.plot_area_sqft <= 0 or body.floors <= 0:
         raise HTTPException(400, "Plot area and floors must be > 0")
 
-    builtup = body.plot_area_sqft * body.floors
-    # Material formulas (per sqft of built-up area)
-    cement_bags = round(builtup * 0.4, 2)
-    steel_kg = round(builtup * 4.0, 2)
+    # Basement counts as ~0.85 floor (excavation + waterproofing offset reduces effective rate slightly)
+    effective_floors = body.floors + (0.85 if body.basement else 0)
+    builtup = body.plot_area_sqft * effective_floors
+
+    # Material formulas scale with built-up; basements need extra steel/cement for waterproofing
+    base_cement = 0.4
+    base_steel = 4.0
+    if body.basement:
+        base_cement *= 1.06
+        base_steel *= 1.10
+
+    cement_bags = round(builtup * base_cement, 2)
+    steel_kg = round(builtup * base_steel, 2)
     sand_cft = round(builtup * 0.85, 2)
     aggregate_cft = round(builtup * 0.65, 2)
     bricks_pcs = round(builtup * 8.0, 2)
 
-    # Derive rate from budget; normalize against construction-type factor so the
-    # quality band still reflects the user's INTENT (a 1.25x industrial multiplier
-    # at the same ₹/sqft is a richer build than residential at the same rate).
     rate_psf = body.budget / builtup
-    quality = quality_band(rate_psf / TYPE_FACTOR[body.construction_type])
-
+    mix = QUALITY_MIX[body.quality]
     total = round(body.budget, 2)
-    material_cost = round(total * 0.55, 2)
-    labour_cost = round(total * 0.30, 2)
+    material_cost = round(total * mix["material"], 2)
+    labour_cost = round(total * mix["labour"], 2)
     overhead = round(total - material_cost - labour_cost, 2)
 
     doc = {
@@ -276,9 +281,10 @@ async def create_estimate(body: EstimateIn, user: dict = Depends(require_roles("
         "site_id": body.site_id,
         "name": body.name,
         "input": body.model_dump(),
-        "builtup_sqft": builtup,
+        "builtup_sqft": round(builtup, 2),
         "rate_per_sqft": round(rate_psf, 2),
-        "quality_band": quality,
+        "quality_band": body.quality,
+        "type_factor": TYPE_FACTOR[body.construction_type],
         "materials": {
             "cement_bags": cement_bags,
             "steel_kg": steel_kg,
@@ -294,7 +300,7 @@ async def create_estimate(body: EstimateIn, user: dict = Depends(require_roles("
         "created_at": now_iso(),
     }
     await db.estimates.insert_one(dict(doc))
-    await log_audit(user, "CREATE", "estimate", doc["id"], {"total": total, "rate_per_sqft": rate_psf})
+    await log_audit(user, "CREATE", "estimate", doc["id"], {"total": total, "rate_per_sqft": rate_psf, "quality": body.quality})
     return doc
 
 @v2_router.get("/estimates")
@@ -404,7 +410,7 @@ async def get_boq(boq_id: str, user: dict = Depends(require_roles("CONTRACTOR", 
 
 # ---------- QR PAYMENT FLOW (UPI) ----------
 UPI_ID_DEFAULT = "fk1571515@ybl"
-PLAN_PRICES = {"FREE": 0, "PREMIUM": 499, "ENTERPRISE": 1199}
+PLAN_PRICES = {"FREE": 0, "PREMIUM": 899, "ENTERPRISE": 1899}
 
 class PaymentRequestIn(BaseModel):
     plan: Literal["PREMIUM", "ENTERPRISE"]

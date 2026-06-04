@@ -753,7 +753,7 @@ async def my_subscription(user: dict = Depends(require_roles("CONTRACTOR"))):
 
 @api.post("/subscription/upgrade")
 async def upgrade_subscription(plan: Plan, user: dict = Depends(require_roles("CONTRACTOR"))):
-    amounts = {"FREE": 0, "PREMIUM": 499, "ENTERPRISE": 1199}
+    amounts = {"FREE": 0, "PREMIUM": 899, "ENTERPRISE": 1899}
     amount = amounts.get(plan, 0)
     expires = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
     await db.subscriptions.update_one(
