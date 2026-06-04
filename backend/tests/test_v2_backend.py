@@ -66,7 +66,7 @@ class TestAuthAndConfig:
         assert r.status_code == 200
         d = r.json()
         assert d["upi_id"] == "fk1571515@ybl"
-        assert d["prices"] == {"FREE": 0, "PREMIUM": 499, "ENTERPRISE": 1199}
+        assert d["prices"] == {"FREE": 0, "PREMIUM": 899, "ENTERPRISE": 1899}
 
 
 # ---------------- Attendance + Wallet ----------------
@@ -185,7 +185,7 @@ class TestVendors:
 class TestEstimateBOQ:
     def test_estimate_formulas(self, s, contractor_token):
         body = {"name": "TEST_Est", "plot_area_sqft": 1000, "floors": 2,
-                "construction_type": "RESIDENTIAL", "quality": "STANDARD"}
+                "construction_type": "RESIDENTIAL", "quality": "STANDARD", "budget": 3600000}
         r = s.post(f"{API}/estimates", json=body, headers=_h(contractor_token), timeout=20)
         assert r.status_code == 200, r.text
         e = r.json()
@@ -197,8 +197,8 @@ class TestEstimateBOQ:
         assert m["sand_cft"] == 1700.0
         assert m["aggregate_cft"] == 1300.0
         assert m["bricks_pcs"] == 16000.0
-        assert e["rate_per_sqft"] == 1800 * 1.0
-        assert e["total"] == builtup * 1800
+        assert e["rate_per_sqft"] == 1800.0
+        assert e["total"] == 3600000
         TestEstimateBOQ.eid = e["id"]
         TestEstimateBOQ.builtup = builtup
 
@@ -232,7 +232,7 @@ class TestPaymentRequests:
                    headers=_h(contractor_token), timeout=20)
         assert r.status_code == 200, r.text
         pid = r.json()["id"]
-        assert r.json()["amount"] == 499
+        assert r.json()["amount"] == 899
         assert r.json()["status"] == "PENDING"
 
         my = s.get(f"{API}/payment/my", headers=_h(contractor_token), timeout=20).json()
@@ -303,7 +303,7 @@ class TestRoleIsolation:
 
     def test_client_forbidden_estimates(self, s, client_token):
         r = s.post(f"{API}/estimates",
-                   json={"name": "x", "plot_area_sqft": 100, "floors": 1},
+                   json={"name": "x", "plot_area_sqft": 100, "floors": 1, "budget": 100000},
                    headers=_h(client_token), timeout=20)
         assert r.status_code == 403
 

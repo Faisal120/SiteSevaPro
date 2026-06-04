@@ -44,6 +44,7 @@ export default function DashboardLayout() {
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   const role = user?.role;
+  const isSuperAdmin = role === "SUPER_ADMIN";
   const closeMobile = () => setMobileOpen(false);
 
   const contractorNav = (
@@ -103,14 +104,15 @@ export default function DashboardLayout() {
 
   const adminNav = (
     <>
-      <NavItem to="/app/admin" icon={LayoutDashboard} label="Overview" end />
-      <NavItem to="/app/admin/applications" icon={Briefcase} label="Applications" />
-      <NavItem to="/app/admin/contractors" icon={Users} label="Contractors" />
-      <NavItem to="/app/admin/payments" icon={BadgeIndianRupee} label="UPI Payments" />
-      <NavItem to="/app/admin/revenue" icon={BarChart3} label="Revenue" />
-      <NavItem to="/app/admin/audit" icon={Activity} label="Audit Logs" />
-      <NavItem to="/app/notifications" icon={Bell} label="Notifications" />
-      <NavItem to="/app/settings" icon={SettingsIcon} label="Settings" />
+      <NavGroup title="Platform">
+        <NavItem to="/app/admin" icon={LayoutDashboard} label="Overview" end />
+        <NavItem to="/app/admin/applications" icon={Briefcase} label="Applications" />
+        <NavItem to="/app/admin/contractors" icon={Users} label="Contractors" />
+        <NavItem to="/app/admin/payments" icon={BadgeIndianRupee} label="UPI Payments" />
+        <NavItem to="/app/admin/revenue" icon={BarChart3} label="Revenue" />
+        <NavItem to="/app/admin/audit" icon={Activity} label="Audit Logs" />
+      </NavGroup>
+      {contractorNav}
     </>
   );
 

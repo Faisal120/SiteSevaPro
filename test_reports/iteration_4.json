@@ -1,0 +1,43 @@
+{
+  "summary": "Site Seva Pro V2 — Super Admin all-access + new estimator schema + updated plan prices. 57/57 tests PASS across two test files. Fixed two backend bugs in server.py (list_labour and list_materials were raising 403 for SUPER_ADMIN due to missing role branch).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_v2_backend.py",
+    "/app/backend/tests/test_v2_super_admin_access.py",
+    "/app/test_reports/pytest/iteration_4.xml"
+  ],
+  "action_items": [
+    "Verify the small server.py fix I applied (added SUPER_ADMIN passthrough branch to GET /api/labour and GET /api/materials). If you prefer a different pattern (e.g., have require_roles drop the manual branching), update those endpoints accordingly.",
+    "Optional polish: list_labour/list_materials still use manual role branching while most peers use require_roles(); consider unifying to require_roles('CONTRACTOR','SUPERVISOR') + role-scoped query so SUPER_ADMIN passthrough is automatic from core.require_roles()."
+  ],
+  "critical_code_review_comments": [
+    "BUG (FIXED): /api/labour GET and /api/materials GET hard-raised 403 for SUPER_ADMIN because they used get_current_user with manual if/elif/else branching that did not include SUPER_ADMIN. Spec required all-access for SUPER_ADMIN. Added explicit SUPER_ADMIN branch (pass) so super admin sees all rows.",
+    "Consistency note: many other contractor endpoints (/wallet/*, /expenses, /estimates, /boq, /vendors, /dashboard/*) use require_roles() which now implicitly includes SUPER_ADMIN — works correctly. Only /labour and /materials GETs deviated.",
+    "v2.QUALITY_MIX rounding: material+labour+overhead derived via round() then overhead = total - material - labour, which keeps sum exact at total. Verified PREMIUM (60/26/14) for ₹50L within ±₹1.",
+    "Basement multipliers in estimator (cement ×1.06, steel ×1.10) and effective_floors += 0.85 verified by computing per-sqft material rate before/after — exactly 1.06× and 1.10×.",
+    "TYPE_FACTOR SEMI_COMMERCIAL=1.08 echoed back correctly in `type_factor` field, but it is not actually applied to total/rate_per_sqft (total = body.budget). Confirm with main agent if type_factor should additionally scale cost or remain a pure metadata field. (Current behaviour matches spec wording: 'returns type_factor=1.08'.)",
+    "FREE-plan site limit correctly skipped for SUPER_ADMIN (server.py line 388 check `if user['role'] != 'SUPER_ADMIN'`). Verified: super admin created 2 fresh sites successfully; new FREE contractor blocked at 2nd site with 402.",
+    "test_v2_backend.py legacy test for `present:true` legacy attendance still PASSES after refactor.",
+    "Updated existing tests to new prices (PREMIUM=899, ENTERPRISE=1899) and new estimator schema (budget + quality required) — kept all original assertions."
+  ],
+  "updated_files": [
+    "/app/backend/server.py (added SUPER_ADMIN branch in list_labour and list_materials)",
+    "/app/backend/tests/test_v2_backend.py (prices 899/1899, estimator body adds budget=3600000, total=body.budget, rate=budget/builtup)",
+    "/app/backend/tests/test_v2_super_admin_access.py (NEW: 36 tests covering all-access, role guards, estimator schema, plan prices, FREE limit, super-admin unlimited)"
+  ],
+  "success_rate": {"backend": "100% (57/57)", "frontend": "skipped"},
+  "test_credentials": "admin@siteseva.pro/Admin@SiteSeva2026, contractor@demo.com/Contractor@2026, supervisor@demo.com/Supervisor@2026, client@demo.com/Client@2026",
+  "seed_data_creation": "Test created throwaway TEST_FreeCo_* contractor application + approval to validate FREE-plan 1-site limit. Also created TEST_AdminSite_* sites under SUPER_ADMIN to confirm unlimited.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Two pytest files now exist: test_v2_backend.py (21 legacy/regression) and test_v2_super_admin_access.py (36 V2 super-admin + estimator + prices). Run together: pytest backend/tests/test_v2_super_admin_access.py backend/tests/test_v2_backend.py -v. Two small backend fixes were applied to /api/labour and /api/materials list endpoints to honor SUPER_ADMIN all-access.",
+  "rca of the issue": "/api/labour GET and /api/materials GET were written before SUPER_ADMIN all-access requirement. They didn't use require_roles() (which auto-grants SUPER_ADMIN per core.py); instead they branched on user['role'] with an else that raised 403, so SUPER_ADMIN fell through to the else. Fix: add `elif user['role']=='SUPER_ADMIN': pass` branch so query stays unscoped (returns all rows across companies). Reproduction: log in as admin@siteseva.pro, GET /api/labour → 403 before fix, 200 after fix."
+}

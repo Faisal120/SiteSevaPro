@@ -21,8 +21,7 @@ export default function Dashboard() {
   React.useEffect(() => {
     const load = async () => {
       try {
-        if (user.role === "SUPER_ADMIN") { nav("/app/admin"); return; }
-        if (user.role === "CONTRACTOR") {
+        if (user.role === "CONTRACTOR" || user.role === "SUPER_ADMIN") {
           const [s, st] = await Promise.all([api.get("/dashboard/contractor"), api.get("/sites")]);
           setStats(s.data); setSites(st.data);
         } else {
@@ -43,7 +42,7 @@ export default function Dashboard() {
     return "Good evening";
   })();
 
-  if (user.role === "CONTRACTOR") return <ContractorDash user={user} stats={stats} sites={sites} greeting={greeting} nav={nav} />;
+  if (user.role === "CONTRACTOR" || user.role === "SUPER_ADMIN") return <ContractorDash user={user} stats={stats} sites={sites} greeting={greeting} nav={nav} />;
   if (user.role === "SUPERVISOR") return <SupervisorDash user={user} sites={sites} greeting={greeting} nav={nav} />;
   if (user.role === "CLIENT") return <ClientDash user={user} sites={sites} greeting={greeting} nav={nav} />;
   return null;
