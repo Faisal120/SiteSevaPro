@@ -26,32 +26,38 @@ SaaS for Indian construction site management (Site Seva Pro). Roles: Super Admin
 - Client: project portal (view sites, payments, daily reports)
 - Seed data: admin, demo contractor + 3 sites + labour + materials + payments + report, supervisor, client
 
-## V2 — Planned (next iteration, NOT yet built)
-Major scope expansion requested by user. See V2_PLAN.md for full plan.
+## V2 — Phase A Shipped (Feb 2026)
+Backend:
+- Labour Wallet (ledger + balance), recompute_wallet helper
+- Attendance Automation: PRESENT/HALF/ABSENT status auto-credits EARNING + OT to ledger; idempotent re-saves; legacy `present: true` still works
+- `/api/wallet/summary`, `/api/wallet/labour/{id}`, `/api/wallet/pay` (PAYMENT/ADVANCE/BONUS), mirrors payments
+- Expenses module: `/api/expenses` + by_category & monthly report
+- Vendors directory CRUD
+- Construction Estimator engine + BOQ Generator (8 sections from foundation→plumbing)
+- Audit Logs collection + admin endpoint, every write logs an entry
+- UPI QR payment flow: `/api/payment/config` (upi_id=fk1571515@ybl, prices 0/499/1199), `/api/payment/request` (PENDING with UTR + screenshot), admin `/api/admin/payments/{approve|reject}` activates subscription
+- Executive Dashboard endpoint with site profitability + 6-month cashflow trend
+- `/api/subscription/upgrade` prices corrected to 499/1199
 
-P0 (must in v2 phase 1):
-- Labour Wallet System (ledger, earnings, payments, balance)
-- Attendance Automation (auto-earning on present/half/OT)
-- Construction Estimation Engine + BOQ Generator
-- AI Construction Assistant (chat)
-- AI Cost Overrun Prediction + Material Consumption Analysis
-- Audit Logs
-- Expense module split from Payments (Fuel/Transport/Equipment/Food/Misc)
-- Vendor + Invoice tracking
-- Advanced executive dashboard
-- Dark mode
+Frontend:
+- Labour Wallet page + per-worker ledger detail + Pay dialog
+- Expenses page with category pie + monthly bar charts
+- Estimator (live formula) + BOQ viewer with print/PDF
+- Vendors directory cards
+- Subscription upgrade with UPI QR (generated client-side) + UTR + screenshot upload
+- Admin: Pending UPI Payments approval, Audit Logs
+- Executive Dashboard (contractor only)
+- Sidebar reorganized into Overview / Operations / Finance / Planning / Account groups
+- Dark mode toggle in header (dashboard-only)
+- Attendance UI uses P/½/A status buttons + live earning preview
 
-P1 (v2 phase 2):
-- AI Daily Report Generator + AI Client WhatsApp Update
-- Weekly/Monthly aggregated reports + PDF export
-- Realtime notifications (SSE / polling)
-- Subscription feature gating (deeper)
-- Advanced analytics dashboard (profitability, trends, projections)
+Test report: /app/test_reports/iteration_2.json — 21/21 backend tests PASSED (100%)
 
-P2 (v2 phase 3):
-- White-label branding (Enterprise)
-- Mobile-optimised PWA shell
-- Push notifications
+## V2 — Phase B (Not yet built)
+AI Construction Assistant (chat), AI Cost Overrun, AI Consumption Analysis, AI Daily Report Gen, AI Client WhatsApp Update, PDF/Excel exports, Realtime notifications.
+
+## V2 — Phase C (Not yet built)
+Deeper subscription gating, white-label, mobile PWA shell, push notifications, advanced analytics.
 
 ## Test credentials
 See `/app/memory/test_credentials.md`.
