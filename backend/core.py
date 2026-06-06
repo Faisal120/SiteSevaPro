@@ -90,11 +90,9 @@ async def get_current_user(creds: Optional[HTTPAuthorizationCredentials] = Depen
     return user
 
 def require_roles(*roles: str):
-    """SUPER_ADMIN is implicitly granted access to every role-restricted endpoint."""
-    allowed = set(roles) | {"SUPER_ADMIN"}
-
+    """Strict role check. Each endpoint must explicitly list every role it accepts."""
     async def dep(user: dict = Depends(get_current_user)) -> dict:
-        if user["role"] not in allowed:
+        if user["role"] not in roles:
             raise HTTPException(403, f"Requires one of {roles}")
         return user
     return dep

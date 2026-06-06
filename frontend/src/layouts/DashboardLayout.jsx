@@ -118,17 +118,18 @@ export default function DashboardLayout() {
   );
 
   const adminNav = (
-    <>
-      <NavGroup title="Platform">
-        <NavItem to="/app/admin" icon={LayoutDashboard} label="Overview" end />
-        <NavItem to="/app/admin/applications" icon={Briefcase} label="Applications" />
-        <NavItem to="/app/admin/contractors" icon={Users} label="Contractors" />
-        <NavItem to="/app/admin/payments" icon={BadgeIndianRupee} label="UPI Payments" />
-        <NavItem to="/app/admin/revenue" icon={BarChart3} label="Revenue" />
-        <NavItem to="/app/admin/audit" icon={Activity} label="Audit Logs" />
-      </NavGroup>
-      {contractorNav}
-    </>
+    <NavGroup title="Platform">
+      <NavItem to="/app/admin" icon={LayoutDashboard} label="Overview" end />
+      <NavItem to="/app/admin/applications" icon={Briefcase} label="Applications" badge={pendingApps > 0 ? pendingApps : null} />
+      <NavItem to="/app/admin/contractors" icon={Users} label="Contractors" />
+      <NavItem to="/app/admin/supervisors" icon={Users} label="Supervisors" />
+      <NavItem to="/app/admin/subscriptions" icon={CreditCard} label="Subscriptions" />
+      <NavItem to="/app/admin/payments" icon={BadgeIndianRupee} label="UPI Payments" />
+      <NavItem to="/app/admin/revenue" icon={BarChart3} label="Analytics" />
+      <NavItem to="/app/admin/audit" icon={Activity} label="Audit Logs" />
+      <NavItem to="/app/notifications" icon={Bell} label="Notifications" />
+      <NavItem to="/app/settings" icon={SettingsIcon} label="Settings" />
+    </NavGroup>
   );
 
   const navByRole =

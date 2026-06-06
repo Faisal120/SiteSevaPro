@@ -34,6 +34,8 @@ import Settings from "@/pages/Settings";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import Applications from "@/pages/admin/Applications";
 import Contractors from "@/pages/admin/Contractors";
+import Supervisors from "@/pages/admin/Supervisors";
+import Subscriptions from "@/pages/admin/Subscriptions";
 import Revenue from "@/pages/admin/Revenue";
 import AdminPayments from "@/pages/admin/AdminPayments";
 import AuditLogs from "@/pages/admin/AuditLogs";
@@ -70,19 +72,19 @@ function App() {
             >
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
-              <Route path="executive" element={<Protected roles={["CONTRACTOR", "SUPER_ADMIN"]}><ExecutiveDashboard /></Protected>} />
+              <Route path="executive" element={<Protected roles={["CONTRACTOR"]}><ExecutiveDashboard /></Protected>} />
               <Route path="sites" element={<Sites />} />
               <Route path="sites/:siteId" element={<SiteDetail />} />
               <Route path="labour" element={<Labour />} />
-              <Route path="labour/wallet" element={<Protected roles={["CONTRACTOR", "SUPERVISOR", "SUPER_ADMIN"]}><LabourWallet /></Protected>} />
-              <Route path="labour/wallet/:labourId" element={<Protected roles={["CONTRACTOR", "SUPERVISOR", "SUPER_ADMIN"]}><LabourWalletDetail /></Protected>} />
+              <Route path="labour/wallet" element={<Protected roles={["CONTRACTOR", "SUPERVISOR"]}><LabourWallet /></Protected>} />
+              <Route path="labour/wallet/:labourId" element={<Protected roles={["CONTRACTOR", "SUPERVISOR"]}><LabourWalletDetail /></Protected>} />
               <Route path="materials" element={<Materials />} />
-              <Route path="vendors" element={<Protected roles={["CONTRACTOR", "SUPER_ADMIN"]}><Vendors /></Protected>} />
+              <Route path="vendors" element={<Protected roles={["CONTRACTOR"]}><Vendors /></Protected>} />
               <Route path="payments" element={<Payments />} />
               <Route path="expenses" element={<Expenses />} />
-              <Route path="estimates" element={<Protected roles={["CONTRACTOR", "SUPER_ADMIN"]}><Estimates /></Protected>} />
-              <Route path="boq" element={<Protected roles={["CONTRACTOR", "SUPER_ADMIN"]}><BOQ /></Protected>} />
-              <Route path="boq/:boqId" element={<Protected roles={["CONTRACTOR", "CLIENT", "SUPER_ADMIN"]}><BOQ /></Protected>} />
+              <Route path="estimates" element={<Protected roles={["CONTRACTOR"]}><Estimates /></Protected>} />
+              <Route path="boq" element={<Protected roles={["CONTRACTOR"]}><BOQ /></Protected>} />
+              <Route path="boq/:boqId" element={<Protected roles={["CONTRACTOR", "CLIENT"]}><BOQ /></Protected>} />
               <Route path="reports" element={<DailyReports />} />
               <Route path="notifications" element={<Notifications />} />
               <Route path="subscription" element={<Subscription />} />
@@ -91,6 +93,8 @@ function App() {
               <Route path="admin" element={<Protected roles={["SUPER_ADMIN"]}><AdminDashboard /></Protected>} />
               <Route path="admin/applications" element={<Protected roles={["SUPER_ADMIN"]}><Applications /></Protected>} />
               <Route path="admin/contractors" element={<Protected roles={["SUPER_ADMIN"]}><Contractors /></Protected>} />
+              <Route path="admin/supervisors" element={<Protected roles={["SUPER_ADMIN"]}><Supervisors /></Protected>} />
+              <Route path="admin/subscriptions" element={<Protected roles={["SUPER_ADMIN"]}><Subscriptions /></Protected>} />
               <Route path="admin/revenue" element={<Protected roles={["SUPER_ADMIN"]}><Revenue /></Protected>} />
               <Route path="admin/payments" element={<Protected roles={["SUPER_ADMIN"]}><AdminPayments /></Protected>} />
               <Route path="admin/audit" element={<Protected roles={["SUPER_ADMIN"]}><AuditLogs /></Protected>} />

@@ -360,6 +360,24 @@ async def list_contractors(_: dict = Depends(require_roles("SUPER_ADMIN"))):
     users = await db.users.find({"role": "CONTRACTOR"}, {"_id": 0, "password_hash": 0}).sort("created_at", -1).to_list(500)
     return users
 
+@api.get("/admin/supervisors")
+async def list_supervisors(_: dict = Depends(require_roles("SUPER_ADMIN"))):
+    users = await db.users.find({"role": "SUPERVISOR"}, {"_id": 0, "password_hash": 0}).sort("created_at", -1).to_list(500)
+    # Enrich with site count
+    for u in users:
+        u["site_count"] = len(u.get("site_ids", []))
+    return users
+
+@api.get("/admin/subscriptions")
+async def list_subscriptions(_: dict = Depends(require_roles("SUPER_ADMIN"))):
+    subs = await db.subscriptions.find({}, {"_id": 0}).sort("started_at", -1).to_list(500)
+    company_ids = [s["company_id"] for s in subs]
+    companies = {c["id"]: c async for c in db.companies.find({"id": {"$in": company_ids}})}
+    for s in subs:
+        c = companies.get(s["company_id"]) or {}
+        s["company_name"] = c.get("name")
+    return subs
+
 @api.post("/admin/contractors/{user_id}/block")
 async def block_contractor(user_id: str, blocked: bool = True, _: dict = Depends(require_roles("SUPER_ADMIN"))):
     res = await db.users.update_one({"id": user_id}, {"$set": {"blocked": blocked}})
@@ -377,21 +395,19 @@ async def list_sites(user: dict = Depends(get_current_user)):
         q["id"] = {"$in": user.get("site_ids", [])}
     elif user["role"] == "CLIENT":
         q["client_email"] = user["email"]
-    elif user["role"] == "SUPER_ADMIN":
-        pass
+    else:
+        raise HTTPException(403, "Forbidden")
     sites = await db.sites.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)
     return sites
 
 @api.post("/sites")
 async def create_site(body: SiteIn, user: dict = Depends(require_roles("CONTRACTOR"))):
-    # Plan enforcement (skipped for SUPER_ADMIN who has all-access)
-    if user["role"] != "SUPER_ADMIN":
-        sub = await db.subscriptions.find_one({"company_id": user["company_id"], "status": "ACTIVE"})
-        plan = (sub or {}).get("plan", "FREE")
-        if plan == "FREE":
-            cnt = await db.sites.count_documents({"company_id": user["company_id"]})
-            if cnt >= 1:
-                raise HTTPException(402, "Free plan allows only 1 site. Upgrade to Premium.")
+    sub = await db.subscriptions.find_one({"company_id": user["company_id"], "status": "ACTIVE"})
+    plan = (sub or {}).get("plan", "FREE")
+    if plan == "FREE":
+        cnt = await db.sites.count_documents({"company_id": user["company_id"]})
+        if cnt >= 1:
+            raise HTTPException(402, "Free plan allows only 1 site. Upgrade to Premium.")
     site_id = new_id()
     doc = {
         "id": site_id,
@@ -474,8 +490,6 @@ async def list_labour(site_id: Optional[str] = None, user: dict = Depends(get_cu
         q["company_id"] = user["company_id"]
     elif user["role"] == "SUPERVISOR":
         q["site_id"] = {"$in": user.get("site_ids", [])}
-    elif user["role"] == "SUPER_ADMIN":
-        pass  # all-access
     else:
         raise HTTPException(403, "Forbidden")
     if site_id:
@@ -611,8 +625,6 @@ async def list_materials(site_id: Optional[str] = None, user: dict = Depends(get
         q["company_id"] = user["company_id"]
     elif user["role"] == "SUPERVISOR":
         q["site_id"] = {"$in": user.get("site_ids", [])}
-    elif user["role"] == "SUPER_ADMIN":
-        pass  # all-access
     else:
         raise HTTPException(403, "Forbidden")
     if site_id:
@@ -851,31 +863,9 @@ app.add_middleware(
 
 # ---------- STARTUP SEED ----------
 async def seed():
-    # Demo Contractor + Company FIRST (so we can attach SUPER_ADMIN to it for full access)
-    contractor = await db.users.find_one({"email": "contractor@demo.com"})
-    demo_company_id = None
-    if not contractor:
-        demo_company_id = new_id()
-        user_id = new_id()
-        await db.companies.insert_one({
-            "id": demo_company_id, "name": "Demo Builders Pvt Ltd",
-            "owner_id": user_id, "gst_number": "27ABCDE1234F1Z5",
-            "city": "Mumbai", "state": "Maharashtra",
-            "address": "101, Construction House, BKC", "created_at": now_iso(),
-        })
-        await db.users.insert_one({
-            "id": user_id, "email": "contractor@demo.com", "username": "demobuilders",
-            "password_hash": hash_password("Contractor@2026"), "role": "CONTRACTOR",
-            "full_name": "Rajesh Sharma", "company_id": demo_company_id,
-            "company_name": "Demo Builders Pvt Ltd", "plan": "PREMIUM",
-            "site_ids": [], "blocked": False, "created_at": now_iso(),
-        })
-    else:
-        demo_company_id = contractor["company_id"]
-
-    # Super Admin — attached to demo company so contractor-scoped endpoints work seamlessly
-    super_admin = await db.users.find_one({"email": SUPER_ADMIN_EMAIL.lower()})
-    if not super_admin:
+    # Super Admin (platform-only, no tenant attachment)
+    existing_admin = await db.users.find_one({"email": SUPER_ADMIN_EMAIL.lower()})
+    if not existing_admin:
         await db.users.insert_one({
             "id": new_id(),
             "email": SUPER_ADMIN_EMAIL.lower(),
@@ -883,29 +873,36 @@ async def seed():
             "password_hash": hash_password(SUPER_ADMIN_PASSWORD),
             "role": "SUPER_ADMIN",
             "full_name": "Platform Admin",
-            "company_id": demo_company_id,
-            "company_name": "Demo Builders Pvt Ltd",
-            "plan": "ENTERPRISE",
             "blocked": False,
             "created_at": now_iso(),
         })
-        logger.info("Seeded SUPER_ADMIN attached to demo company")
-    elif not super_admin.get("company_id"):
-        # Backfill existing super admin without company_id (one-time migration)
+        logger.info("Seeded SUPER_ADMIN")
+    elif existing_admin.get("company_id"):
+        # Clean up earlier mis-attachment of super admin to demo company
         await db.users.update_one(
-            {"id": super_admin["id"]},
-            {"$set": {
-                "company_id": demo_company_id,
-                "company_name": "Demo Builders Pvt Ltd",
-                "plan": "ENTERPRISE",
-            }},
+            {"id": existing_admin["id"]},
+            {"$unset": {"company_id": "", "company_name": "", "plan": "", "site_ids": ""}},
         )
-        logger.info("Backfilled SUPER_ADMIN with demo company_id")
+        logger.info("Detached SUPER_ADMIN from tenant company")
 
+    # Demo Contractor + Company
+    contractor = await db.users.find_one({"email": "contractor@demo.com"})
     if not contractor:
-        # continue seeding sample data (subscriptions, sites, labour, etc.)
-        company_id = demo_company_id
-        user_id = (await db.users.find_one({"email": "contractor@demo.com"}))["id"]
+        company_id = new_id()
+        user_id = new_id()
+        await db.companies.insert_one({
+            "id": company_id, "name": "Demo Builders Pvt Ltd",
+            "owner_id": user_id, "gst_number": "27ABCDE1234F1Z5",
+            "city": "Mumbai", "state": "Maharashtra",
+            "address": "101, Construction House, BKC", "created_at": now_iso(),
+        })
+        await db.users.insert_one({
+            "id": user_id, "email": "contractor@demo.com", "username": "demobuilders",
+            "password_hash": hash_password("Contractor@2026"), "role": "CONTRACTOR",
+            "full_name": "Rajesh Sharma", "company_id": company_id,
+            "company_name": "Demo Builders Pvt Ltd", "plan": "PREMIUM",
+            "site_ids": [], "blocked": False, "created_at": now_iso(),
+        })
         await db.subscriptions.insert_one({
             "id": new_id(), "company_id": company_id, "plan": "PREMIUM", "status": "ACTIVE",
             "started_at": now_iso(),
