@@ -16,6 +16,7 @@ import DashboardLayout from "@/layouts/DashboardLayout";
 import Dashboard from "@/pages/Dashboard";
 import ExecutiveDashboard from "@/pages/ExecutiveDashboard";
 import Sites from "@/pages/Sites";
+import TeamManagement from "@/pages/TeamManagement";
 import SiteDetail from "@/pages/SiteDetail";
 import Labour from "@/pages/Labour";
 import LabourWallet from "@/pages/LabourWallet";
@@ -75,6 +76,14 @@ function App() {
               <Route path="executive" element={<Protected roles={["CONTRACTOR"]}><ExecutiveDashboard /></Protected>} />
               <Route path="sites" element={<Sites />} />
               <Route path="sites/:siteId" element={<SiteDetail />} />
+              <Route
+                path="team"
+                element={
+                  <Protected roles={["CONTRACTOR"]}>
+                    <TeamManagement />
+                  </Protected>
+                }
+              />
               <Route path="labour" element={<Labour />} />
               <Route path="labour/wallet" element={<Protected roles={["CONTRACTOR", "SUPERVISOR"]}><LabourWallet /></Protected>} />
               <Route path="labour/wallet/:labourId" element={<Protected roles={["CONTRACTOR", "SUPERVISOR"]}><LabourWalletDetail /></Protected>} />

@@ -70,6 +70,7 @@ export default function DashboardLayout() {
       </NavGroup>
       <NavGroup title="Operations">
         <NavItem to="/app/sites" icon={Building2} label="Sites" />
+        <NavItem to="/app/team" icon={Users} label="Team Management" />
         <NavItem to="/app/labour" icon={Users} label="Labour" />
         <NavItem to="/app/labour/wallet" icon={Wallet} label="Labour Wallet" />
         <NavItem to="/app/materials" icon={Package} label="Materials" />

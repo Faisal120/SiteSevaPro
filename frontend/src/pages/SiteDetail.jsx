@@ -17,6 +17,9 @@ export default function SiteDetail() {
   const [materials, setMaterials] = React.useState([]);
   const [payments, setPayments] = React.useState([]);
   const [reports, setReports] = React.useState([]);
+  const [team, setTeam] = React.useState([]);
+  const [selectedSupervisor, setSelectedSupervisor] = React.useState("");
+  const [selectedClient, setSelectedClient] = React.useState("");
   const [insight, setInsight] = React.useState(null);
   const [aiBusy, setAiBusy] = React.useState(false);
 
@@ -24,6 +27,10 @@ export default function SiteDetail() {
     (async () => {
       const s = await api.get(`/sites/${siteId}`);
       setSite(s.data);
+      if (user.role === "CONTRACTOR") {
+      const teamRes = await api.get("/team");
+      setTeam(teamRes.data);
+      }
       const calls = [api.get(`/daily-reports?site_id=${siteId}`)];
       if (user.role !== "CLIENT") {
         calls.push(api.get(`/labour?site_id=${siteId}`));
@@ -41,6 +48,30 @@ export default function SiteDetail() {
       }
     })();
   }, [siteId, user.role]);
+
+  const assignSupervisor = async () => {
+  try {
+    await api.post(`/sites/${siteId}/assign-supervisor`, {
+      supervisor_id: selectedSupervisor,
+    });
+
+    toast.success("Supervisor assigned");
+  } catch (e) {
+    toast.error("Assignment failed");
+  }
+};
+
+const assignClient = async () => {
+  try {
+    await api.post(`/sites/${siteId}/assign-client`, {
+      client_id: selectedClient,
+    });
+
+    toast.success("Client assigned");
+  } catch (e) {
+    toast.error("Assignment failed");
+  }
+};
 
   const runAI = async (kind) => {
     setAiBusy(true);
@@ -90,6 +121,67 @@ export default function SiteDetail() {
           </div>
         </div>
         <div className="px-6 py-4 grid md:grid-cols-4 gap-4 text-sm">
+          {user.role === "CONTRACTOR" && (
+  <div className="px-6 pb-6">
+    <div className="grid md:grid-cols-2 gap-4">
+
+      <div className="ss-card p-4">
+        <h3 className="font-bold mb-3">Assign Supervisor</h3>
+
+        <select
+          className="ss-input"
+          value={selectedSupervisor}
+          onChange={(e) => setSelectedSupervisor(e.target.value)}
+        >
+          <option value="">Select Supervisor</option>
+
+          {team
+            .filter((u) => u.role === "SUPERVISOR")
+            .map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name}
+              </option>
+            ))}
+        </select>
+
+        <button
+          className="ss-btn mt-3"
+          onClick={assignSupervisor}
+        >
+          Assign Supervisor
+        </button>
+      </div>
+
+      <div className="ss-card p-4">
+        <h3 className="font-bold mb-3">Assign Client</h3>
+
+        <select
+          className="ss-input"
+          value={selectedClient}
+          onChange={(e) => setSelectedClient(e.target.value)}
+        >
+          <option value="">Select Client</option>
+
+          {team
+            .filter((u) => u.role === "CLIENT")
+            .map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name}
+              </option>
+            ))}
+        </select>
+
+        <button
+          className="ss-btn mt-3"
+          onClick={assignClient}
+        >
+          Assign Client
+        </button>
+      </div>
+
+    </div>
+  </div>
+)}
           <div><span className="text-gray-500">Client:</span> <span className="font-semibold">{site.client_name}</span></div>
           <div><span className="text-gray-500">Email:</span> <span className="font-semibold">{site.client_email || "—"}</span></div>
           <div><span className="text-gray-500">Start:</span> <span className="font-semibold">{fmtDate(site.start_date)}</span></div>
