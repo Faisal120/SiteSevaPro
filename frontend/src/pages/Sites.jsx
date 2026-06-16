@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+
 export default function Sites() {
   const { user } = useAuth();
   const nav = useNavigate();
@@ -110,12 +111,19 @@ export default function Sites() {
 
 function SiteForm({ onDone }) {
   const [f, setF] = React.useState({
-    name: "", client_name: "", client_email: "", location: "", budget: 0,
+    name: "", client_id: "",
+    supervisor_id: "", location: "", budget: 0,
     start_date: new Date().toISOString().slice(0, 10),
     end_date: new Date(Date.now() + 1000 * 60 * 60 * 24 * 180).toISOString().slice(0, 10),
     status: "ACTIVE", progress: 0, description: "",
   });
   const [busy, setBusy] = React.useState(false);
+  const [team, setTeam] = React.useState([]);
+  React.useEffect(() => {
+    api.get("/team")
+      .then((res) => setTeam(res.data))
+      .catch(console.error);
+  }, []);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const submit = async (e) => {
     e.preventDefault();
@@ -128,26 +136,84 @@ function SiteForm({ onDone }) {
     finally { setBusy(false); }
   };
   return (
-    <DialogContent className="max-w-2xl">
+    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl">
       <DialogHeader><DialogTitle>Create New Site</DialogTitle></DialogHeader>
       <form onSubmit={submit} className="grid gap-4 md:grid-cols-2" data-testid="site-form">
         <div className="md:col-span-2">
+          <div className="md:col-span-2 border-b pb-2">
+            <h3 className="text-lg font-bold">
+             Basic Information
+            </h3>
+          </div>
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Site Name</label>
           <input className="ss-input mt-1" required value={f.name} onChange={set("name")} data-testid="site-name" />
-        </div>
-        <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Client Name</label>
-          <input className="ss-input mt-1" required value={f.client_name} onChange={set("client_name")} data-testid="site-client-name" />
-        </div>
-        <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Client Email</label>
-          <input className="ss-input mt-1" type="email" value={f.client_email} onChange={set("client_email")} data-testid="site-client-email" />
         </div>
         <div className="md:col-span-2">
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Location</label>
           <input className="ss-input mt-1" required value={f.location} onChange={set("location")} data-testid="site-location" />
         </div>
         <div>
+          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+            Supervisor
+          </label>
+          <div className="md:col-span-2 border-b pb-2 mt-4">
+            <h3 className="text-lg font-bold">
+                 Team Assignment
+            </h3>
+          </div>
+          <select
+            className="ss-input mt-1"
+            value={f.supervisor_id}
+            onChange={(e) =>
+              setF({
+                ...f,
+                supervisor_id: e.target.value
+              })
+            }
+          >
+            <option value="">Select Supervisor</option>
+
+            {team
+              .filter((u) => u.role === "SUPERVISOR")
+              .map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.full_name}
+                </option>
+              ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+            Client
+          </label>
+
+          <select
+            className="ss-input mt-1"
+            value={f.client_id}
+            onChange={(e) =>
+              setF({
+                ...f,
+                client_id: e.target.value
+              })
+            }
+          >
+            <option value="">Select Client</option>
+
+            {team
+              .filter((u) => u.role === "CLIENT")
+              .map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.full_name}
+                </option>
+              ))}
+          </select>
+        </div>
+        <div>
+          <div className="md:col-span-2 border-b pb-2 mt-4">
+            <h3 className="text-lg font-bold">
+               Project Details
+            </h3>
+          </div>
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Budget (₹)</label>
           <input className="ss-input mt-1" type="number" required value={f.budget} onChange={set("budget")} data-testid="site-budget" />
         </div>

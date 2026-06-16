@@ -28,8 +28,8 @@ export default function SiteDetail() {
       const s = await api.get(`/sites/${siteId}`);
       setSite(s.data);
       if (user.role === "CONTRACTOR") {
-      const teamRes = await api.get("/team");
-      setTeam(teamRes.data);
+        const teamRes = await api.get("/team");
+        setTeam(teamRes.data);
       }
       const calls = [api.get(`/daily-reports?site_id=${siteId}`)];
       if (user.role !== "CLIENT") {
@@ -50,28 +50,28 @@ export default function SiteDetail() {
   }, [siteId, user.role]);
 
   const assignSupervisor = async () => {
-  try {
-    await api.post(`/sites/${siteId}/assign-supervisor`, {
-      supervisor_id: selectedSupervisor,
-    });
+    try {
+      await api.post(`/sites/${siteId}/assign-supervisor`, {
+        supervisor_id: selectedSupervisor,
+      });
 
-    toast.success("Supervisor assigned");
-  } catch (e) {
-    toast.error("Assignment failed");
-  }
-};
+      toast.success("Supervisor assigned");
+    } catch (e) {
+      toast.error("Assignment failed");
+    }
+  };
 
-const assignClient = async () => {
-  try {
-    await api.post(`/sites/${siteId}/assign-client`, {
-      client_id: selectedClient,
-    });
+  const assignClient = async () => {
+    try {
+      await api.post(`/sites/${siteId}/assign-client`, {
+        client_id: selectedClient,
+      });
 
-    toast.success("Client assigned");
-  } catch (e) {
-    toast.error("Assignment failed");
-  }
-};
+      toast.success("Client assigned");
+    } catch (e) {
+      toast.error("Assignment failed");
+    }
+  };
 
   const runAI = async (kind) => {
     setAiBusy(true);
@@ -116,72 +116,124 @@ const assignClient = async () => {
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-gray-300">Progress</div>
                 <div className="text-xl font-extrabold">{site.progress}%</div>
+                <div className="w-48 h-2 bg-white/20 rounded-full mt-2">
+                  <div
+                    className="h-full bg-[#F97316] rounded-full"
+                    style={{
+                      width: `${site.progress}%`
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </div>
         </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-gray-50 border-t">
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <p className="text-xs text-gray-500">Budget</p>
+            <h3 className="text-lg font-bold">{inr(site.budget)}</h3>
+          </div>
+
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <p className="text-xs text-gray-500">Progress</p>
+            <h3 className="text-lg font-bold">{site.progress}%</h3>
+          </div>
+
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <p className="text-xs text-gray-500">Supervisor</p>
+            <h3 className="text-lg font-bold">
+              {site.supervisor_name || "Not Assigned"}
+            </h3>
+          </div>
+
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <p className="text-xs text-gray-500">Client</p>
+            <h3 className="text-lg font-bold">
+              {site.client_name || "Not Assigned"}
+            </h3>
+          </div>
+        </div>
         <div className="px-6 py-4 grid md:grid-cols-4 gap-4 text-sm">
           {user.role === "CONTRACTOR" && (
-  <div className="px-6 pb-6">
-    <div className="grid md:grid-cols-2 gap-4">
+            <div className="px-6 pb-6">
+              <div className="bg-white border rounded-2xl p-6 shadow-sm">
 
-      <div className="ss-card p-4">
-        <h3 className="font-bold mb-3">Assign Supervisor</h3>
+                <h2 className="text-xl font-bold mb-5">
+                  Team Assignment
+                </h2>
 
-        <select
-          className="ss-input"
-          value={selectedSupervisor}
-          onChange={(e) => setSelectedSupervisor(e.target.value)}
-        >
-          <option value="">Select Supervisor</option>
+                <div className="grid md:grid-cols-2 gap-6">
 
-          {team
-            .filter((u) => u.role === "SUPERVISOR")
-            .map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name}
-              </option>
-            ))}
-        </select>
+                  <div>
+                    <label className="text-sm font-semibold">
+                      Supervisor
+                    </label>
 
-        <button
-          className="ss-btn mt-3"
-          onClick={assignSupervisor}
-        >
-          Assign Supervisor
-        </button>
-      </div>
+                    <select
+                      className="ss-input mt-2"
+                      value={selectedSupervisor}
+                      onChange={(e) =>
+                        setSelectedSupervisor(e.target.value)
+                      }
+                    >
+                      <option value="">
+                        Select Supervisor
+                      </option>
 
-      <div className="ss-card p-4">
-        <h3 className="font-bold mb-3">Assign Client</h3>
+                      {team
+                        .filter((u) => u.role === "SUPERVISOR")
+                        .map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.full_name}
+                          </option>
+                        ))}
+                    </select>
 
-        <select
-          className="ss-input"
-          value={selectedClient}
-          onChange={(e) => setSelectedClient(e.target.value)}
-        >
-          <option value="">Select Client</option>
+                    <button
+                      className="ss-btn-accent mt-3 w-full"
+                      onClick={assignSupervisor}
+                    >
+                      Save Supervisor
+                    </button>
+                  </div>
 
-          {team
-            .filter((u) => u.role === "CLIENT")
-            .map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name}
-              </option>
-            ))}
-        </select>
+                  <div>
+                    <label className="text-sm font-semibold">
+                      Client
+                    </label>
 
-        <button
-          className="ss-btn mt-3"
-          onClick={assignClient}
-        >
-          Assign Client
-        </button>
-      </div>
+                    <select
+                      className="ss-input mt-2"
+                      value={selectedClient}
+                      onChange={(e) =>
+                        setSelectedClient(e.target.value)
+                      }
+                    >
+                      <option value="">
+                        Select Client
+                      </option>
 
-    </div>
-  </div>
-)}
+                      {team
+                        .filter((u) => u.role === "CLIENT")
+                        .map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.full_name}
+                          </option>
+                        ))}
+                    </select>
+
+                    <button
+                      className="ss-btn-accent mt-3 w-full"
+                      onClick={assignClient}
+                    >
+                      Save Client
+                    </button>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          )}
           <div><span className="text-gray-500">Client:</span> <span className="font-semibold">{site.client_name}</span></div>
           <div><span className="text-gray-500">Email:</span> <span className="font-semibold">{site.client_email || "—"}</span></div>
           <div><span className="text-gray-500">Start:</span> <span className="font-semibold">{fmtDate(site.start_date)}</span></div>
@@ -201,8 +253,41 @@ const assignClient = async () => {
 
         <TabsContent value="overview" className="mt-5">
           <div className="ss-card p-6">
-            <SectionTitle title="Description" />
+            <SectionTitle title="Project Overview" />
             <p className="text-sm text-gray-600 leading-relaxed">{site.description || "No description yet."}</p>
+            <div className="grid md:grid-cols-3 gap-4 mt-6">
+
+              <div className="border rounded-xl p-4">
+                <p className="text-xs text-gray-500">
+                  Start Date
+                </p>
+
+                <h4 className="font-semibold">
+                  {fmtDate(site.start_date)}
+                </h4>
+              </div>
+
+              <div className="border rounded-xl p-4">
+                <p className="text-xs text-gray-500">
+                  End Date
+                </p>
+
+                <h4 className="font-semibold">
+                  {fmtDate(site.end_date)}
+                </h4>
+              </div>
+
+              <div className="border rounded-xl p-4">
+                <p className="text-xs text-gray-500">
+                  Status
+                </p>
+
+                <h4 className="font-semibold">
+                  {site.status}
+                </h4>
+              </div>
+
+            </div>
           </div>
         </TabsContent>
 

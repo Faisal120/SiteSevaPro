@@ -16,6 +16,8 @@ export default function Dashboard() {
   const nav = useNavigate();
   const [stats, setStats] = React.useState(null);
   const [sites, setSites] = React.useState([]);
+  const [latestPhotos, setLatestPhotos] = React.useState([]);
+  const [team, setTeam] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
@@ -23,8 +25,30 @@ export default function Dashboard() {
       try {
         if (user.role === "SUPER_ADMIN") { nav("/app/admin"); return; }
         if (user.role === "CONTRACTOR") {
-          const [s, st] = await Promise.all([api.get("/dashboard/contractor"), api.get("/sites")]);
+          const [s, st, tm] = await Promise.all([
+            api.get("/dashboard/contractor"),
+            api.get("/sites"),
+            api.get("/team"),
+            api.get("/daily-reports")
+          ]);
+
+          setStats(s.data);
+          setSites(st.data);
+          setTeam(tm.data);
           setStats(s.data); setSites(st.data);
+          const photos = reports.data
+            .flatMap(r =>
+              (r.media_urls || [])
+                .filter(m => m.type === "image")
+                .map(m => ({
+                  ...m,
+                  site_id: r.site_id,
+                  report_date: r.date
+                }))
+            )
+            .slice(0, 8);
+
+          setLatestPhotos(photos);
         } else {
           const st = await api.get("/sites");
           setSites(st.data);
@@ -43,13 +67,31 @@ export default function Dashboard() {
     return "Good evening";
   })();
 
-  if (user.role === "CONTRACTOR") return <ContractorDash user={user} stats={stats} sites={sites} greeting={greeting} nav={nav} />;
+  if (user.role === "CONTRACTOR") return (
+    <ContractorDash
+      user={user}
+      stats={stats}
+      sites={sites}
+      team={team}
+      latestPhotos={latestPhotos}
+      greeting={greeting}
+      nav={nav}
+    />
+  );
   if (user.role === "SUPERVISOR") return <SupervisorDash user={user} sites={sites} greeting={greeting} nav={nav} />;
   if (user.role === "CLIENT") return <ClientDash user={user} sites={sites} greeting={greeting} nav={nav} />;
   return null;
 }
 
-function ContractorDash({ user, stats, sites, greeting, nav }) {
+function ContractorDash({
+  user,
+  stats,
+  sites,
+  team,
+  latestPhotos,
+  greeting,
+  nav
+}) {
   const COLORS = ["#171717", "#F97316", "#EAB308"];
   return (
     <div className="space-y-6 ss-fade-in">
@@ -64,13 +106,110 @@ function ContractorDash({ user, stats, sites, greeting, nav }) {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
         <StatCard label="Active Sites" value={`${stats.active_sites}/${stats.total_sites}`} icon={Building2} accent="ink" testId="stat-active-sites" />
         <StatCard label="Total Budget" value={inr(stats.total_budget)} icon={Wallet} accent="orange" testId="stat-total-budget" />
         <StatCard label="Total Received" value={inr(stats.total_received)} icon={TrendingUp} accent="yellow" trend={`Pending ${inr(stats.pending_payments)}`} testId="stat-received" />
         <StatCard label="Net Profit" value={inr(stats.net_profit)} icon={Activity} accent="soft" testId="stat-profit" />
+        <StatCard
+          label="Supervisors"
+          value={
+            team.filter(
+              t => t.role === "SUPERVISOR"
+            ).length
+          }
+          icon={Users}
+          accent="orange"
+        />
+
+        <StatCard
+          label="Clients"
+          value={
+            team.filter(
+              t => t.role === "CLIENT"
+            ).length
+          }
+          icon={Users}
+          accent="yellow"
+        />
       </div>
 
+      <div className="grid md:grid-cols-4 gap-4">
+
+        <button
+          className="ss-card p-5 text-left hover:border-orange-500"
+          onClick={() => nav("/app/sites")}
+        >
+          🏗 Manage Sites
+        </button>
+
+        <button
+          className="ss-card p-5 text-left hover:border-orange-500"
+          onClick={() => nav("/app/team")}
+        >
+          👥 Manage Team
+        </button>
+
+        <button
+          className="ss-card p-5 text-left hover:border-orange-500"
+          onClick={() => nav("/app/materials")}
+        >
+          📦 Materials
+        </button>
+
+        <button
+          className="ss-card p-5 text-left hover:border-orange-500"
+          onClick={() => nav("/app/payments")}
+        >
+          💰 Payments
+        </button>
+
+      </div>
+      <div className="ss-card p-5">
+
+        <SectionTitle
+          title="Latest Site Updates"
+          subtitle="Recent photos uploaded by supervisors"
+        />
+
+        {latestPhotos.length === 0 ? (
+
+          <div className="text-center py-10 text-gray-500">
+            No site photos uploaded yet
+          </div>
+
+        ) : (
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+            {latestPhotos.map((photo, index) => (
+
+              <div
+                key={index}
+                className="overflow-hidden rounded-xl border"
+              >
+
+                <img
+                  src={photo.url}
+                  alt=""
+                  className="
+              h-40
+              w-full
+              object-cover
+              hover:scale-105
+              transition
+            "
+                />
+
+              </div>
+
+            ))}
+
+          </div>
+
+        )}
+
+      </div>
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="ss-card p-5 lg:col-span-2">
           <SectionTitle title="Site Progress" subtitle="Real-time completion %" />
@@ -89,6 +228,7 @@ function ContractorDash({ user, stats, sites, greeting, nav }) {
             </ResponsiveContainer>
           </div>
         </div>
+
         <div className="ss-card p-5">
           <SectionTitle title="Expense Mix" />
           <div className="h-72">
@@ -137,9 +277,9 @@ function ContractorDash({ user, stats, sites, greeting, nav }) {
               <div key={n.id} className="flex items-start gap-3 text-sm">
                 <div className="h-8 w-8 rounded-lg bg-orange-100 text-[#F97316] flex items-center justify-center shrink-0">
                   {n.type === "PAYMENT" ? <Wallet className="h-4 w-4" /> :
-                   n.type === "STOCK" ? <Package className="h-4 w-4" /> :
-                   n.type === "SITE" ? <Building2 className="h-4 w-4" /> :
-                   <Bell className="h-4 w-4" />}
+                    n.type === "STOCK" ? <Package className="h-4 w-4" /> :
+                      n.type === "SITE" ? <Building2 className="h-4 w-4" /> :
+                        <Bell className="h-4 w-4" />}
                 </div>
                 <div className="min-w-0">
                   <div className="font-semibold text-[#171717] truncate">{n.title}</div>
@@ -160,15 +300,38 @@ function SupervisorDash({ user, sites, greeting, nav }) {
     <div className="space-y-6 ss-fade-in">
       <div>
         <p className="text-sm text-gray-500">{greeting},</p>
-        <h1 className="font-display text-3xl font-extrabold tracking-tight">{user.full_name}</h1>
+        <h1 className="font-display text-4xl font-extrabold tracking-tight">{user.full_name}</h1>
         <p className="text-sm text-gray-500 mt-1">You're assigned to {sites.length} site{sites.length !== 1 && "s"}.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
         <StatCard label="My Sites" value={sites.length} icon={Building2} accent="ink" testId="sup-sites" />
         <StatCard label="Today" value={fmtDate(new Date())} icon={Activity} accent="orange" testId="sup-today" />
         <StatCard label="Role" value={user.role} icon={Users} accent="yellow" testId="sup-role" />
+        <StatCard
+          label="Completed Sites"
+          value={
+            sites.filter(
+              s => s.status === "COMPLETED"
+            ).length
+          }
+          icon={Building2}
+          accent="soft"
+        />
+
+        <StatCard
+          label="Active Sites"
+          value={
+            sites.filter(
+              s => s.status === "ACTIVE"
+            ).length
+          }
+          icon={Activity}
+          accent="orange"
+        />
       </div>
+
+
 
       <div className="ss-card p-5">
         <SectionTitle title="My Sites" subtitle="Tap a site to mark attendance, upload reports and track materials." />
@@ -203,8 +366,19 @@ function ClientDash({ user, sites, greeting, nav }) {
     <div className="space-y-6 ss-fade-in">
       <div>
         <p className="text-sm text-gray-500">{greeting},</p>
-        <h1 className="font-display text-3xl font-extrabold tracking-tight">{user.full_name}</h1>
+        <h1 className="font-display text-4xl font-extrabold tracking-tight">{user.full_name}</h1>
         <p className="text-sm text-gray-500 mt-1">Welcome to your project portal.</p>
+        <div className="mt-4 flex gap-3">
+
+          <div className="ss-chip bg-green-100 text-green-700">
+            Active Projects: {stats.active_sites}
+          </div>
+
+          <div className="ss-chip bg-orange-100 text-orange-700">
+            Revenue: {inr(stats.total_received)}
+          </div>
+
+        </div>
       </div>
       <div className="grid md:grid-cols-2 gap-5">
         {sites.map((s) => (

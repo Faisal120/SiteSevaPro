@@ -66,7 +66,8 @@ export default function DashboardLayout() {
     <>
       <NavGroup title="Overview">
         <NavItem to="/app/dashboard" icon={LayoutDashboard} label="Dashboard" />
-        <NavItem to="/app/executive" icon={BarChart3} label="Executive" />
+        <NavItem to="/app/executive" icon={BarChart3} label="Executive" badge="PRO"
+        />
       </NavGroup>
       <NavGroup title="Operations">
         <NavItem to="/app/sites" icon={Building2} label="Sites" />
@@ -135,9 +136,9 @@ export default function DashboardLayout() {
 
   const navByRole =
     role === "SUPER_ADMIN" ? adminNav :
-    role === "SUPERVISOR" ? supervisorNav :
-    role === "CLIENT" ? clientNav :
-    contractorNav;
+      role === "SUPERVISOR" ? supervisorNav :
+        role === "CLIENT" ? clientNav :
+          contractorNav;
 
   const initials = (user?.full_name || user?.email || "U").slice(0, 2).toUpperCase();
 
@@ -148,6 +149,21 @@ export default function DashboardLayout() {
         <span className="font-display text-base font-extrabold">Site Seva <span className="text-[#F97316]">Pro</span></span>
       </Link>
       <div className="px-3 py-3 flex flex-col gap-1 flex-1" onClick={closeMobile}>
+        {role === "CONTRACTOR" && (
+          <div className="mx-3 mb-4 rounded-2xl bg-[#262626] p-4 border border-white/5">
+            <div className="text-xs text-gray-400">
+              Company
+            </div>
+
+            <div className="font-bold text-white mt-1">
+              {user?.company_name}
+            </div>
+
+            <div className="text-xs text-gray-500 mt-2">
+              Contractor Account
+            </div>
+          </div>
+        )}
         {role === "SUPER_ADMIN" && (
           <div className="px-3 py-2 mb-1 rounded-lg bg-[#F97316]/10 border border-[#F97316]/20 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#F97316]">
             <Shield className="h-3.5 w-3.5" /> Super Admin
@@ -155,6 +171,16 @@ export default function DashboardLayout() {
         )}
         {navByRole}
       </div>
+      {role === "CONTRACTOR" && (
+        <div className="p-3">
+          <button
+            onClick={() => nav("/app/sites")}
+            className="w-full bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl py-3 font-semibold"
+          >
+            + Create New Site
+          </button>
+        </div>
+      )}
       <div className="p-3 border-t border-white/5 shrink-0">
         <button onClick={() => { logout(); nav("/login"); }} className="ss-sidebar-link w-full" data-testid="sidebar-logout">
           <LogOut className="h-4 w-4" /> Logout
@@ -181,10 +207,18 @@ export default function DashboardLayout() {
           <button className="lg:hidden p-2 rounded-lg hover:bg-gray-100" onClick={() => setMobileOpen(true)} aria-label="Menu" data-testid="header-menu">
             <Menu className="h-5 w-5" />
           </button>
-          <div className="hidden md:flex items-center gap-2 text-sm text-gray-500">
-            <span className="font-medium text-[#171717]">{user?.company_name || "Site Seva Pro"}</span>
-            <span>/</span>
-            <span className="capitalize">{loc.pathname.split("/").filter(Boolean).slice(-1)[0]?.replace("-", " ")}</span>
+          <div className="hidden md:flex flex-col">
+            <span className="font-semibold text-[#171717]">
+              {user?.company_name || "Site Seva Pro"}
+            </span>
+
+            <span className="text-xs text-gray-500 capitalize">
+              {loc.pathname
+                .split("/")
+                .filter(Boolean)
+                .slice(-1)[0]
+                ?.replace("-", " ")}
+            </span>
           </div>
           <div className="flex-1 max-w-md hidden md:flex">
             <div className="relative w-full">
@@ -195,8 +229,13 @@ export default function DashboardLayout() {
           <button onClick={toggle} className="p-2 rounded-lg hover:bg-gray-100" aria-label="Toggle theme" data-testid="header-theme">
             {theme === "dark" ? <Sun className="h-5 w-5 text-gray-600" /> : <Moon className="h-5 w-5 text-gray-600" />}
           </button>
-          <Link to="/app/notifications" className="relative p-2 rounded-lg hover:bg-gray-100" data-testid="header-notifications">
+          <Link
+            to="/app/notifications"
+            className="relative p-2 rounded-lg hover:bg-gray-100"
+          >
             <Bell className="h-5 w-5 text-gray-600" />
+
+            <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full" />
           </Link>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

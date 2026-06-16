@@ -15,6 +15,7 @@ export default function DailyReports() {
   const [siteFilter, setSiteFilter] = React.useState("ALL");
   const [open, setOpen] = React.useState(false);
 
+
   const load = async () => {
     const [r, s] = await Promise.all([api.get("/daily-reports"), api.get("/sites")]);
     setList(r.data); setSites(s.data);
@@ -26,6 +27,7 @@ export default function DailyReports() {
   return (
     <div className="space-y-6 ss-fade-in">
       <div className="flex flex-wrap items-end justify-between gap-4">
+
         <div>
           <h1 className="font-display text-3xl font-extrabold tracking-tight">Daily Site Reports</h1>
           <p className="text-sm text-gray-500 mt-1">Photos, videos, completed tasks and issues in a single timeline.</p>
@@ -47,6 +49,68 @@ export default function DailyReports() {
             </Dialog>
           )}
         </div>
+
+        <div className="grid md:grid-cols-4 gap-4">
+
+          <div className="ss-card p-6 hover:shadow-lg transition-all">
+            <div className="text-xs text-gray-500">
+              Total Reports
+            </div>
+
+            <div className="text-3xl font-bold">
+              {list.length}
+            </div>
+          </div>
+
+          <div className="ss-card p-6 hover:shadow-lg transition-all">
+            <div className="text-xs text-gray-500">
+              Photos
+            </div>
+
+            <div className="text-3xl font-bold">
+              {
+                list.reduce(
+                  (a, r) =>
+                    a +
+                    (r.media_urls || [])
+                      .filter(x => x.type === "image")
+                      .length,
+                  0
+                )
+              }
+            </div>
+          </div>
+
+          <div className="ss-card p-6 hover:shadow-lg transition-all">
+            <div className="text-xs text-gray-500">
+              Videos
+            </div>
+
+            <div className="text-3xl font-bold">
+              {
+                list.reduce(
+                  (a, r) =>
+                    a +
+                    (r.media_urls || [])
+                      .filter(x => x.type === "video")
+                      .length,
+                  0
+                )
+              }
+            </div>
+          </div>
+
+          <div className="ss-card p-6 hover:shadow-lg transition-all">
+            <div className="text-xs text-gray-500">
+              Active Sites
+            </div>
+
+            <div className="text-3xl font-bold">
+              {sites.length}
+            </div>
+          </div>
+
+        </div>
       </div>
 
       {filtered.length === 0 ? (
@@ -58,13 +122,24 @@ export default function DailyReports() {
             {filtered.map((r) => (
               <div key={r.id} className="relative" data-testid={`dr-${r.id}`}>
                 <div className="absolute -left-4 top-3 h-3 w-3 rounded-full bg-[#F97316] ring-4 ring-white" />
-                <div className="ss-card p-5">
+                <div className="ss-card p-6 hover:shadow-lg transition-all">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div>
                       <div className="text-xs font-bold uppercase tracking-wider text-[#F97316]">{fmtDate(r.date)}</div>
-                      <h3 className="font-display font-bold text-lg mt-1">{siteName(r.site_id)}</h3>
+                      <h3 className="font-display font-bold text-xl mt-1">{siteName(r.site_id)}</h3>
                       <div className="text-xs text-gray-500 mt-0.5">by {r.created_by_name || "Supervisor"}</div>
                     </div>
+                     <div className="flex gap-2 mt-2">
+
+                        <span className="ss-chip bg-orange-100 text-orange-700">
+                          Report
+                        </span>
+
+                        <span className="ss-chip bg-green-100 text-green-700">
+                          {r.media_urls?.length || 0} Files
+                        </span>
+
+                      </div>
                   </div>
                   <p className="mt-3 text-sm text-gray-700 whitespace-pre-wrap">{r.notes}</p>
                   {r.completed_tasks?.length > 0 && (
@@ -117,8 +192,8 @@ function ReportForm({ sites, onDone }) {
     try {
       await api.post("/daily-reports", {
         site_id: f.site_id, date: f.date, notes: f.notes,
-        completed_tasks: f.completed_tasks_raw.split("\n").map(s=>s.trim()).filter(Boolean),
-        issues: f.issues_raw.split("\n").map(s=>s.trim()).filter(Boolean),
+        completed_tasks: f.completed_tasks_raw.split("\n").map(s => s.trim()).filter(Boolean),
+        issues: f.issues_raw.split("\n").map(s => s.trim()).filter(Boolean),
         media_urls: f.media_urls,
       });
       toast.success("Report submitted"); onDone();
@@ -135,11 +210,11 @@ function ReportForm({ sites, onDone }) {
               <SelectContent>{sites.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div><label className="text-xs font-bold uppercase text-gray-500">Date</label><input type="date" required className="ss-input mt-1" value={f.date} onChange={(e)=>setF({...f, date:e.target.value})} /></div>
+          <div><label className="text-xs font-bold uppercase text-gray-500">Date</label><input type="date" required className="ss-input mt-1" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></div>
         </div>
-        <div><label className="text-xs font-bold uppercase text-gray-500">Notes</label><textarea required className="ss-input mt-1 min-h-[80px]" value={f.notes} onChange={(e)=>setF({...f, notes:e.target.value})} data-testid="drf-notes" /></div>
-        <div><label className="text-xs font-bold uppercase text-gray-500">Completed tasks (one per line)</label><textarea className="ss-input mt-1 min-h-[60px]" value={f.completed_tasks_raw} onChange={(e)=>setF({...f, completed_tasks_raw:e.target.value})} /></div>
-        <div><label className="text-xs font-bold uppercase text-gray-500">Issues (one per line)</label><textarea className="ss-input mt-1 min-h-[60px]" value={f.issues_raw} onChange={(e)=>setF({...f, issues_raw:e.target.value})} /></div>
+        <div><label className="text-xs font-bold uppercase text-gray-500">Notes</label><textarea required className="ss-input mt-1 min-h-[80px]" value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} data-testid="drf-notes" /></div>
+        <div><label className="text-xs font-bold uppercase text-gray-500">Completed tasks (one per line)</label><textarea className="ss-input mt-1 min-h-[60px]" value={f.completed_tasks_raw} onChange={(e) => setF({ ...f, completed_tasks_raw: e.target.value })} /></div>
+        <div><label className="text-xs font-bold uppercase text-gray-500">Issues (one per line)</label><textarea className="ss-input mt-1 min-h-[60px]" value={f.issues_raw} onChange={(e) => setF({ ...f, issues_raw: e.target.value })} /></div>
         <div>
           <label className="text-xs font-bold uppercase text-gray-500">Photos / Videos</label>
           <label className="mt-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 cursor-pointer hover:border-[#F97316] hover:bg-orange-50/30 transition-colors">

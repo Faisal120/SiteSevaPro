@@ -57,17 +57,19 @@ export default function Landing() {
                 <HardHat className="h-3.5 w-3.5" /> Built for Indian construction
               </span>
               <h1 className="mt-5 text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight font-display text-[#171717]">
-                Run your construction company like a <span className="text-[#F97316]">tech startup</span>.
+                Manage Sites, Labour, Materials & Payments in One Platform.<span className="text-[#F97316]">One Platform.</span>.
               </h1>
               <p className="mt-5 text-base sm:text-lg text-gray-600 max-w-xl leading-relaxed">
-                Site Seva Pro digitises everything — sites, supervisors, labour attendance, material inventory, payments and client updates — on one beautiful platform.
+                Built specifically for Indian contractors, builders and construction companies.
+
+                Track every site, every labour, every payment, and every material — without WhatsApp chaos or Excel sheets.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link to="/register" className="ss-btn-accent" data-testid="hero-cta-register">
-                  Start Free <ArrowRight className="h-4 w-4" />
+                  Start Free Trial <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link to="/pricing" className="ss-btn-outline" data-testid="hero-cta-pricing">
-                  See Pricing
+                  Book Demo
                 </Link>
               </div>
               <div className="mt-8 flex flex-wrap items-center gap-6 text-sm text-gray-500">
@@ -186,7 +188,50 @@ export default function Landing() {
           </div>
         </div>
       </section>
+      <section className="py-20 bg-gray-50">
 
+        <div className="mx-auto max-w-7xl px-4">
+
+          <h2 className="text-4xl font-bold text-center">
+            Built For Real Construction Work
+          </h2>
+
+          <p className="text-center text-gray-500 mt-3">
+            Everything your company needs
+            to run sites digitally.
+          </p>
+
+          <div className="grid md:grid-cols-3 gap-6 mt-12">
+
+            <div className="ss-card p-3">
+              <img
+                src="/screens/dashboard.png"
+                alt=""
+                className="rounded-lg"
+              />
+            </div>
+
+            <div className="ss-card p-3">
+              <img
+                src="/screens/site-detail.png"
+                alt=""
+                className="rounded-lg"
+              />
+            </div>
+
+            <div className="ss-card p-3">
+              <img
+                src="/screens/team.png"
+                alt=""
+                className="rounded-lg"
+              />
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
       {/* PRICING */}
       <section className="py-20 lg:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -216,11 +261,10 @@ export default function Landing() {
                 </ul>
                 <Link
                   to="/register"
-                  className={`mt-7 inline-flex justify-center w-full rounded-lg px-5 py-2.5 text-sm font-semibold transition-all ${
-                    k === "PREMIUM" ? "bg-[#F97316] text-white hover:bg-[#EA580C]" :
+                  className={`mt-7 inline-flex justify-center w-full rounded-lg px-5 py-2.5 text-sm font-semibold transition-all ${k === "PREMIUM" ? "bg-[#F97316] text-white hover:bg-[#EA580C]" :
                     k === "ENTERPRISE" ? "bg-[#F97316] text-white hover:bg-[#EA580C]" :
-                    "bg-[#171717] text-white hover:bg-[#262626]"
-                  }`}
+                      "bg-[#171717] text-white hover:bg-[#262626]"
+                    }`}
                   data-testid={`pricing-cta-${k.toLowerCase()}`}
                 >
                   {k === "FREE" ? "Start Free" : k === "PREMIUM" ? "Choose Premium" : "Contact Sales"}
@@ -249,14 +293,14 @@ export default function Landing() {
                 <p className="text-[15px] text-gray-700 leading-relaxed">"{t.q}"</p>
                 <div className="mt-5 flex items-center gap-3">
                   <div className="h-10 w-10 rounded-full bg-[#171717] text-white flex items-center justify-center font-bold">
-                    {t.n.split(" ").map(x => x[0]).slice(0,2).join("")}
+                    {t.n.split(" ").map(x => x[0]).slice(0, 2).join("")}
                   </div>
                   <div>
                     <div className="text-sm font-semibold">{t.n}</div>
                     <div className="text-xs text-gray-500">{t.r}</div>
                   </div>
                   <div className="ml-auto flex text-[#EAB308]">
-                    {Array(5).fill(0).map((_,i)=><Star key={i} className="h-4 w-4 fill-current" />)}
+                    {Array(5).fill(0).map((_, i) => <Star key={i} className="h-4 w-4 fill-current" />)}
                   </div>
                 </div>
               </div>
@@ -296,6 +340,46 @@ export default function Landing() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="py-12 bg-orange-50">
+
+        <div className="max-w-7xl mx-auto">
+
+          <div className="grid md:grid-cols-4 gap-6 text-center">
+
+            <div>
+              <h3 className="text-3xl font-bold">
+                200+
+              </h3>
+              <p>Contractors</p>
+            </div>
+
+            <div>
+              <h3 className="text-3xl font-bold">
+                500+
+              </h3>
+              <p>Projects Managed</p>
+            </div>
+
+            <div>
+              <h3 className="text-3xl font-bold">
+                ₹100Cr+
+              </h3>
+              <p>Tracked</p>
+            </div>
+
+            <div>
+              <h3 className="text-3xl font-bold">
+                99%
+              </h3>
+              <p>Client Satisfaction</p>
+            </div>
+
+          </div>
+
+        </div>
+
       </section>
 
       <PublicFooter />

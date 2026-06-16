@@ -101,17 +101,15 @@ class ApplicationOut(BaseModel):
 
 class SiteIn(BaseModel):
     name: str
-    client_name: str
-    client_email: Optional[EmailStr] = None
     location: str
     budget: float
     start_date: str
     end_date: str
-    status: Literal["PLANNING", "ACTIVE", "ON_HOLD", "COMPLETED"] = "ACTIVE"
+    status: Literal["PLANNING","ACTIVE","ON_HOLD","COMPLETED"] = "ACTIVE"
     progress: int = 0
     description: Optional[str] = None
-    supervisor_ids: List[str] = []
-    client_ids: List[str] = []
+    supervisor_id: Optional[str] = None
+    client_id: Optional[str] = None
     cover_image: Optional[str] = None
 
 class LabourIn(BaseModel):
@@ -494,7 +492,7 @@ async def list_sites(user: dict = Depends(get_current_user)):
     elif user["role"] == "SUPERVISOR":
         q["id"] = {"$in": user.get("site_ids", [])}
     elif user["role"] == "CLIENT":
-        q["client_email"] = user["email"]
+        q["id"] = {"$in": user.get("site_ids", [])}
     else:
         raise HTTPException(403, "Forbidden")
     sites = await db.sites.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)
@@ -509,14 +507,53 @@ async def create_site(body: SiteIn, user: dict = Depends(require_roles("CONTRACT
         if cnt >= 1:
             raise HTTPException(402, "Free plan allows only 1 site. Upgrade to Premium.")
     site_id = new_id()
+    site_data = body.model_dump()
+
+    supervisor = None
+    client = None
+
+    if body.supervisor_id:
+        supervisor = await db.users.find_one({
+            "id": body.supervisor_id,
+            "company_id": user["company_id"]
+    })
+
+    if body.client_id:
+        client = await db.users.find_one({
+            "id": body.client_id,
+            "company_id": user["company_id"]
+    })
+
     doc = {
         "id": site_id,
         "company_id": user["company_id"],
         "created_by": user["id"],
         "created_at": now_iso(),
-        **body.model_dump(),
-    }
+
+        **site_data,
+
+        "supervisor_name":
+            supervisor.get("full_name") if supervisor else None,
+
+         "client_name":
+            client.get("full_name") if client else None,
+
+        "client_email":
+            client.get("email") if client else None
+         }
+
     await db.sites.insert_one(dict(doc))
+    if supervisor:
+        await db.users.update_one(
+            {"id": supervisor["id"]},
+            {"$addToSet": {"site_ids": site_id}}
+        )
+
+    if client:
+        await db.users.update_one(
+            {"id": client["id"]},
+            {"$addToSet": {"site_ids": site_id}}
+        )
     return doc
 
 @api.get("/sites/{site_id}")
