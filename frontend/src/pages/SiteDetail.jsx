@@ -52,7 +52,7 @@ export default function SiteDetail() {
   const assignSupervisor = async () => {
     try {
       await api.post(`/sites/${siteId}/assign-supervisor`, {
-        supervisor_id: selectedSupervisor,
+        user_id: selectedSupervisor,
       });
 
       toast.success("Supervisor assigned");
@@ -64,7 +64,7 @@ export default function SiteDetail() {
   const assignClient = async () => {
     try {
       await api.post(`/sites/${siteId}/assign-client`, {
-        client_id: selectedClient,
+        user_id: selectedClient,
       });
 
       toast.success("Client assigned");
