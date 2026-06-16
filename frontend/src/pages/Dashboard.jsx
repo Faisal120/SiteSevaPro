@@ -25,7 +25,7 @@ export default function Dashboard() {
       try {
         if (user.role === "SUPER_ADMIN") { nav("/app/admin"); return; }
         if (user.role === "CONTRACTOR") {
-          const [s, st, tm] = await Promise.all([
+          const [s, st, tm, reports] = await Promise.all([
             api.get("/dashboard/contractor"),
             api.get("/sites"),
             api.get("/team"),
@@ -35,7 +35,8 @@ export default function Dashboard() {
           setStats(s.data);
           setSites(st.data);
           setTeam(tm.data);
-          setStats(s.data); setSites(st.data);
+          setStats(s.data); 
+          setSites(st.data);
           const photos = reports.data
             .flatMap(r =>
               (r.media_urls || [])
@@ -368,17 +369,7 @@ function ClientDash({ user, sites, greeting, nav }) {
         <p className="text-sm text-gray-500">{greeting},</p>
         <h1 className="font-display text-4xl font-extrabold tracking-tight">{user.full_name}</h1>
         <p className="text-sm text-gray-500 mt-1">Welcome to your project portal.</p>
-        <div className="mt-4 flex gap-3">
-
-          <div className="ss-chip bg-green-100 text-green-700">
-            Active Projects: {stats.active_sites}
-          </div>
-
-          <div className="ss-chip bg-orange-100 text-orange-700">
-            Revenue: {inr(stats.total_received)}
-          </div>
-
-        </div>
+        
       </div>
       <div className="grid md:grid-cols-2 gap-5">
         {sites.map((s) => (

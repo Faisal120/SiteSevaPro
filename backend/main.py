@@ -516,13 +516,13 @@ async def create_site(body: SiteIn, user: dict = Depends(require_roles("CONTRACT
         supervisor = await db.users.find_one({
             "id": body.supervisor_id,
             "company_id": user["company_id"]
-    })
+        })
 
     if body.client_id:
         client = await db.users.find_one({
             "id": body.client_id,
             "company_id": user["company_id"]
-    })
+        })
 
     doc = {
         "id": site_id,
@@ -650,15 +650,24 @@ async def assign_client(
         raise HTTPException(404, "Client not found")
 
     await db.sites.update_one(
-        {"id": site_id},
+    {"id": site_id},
         {
-            "$addToSet": {
-                "client_ids": body.user_id
+        "$addToSet": {
+            "client_ids": body.user_id
             }
         }
     )
 
-    return {"success": True}
+    await db.users.update_one(
+     {"id": body.user_id},
+        {
+        "$addToSet": {
+            "site_ids": site_id
+                 }
+        }
+    )
+
+return {"success": True}
 
 # ---------- DASHBOARD STATS ----------
 @api.get("/dashboard/contractor")
