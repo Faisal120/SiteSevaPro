@@ -80,7 +80,7 @@ export default function Dashboard() {
     />
   );
   if (user.role === "SUPERVISOR") return <SupervisorDash user={user} sites={sites} greeting={greeting} nav={nav} />;
-  if (user.role === "CLIENT") return <ClientDash user={user} sites={sites} greeting={greeting} nav={nav} />;
+  if (user.role === "CLIENT") return <ClientDash user={user} sites={sites} greeting={greeting} nav={nav} stats={stats} />;
   return null;
 }
 
@@ -362,7 +362,7 @@ function SupervisorDash({ user, sites, greeting, nav }) {
   );
 }
 
-function ClientDash({ user, sites, greeting, nav }) {
+function ClientDash({ user, sites, greeting, nav, stats }) {
   return (
     <div className="space-y-6 ss-fade-in">
       <div>
