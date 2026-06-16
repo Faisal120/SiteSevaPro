@@ -606,21 +606,24 @@ async def assign_supervisor(
         raise HTTPException(404, "Supervisor not found")
 
     await db.sites.update_one(
-        {"id": site_id},
-        {
-            "$addToSet": {
-                "supervisor_ids": body.user_id
+    {"id": site_id},
+     {
+        "$addToSet": {
+            "supervisor_ids": body.user_id
+            },
+        "$set": {
+            "supervisor_name": supervisor.get("full_name")
             }
         }
     )
 
     await db.users.update_one(
         {"id": body.user_id},
-        {
+    {
             "$addToSet": {
                 "site_ids": site_id
             }
-        }
+    }
     )
 
     return {"success": True}
@@ -650,10 +653,14 @@ async def assign_client(
         raise HTTPException(404, "Client not found")
 
     await db.sites.update_one(
-    {"id": site_id},
+        {"id": site_id},
         {
-        "$addToSet": {
-            "client_ids": body.user_id
+            "$addToSet": {
+                "client_ids": body.user_id
+            },
+            "$set": {
+                "client_name": client.get("full_name"),
+                "client_email": client.get("email")
             }
         }
     )
@@ -667,7 +674,7 @@ async def assign_client(
         }
     )
 
-return {"success": True}
+    return {"success": True}
 
 # ---------- DASHBOARD STATS ----------
 @api.get("/dashboard/contractor")
