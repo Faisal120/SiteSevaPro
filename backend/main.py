@@ -1143,19 +1143,19 @@ async def create_report(body: DailyReportIn, user: dict = Depends(require_roles(
         **body.model_dump(),
     }
     await db.daily_reports.insert_one(dict(doc))
-for task_title in body.completed_tasks:
+    for task_title in body.completed_tasks:
 
-    await db.site_tasks.update_one(
-        {
-            "site_id": body.site_id,
-            "title": task_title
-        },
-        {
-            "$set": {
-                "completed": True,
-                "completed_at": now_iso()
+        await db.site_tasks.update_one(
+            {
+                "site_id": body.site_id,
+                "title": task_title
+            },
+            {
+                "$set": {
+                    "completed": True,
+                    "completed_at": now_iso()
+                }
             }
-        }
     )
 
     await recalculate_site_progress(
