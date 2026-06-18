@@ -616,17 +616,17 @@ tasks.extend([
         ("Painting", 3),
         ("Handover", 1)
 ])
-    if supervisor:
-        await db.users.update_one(
+if supervisor:
+    await db.users.update_one(
             {"id": supervisor["id"]},
             {"$addToSet": {"site_ids": site_id}}
-        )
+    )
 
-    if client:
-        await db.users.update_one(
+if client:
+    await db.users.update_one(
             {"id": client["id"]},
             {"$addToSet": {"site_ids": site_id}}
-        )
+    )
     return doc
 
 @api.get("/sites/{site_id}")
