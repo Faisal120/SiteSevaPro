@@ -618,13 +618,13 @@ tasks.extend([
 ])
 
 if supervisor:
-    await db.users.update_one(
+await db.users.update_one(
             {"id": supervisor["id"]},
             {"$addToSet": {"site_ids": site_id}}
     )
 
 if client:
-    await db.users.update_one(
+await db.users.update_one(
             {"id": client["id"]},
             {"$addToSet": {"site_ids": site_id}}
     )
