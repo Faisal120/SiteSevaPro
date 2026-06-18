@@ -616,6 +616,7 @@ tasks.extend([
         ("Painting", 3),
         ("Handover", 1)
 ])
+
 if supervisor:
     await db.users.update_one(
             {"id": supervisor["id"]},
@@ -627,7 +628,7 @@ if client:
             {"id": client["id"]},
             {"$addToSet": {"site_ids": site_id}}
     )
-    return doc
+return doc
 
 @api.get("/sites/{site_id}")
 async def get_site(site_id: str, user: dict = Depends(get_current_user)):
