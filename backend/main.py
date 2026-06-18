@@ -548,6 +548,65 @@ async def create_site(body: SiteIn, user: dict = Depends(require_roles("CONTRACT
          }
 
     await db.sites.insert_one(dict(doc))
+    default_tasks = [
+    ("Boring",2),
+    ("Septic Tank",3),
+    ("Soak Pit",2),
+    ("Site Clearing",1),
+    ("Layout Marking",1),
+    ("Earth Excavation",3),
+    ("Mitti Filling",2),
+
+    ("PCC",3),
+    ("Footing Reinforcement",3),
+    ("Footing Casting",4),
+    ("Foundation Brickwork",4),
+    ("Foundation Backfilling",2),
+    ("Plinth Beam",4),
+
+    ("GF Column",4),
+    ("GF Brickwork",6),
+    ("GF Lintel",2),
+    ("GF Slab Shuttering",3),
+    ("GF Slab Reinforcement",4),
+    ("GF Slab Casting",5),
+
+    ("FF Column",4),
+    ("FF Brickwork",6),
+    ("FF Lintel",2),
+    ("FF Slab Shuttering",3),
+    ("FF Slab Reinforcement",4),
+    ("FF Slab Casting",5),
+
+    ("Mumty Brickwork",2),
+    ("Mumty Slab",2),
+
+    ("Internal Plaster",4),
+    ("External Plaster",4),
+    ("Electrical Conduit",3),
+    ("Plumbing",3),
+    ("Flooring",3),
+    ("Putty",2),
+    ("Painting",3),
+    ("Doors",2),
+    ("Windows",2),
+
+    ("Cleaning",1),
+    ("Final Inspection",1),
+    ("Client Handover",1)
+]
+
+for title, weight in default_tasks:
+
+    await db.site_tasks.insert_one({
+        "id": new_id(),
+        "site_id": site_doc["id"],
+        "company_id": user["company_id"],
+        "title": title,
+        "weight": weight,
+        "completed": False,
+        "created_at": now_iso()
+    })
     if supervisor:
         await db.users.update_one(
             {"id": supervisor["id"]},
@@ -1084,7 +1143,7 @@ async def create_report(body: DailyReportIn, user: dict = Depends(require_roles(
         **body.model_dump(),
     }
     await db.daily_reports.insert_one(dict(doc))
-    for task_title in body.completed_tasks:
+for task_title in body.completed_tasks:
 
     await db.site_tasks.update_one(
         {
