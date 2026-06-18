@@ -596,17 +596,17 @@ async def create_site(body: SiteIn, user: dict = Depends(require_roles("CONTRACT
     ("Client Handover",1)
 ]
 
-for title, weight in default_tasks:
+    for title, weight in default_tasks:
 
-    await db.site_tasks.insert_one({
-        "id": new_id(),
-        "site_id": site_doc["id"],
-        "company_id": user["company_id"],
-        "title": title,
-        "weight": weight,
-        "completed": False,
-        "created_at": now_iso()
-    })
+        await db.site_tasks.insert_one({
+            "id": new_id(),
+            "site_id": site_doc["id"],
+            "company_id": user["company_id"],
+            "title": title,
+            "weight": weight,
+            "completed": False,
+            "created_at": now_iso()
+        })
     if supervisor:
         await db.users.update_one(
             {"id": supervisor["id"]},
