@@ -553,7 +553,7 @@ async def create_site(body: SiteIn, user: dict = Depends(require_roles("CONTRACT
          }
 
     await db.sites.insert_one(dict(doc))
-            tasks = []
+    tasks = []
 
     tasks.extend([
         ("Site Layout", 1),
@@ -569,18 +569,18 @@ if body.has_septic_tank:
 
 if body.has_soak_pit:
     tasks.append(("Soak Pit", 2))
-
-    tasks.extend([
+    
+tasks.extend([
         ("PCC", 3),
         ("Footing", 4),
         ("Plinth Beam", 4)
-    ])
+])
 
-    tasks.extend([
+tasks.extend([
         ("GF Column", 4),
         ("GF Brickwork", 5),
         ("GF Slab", 6)
-    ])
+])
 
 if body.floors >= 2:
     tasks.extend([
@@ -609,37 +609,13 @@ if body.has_mumty:
         ("Mumty Slab", 2)
     ])
 
-    tasks.extend([  
+tasks.extend([  
         ("Electrical", 3),
         ("Plumbing", 3),
         ("Flooring", 3),
         ("Painting", 3),
         ("Handover", 1)
-    ])
-
-for title, weight in tasks:
-
-    await db.site_tasks.insert_one({
-        "id": new_id(),
-        "site_id": site_doc["id"],
-        "company_id": user["company_id"],
-        "title": title,
-        "weight": weight,
-        "completed": False,
-        "created_at": now_iso()
-    })
-
-    for title, weight in default_tasks:
-
-        await db.site_tasks.insert_one({
-            "id": new_id(),
-            "site_id": site_doc["id"],
-            "company_id": user["company_id"],
-            "title": title,
-            "weight": weight,
-            "completed": False,
-            "created_at": now_iso()
-        })
+])
     if supervisor:
         await db.users.update_one(
             {"id": supervisor["id"]},
