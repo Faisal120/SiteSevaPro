@@ -111,6 +111,11 @@ class SiteIn(BaseModel):
     supervisor_id: Optional[str] = None
     client_id: Optional[str] = None
     cover_image: Optional[str] = None
+    floors: int = 1
+    has_boring: bool = False
+    has_septic_tank: bool = True
+    has_soak_pit: bool = True
+    has_mumty: bool = True
 
 class LabourIn(BaseModel):
     site_id: str
@@ -548,53 +553,81 @@ async def create_site(body: SiteIn, user: dict = Depends(require_roles("CONTRACT
          }
 
     await db.sites.insert_one(dict(doc))
-    default_tasks = [
-    ("Boring",2),
-    ("Septic Tank",3),
-    ("Soak Pit",2),
-    ("Site Clearing",1),
-    ("Layout Marking",1),
-    ("Earth Excavation",3),
-    ("Mitti Filling",2),
+            tasks = []
 
-    ("PCC",3),
-    ("Footing Reinforcement",3),
-    ("Footing Casting",4),
-    ("Foundation Brickwork",4),
-    ("Foundation Backfilling",2),
-    ("Plinth Beam",4),
+    tasks.extend([
+        ("Site Layout", 1),
+        ("Excavation", 2),
+        ("Mitti Filling", 2)
+])
 
-    ("GF Column",4),
-    ("GF Brickwork",6),
-    ("GF Lintel",2),
-    ("GF Slab Shuttering",3),
-    ("GF Slab Reinforcement",4),
-    ("GF Slab Casting",5),
+if body.has_boring:
+    tasks.append(("Boring", 2))
 
-    ("FF Column",4),
-    ("FF Brickwork",6),
-    ("FF Lintel",2),
-    ("FF Slab Shuttering",3),
-    ("FF Slab Reinforcement",4),
-    ("FF Slab Casting",5),
+if body.has_septic_tank:
+    tasks.append(("Septic Tank", 2))
 
-    ("Mumty Brickwork",2),
-    ("Mumty Slab",2),
+if body.has_soak_pit:
+    tasks.append(("Soak Pit", 2))
 
-    ("Internal Plaster",4),
-    ("External Plaster",4),
-    ("Electrical Conduit",3),
-    ("Plumbing",3),
-    ("Flooring",3),
-    ("Putty",2),
-    ("Painting",3),
-    ("Doors",2),
-    ("Windows",2),
+    tasks.extend([
+        ("PCC", 3),
+        ("Footing", 4),
+        ("Plinth Beam", 4)
+    ])
 
-    ("Cleaning",1),
-    ("Final Inspection",1),
-    ("Client Handover",1)
-]
+    tasks.extend([
+        ("GF Column", 4),
+        ("GF Brickwork", 5),
+        ("GF Slab", 6)
+    ])
+
+if body.floors >= 2:
+    tasks.extend([
+        ("FF Column", 4),
+        ("FF Brickwork", 5),
+        ("FF Slab", 6)
+    ])
+
+if body.floors >= 3:
+    tasks.extend([
+        ("SF Column", 4),
+        ("SF Brickwork", 5),
+        ("SF Slab", 6)
+    ])
+
+if body.floors >= 4:
+    tasks.extend([
+        ("TF Column", 4),
+        ("TF Brickwork", 5),
+        ("TF Slab", 6)
+    ])
+
+if body.has_mumty:
+    tasks.extend([
+        ("Mumty Brickwork", 2),
+        ("Mumty Slab", 2)
+    ])
+
+    tasks.extend([  
+        ("Electrical", 3),
+        ("Plumbing", 3),
+        ("Flooring", 3),
+        ("Painting", 3),
+        ("Handover", 1)
+    ])
+
+for title, weight in tasks:
+
+    await db.site_tasks.insert_one({
+        "id": new_id(),
+        "site_id": site_doc["id"],
+        "company_id": user["company_id"],
+        "title": title,
+        "weight": weight,
+        "completed": False,
+        "created_at": now_iso()
+    })
 
     for title, weight in default_tasks:
 
@@ -1012,30 +1045,40 @@ async def create_payment(body: PaymentIn, user: dict = Depends(require_roles("CO
 
 class TaskStatusIn(BaseModel):
     completed: bool = True
+    
+@api.get("/site-tasks/{site_id}")
+async def get_site_tasks(
+    site_id: str,
+    user: dict = Depends(get_current_user)
+):
 
-async def recalculate_site_progress(site_id: str):
-
-    tasks = await db.site_tasks.find(
+    return await db.site_tasks.find(
         {"site_id": site_id},
         {"_id": 0}
+    ).to_list(500)
+    
+async def recalculate_site_progress(site_id):
+
+    tasks = await db.site_tasks.find(
+        {"site_id": site_id}
     ).to_list(500)
 
     if not tasks:
         return
 
-    total_weight = sum(
+    total = sum(
         t.get("weight", 0)
         for t in tasks
     )
 
-    completed_weight = sum(
+    completed = sum(
         t.get("weight", 0)
         for t in tasks
         if t.get("completed")
     )
 
     progress = round(
-        (completed_weight / total_weight) * 100
+        (completed / total) * 100
     )
 
     await db.sites.update_one(
@@ -1047,39 +1090,7 @@ async def recalculate_site_progress(site_id: str):
         }
     )
     
-@api.get("/site-tasks/{site_id}")
-async def get_site_tasks(
-    site_id: str,
-    user: dict = Depends(get_current_user)
-):
-    return await db.site_tasks.find(
-        {"site_id": site_id},
-        {"_id": 0}
-    ).to_list(200)
-
-
-@api.post("/site-tasks")
-async def create_site_task(
-    body: SiteTaskIn,
-    user: dict = Depends(require_roles("CONTRACTOR"))
-):
-
-    doc = {
-        "id": new_id(),
-        "site_id": body.site_id,
-        "company_id": user["company_id"],
-        "title": body.title,
-        "weight": body.weight,
-        "completed": False,
-        "completed_at": None,
-        "created_at": now_iso()
-    }
-
-    await db.site_tasks.insert_one(doc)
-
-    return doc
-
-
+    
 @api.post("/site-tasks/{task_id}/complete")
 async def complete_task(
     task_id: str,
@@ -1105,8 +1116,7 @@ async def complete_task(
         {"id": task_id},
         {
             "$set": {
-                "completed": True,
-                "completed_at": now_iso()
+                "completed": True
             }
         }
     )
@@ -1152,11 +1162,10 @@ async def create_report(body: DailyReportIn, user: dict = Depends(require_roles(
             },
             {
                 "$set": {
-                    "completed": True,
-                    "completed_at": now_iso()
+                    "completed": True
                 }
             }
-    )
+        )
 
     await recalculate_site_progress(
         body.site_id
