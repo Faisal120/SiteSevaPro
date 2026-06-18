@@ -152,6 +152,11 @@ class PaymentIn(BaseModel):
     date: str
     party: Optional[str] = None
     invoice_url: Optional[str] = None
+    
+class SiteTaskIn(BaseModel):
+    site_id: str
+    title: str
+    weight: int = 10
 
 class DailyReportIn(BaseModel):
     site_id: str
@@ -944,6 +949,115 @@ async def create_payment(body: PaymentIn, user: dict = Depends(require_roles("CO
     await db.payments.insert_one(dict(doc))
     return doc
 
+# ---------- SITE TASKS ----------
+
+class TaskStatusIn(BaseModel):
+    completed: bool = True
+
+async def recalculate_site_progress(site_id: str):
+
+    tasks = await db.site_tasks.find(
+        {"site_id": site_id},
+        {"_id": 0}
+    ).to_list(500)
+
+    if not tasks:
+        return
+
+    total_weight = sum(
+        t.get("weight", 0)
+        for t in tasks
+    )
+
+    completed_weight = sum(
+        t.get("weight", 0)
+        for t in tasks
+        if t.get("completed")
+    )
+
+    progress = round(
+        (completed_weight / total_weight) * 100
+    )
+
+    await db.sites.update_one(
+        {"id": site_id},
+        {
+            "$set": {
+                "progress": progress
+            }
+        }
+    )
+    
+@api.get("/site-tasks/{site_id}")
+async def get_site_tasks(
+    site_id: str,
+    user: dict = Depends(get_current_user)
+):
+    return await db.site_tasks.find(
+        {"site_id": site_id},
+        {"_id": 0}
+    ).to_list(200)
+
+
+@api.post("/site-tasks")
+async def create_site_task(
+    body: SiteTaskIn,
+    user: dict = Depends(require_roles("CONTRACTOR"))
+):
+
+    doc = {
+        "id": new_id(),
+        "site_id": body.site_id,
+        "company_id": user["company_id"],
+        "title": body.title,
+        "weight": body.weight,
+        "completed": False,
+        "completed_at": None,
+        "created_at": now_iso()
+    }
+
+    await db.site_tasks.insert_one(doc)
+
+    return doc
+
+
+@api.post("/site-tasks/{task_id}/complete")
+async def complete_task(
+    task_id: str,
+    user: dict = Depends(
+        require_roles(
+            "SUPERVISOR",
+            "CONTRACTOR"
+        )
+    )
+):
+
+    task = await db.site_tasks.find_one(
+        {"id": task_id}
+    )
+
+    if not task:
+        raise HTTPException(
+            404,
+            "Task not found"
+        )
+
+    await db.site_tasks.update_one(
+        {"id": task_id},
+        {
+            "$set": {
+                "completed": True,
+                "completed_at": now_iso()
+            }
+        }
+    )
+
+    await recalculate_site_progress(
+        task["site_id"]
+    )
+
+    return {"success": True}
+
 # ---------- DAILY REPORTS ----------
 @api.get("/daily-reports")
 async def list_reports(site_id: Optional[str] = None, user: dict = Depends(get_current_user)):
@@ -970,6 +1084,24 @@ async def create_report(body: DailyReportIn, user: dict = Depends(require_roles(
         **body.model_dump(),
     }
     await db.daily_reports.insert_one(dict(doc))
+    for task_title in body.completed_tasks:
+
+    await db.site_tasks.update_one(
+        {
+            "site_id": body.site_id,
+            "title": task_title
+        },
+        {
+            "$set": {
+                "completed": True,
+                "completed_at": now_iso()
+            }
+        }
+    )
+
+    await recalculate_site_progress(
+        body.site_id
+    )
     if body.issues:
         await db.notifications.insert_one({
             "id": new_id(), "company_id": user["company_id"],
