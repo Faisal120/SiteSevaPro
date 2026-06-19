@@ -559,76 +559,85 @@ async def create_site(body: SiteIn, user: dict = Depends(require_roles("CONTRACT
         ("Site Layout", 1),
         ("Excavation", 2),
         ("Mitti Filling", 2)
-])
-
-if body.has_boring:
-    tasks.append(("Boring", 2))
-
-if body.has_septic_tank:
-    tasks.append(("Septic Tank", 2))
-
-if body.has_soak_pit:
-    tasks.append(("Soak Pit", 2))
-    
-tasks.extend([
-        ("PCC", 3),
-        ("Footing", 4),
-        ("Plinth Beam", 4)
-])
-
-tasks.extend([
-        ("GF Column", 4),
-        ("GF Brickwork", 5),
-        ("GF Slab", 6)
-])
-
-if body.floors >= 2:
-    tasks.extend([
-        ("FF Column", 4),
-        ("FF Brickwork", 5),
-        ("FF Slab", 6)
     ])
 
-if body.floors >= 3:
+    if body.has_boring:
+        tasks.append(("Boring", 2))
+
+    if body.has_septic_tank:
+        tasks.append(("Septic Tank", 2))
+
+    if body.has_soak_pit:
+        tasks.append(("Soak Pit", 2))
+        
     tasks.extend([
-        ("SF Column", 4),
-        ("SF Brickwork", 5),
-        ("SF Slab", 6)
+            ("PCC", 3),
+            ("Footing", 4),
+            ("Plinth Beam", 4)
     ])
 
-if body.floors >= 4:
     tasks.extend([
-        ("TF Column", 4),
-        ("TF Brickwork", 5),
-        ("TF Slab", 6)
+            ("GF Column", 4),
+            ("GF Brickwork", 5),
+            ("GF Slab", 6)
     ])
 
-if body.has_mumty:
-    tasks.extend([
-        ("Mumty Brickwork", 2),
-        ("Mumty Slab", 2)
+    if body.floors >= 2:
+        tasks.extend([
+            ("FF Column", 4),
+            ("FF Brickwork", 5),
+            ("FF Slab", 6)
+        ])
+
+    if body.floors >= 3:
+        tasks.extend([
+            ("SF Column", 4),
+            ("SF Brickwork", 5),
+            ("SF Slab", 6)
+        ])
+
+    if body.floors >= 4:
+        tasks.extend([
+            ("TF Column", 4),
+            ("TF Brickwork", 5),
+            ("TF Slab", 6)
+        ])
+
+    if body.has_mumty:
+        tasks.extend([
+            ("Mumty Brickwork", 2),
+            ("Mumty Slab", 2)
+        ])
+
+    tasks.extend([  
+            ("Electrical", 3),
+            ("Plumbing", 3),
+            ("Flooring", 3),
+            ("Painting", 3),
+            ("Handover", 1)
     ])
 
-tasks.extend([  
-        ("Electrical", 3),
-        ("Plumbing", 3),
-        ("Flooring", 3),
-        ("Painting", 3),
-        ("Handover", 1)
-])
+    if supervisor:
+        await db.users.update_one(
+            {"id": supervisor["id"]},
+            {
+                "$addToSet": {
+                    "site_ids": site_id
+                }
+            }
+        )
 
-if supervisor:
-    await db.users.update_one(
-        {"id": supervisor["id"]},
-        {"$addToSet": {"site_ids": site_id}}
-    )
-
-if client:
-    await db.users.update_one(
-        {"id": client["id"]},
-        {"$addToSet": {"site_ids": site_id}}
-    )
-return doc
+    if client:
+        await db.users.update_one(
+            {"id": client["id"]},
+            {
+                "$addToSet": {
+                    "site_ids": site_id
+                }
+            }
+        )
+        
+    return doc
 
 @api.get("/sites/{site_id}")
 async def get_site(site_id: str, user: dict = Depends(get_current_user)):
