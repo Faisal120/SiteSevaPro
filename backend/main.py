@@ -1,6 +1,7 @@
 """Site Seva Pro - FastAPI backend (main app + V1 routes)."""
 from __future__ import annotations
 
+from asyncio import tasks
 import os
 import secrets
 import time
@@ -636,6 +637,27 @@ async def create_site(body: SiteIn, user: dict = Depends(require_roles("CONTRACT
                 }
             }
         )
+    # Create default site tasks
+
+    for title, weight in tasks:
+
+        await db.site_tasks.insert_one({
+
+            "id": new_id(),
+
+            "site_id": site_id,
+
+            "company_id": user["company_id"],
+
+            "title": title,
+
+            "weight": weight,
+
+            "completed": False,
+
+            "created_at": now_iso()
+
+        })
         
     return doc
 

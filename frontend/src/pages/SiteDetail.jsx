@@ -22,11 +22,15 @@ export default function SiteDetail() {
   const [selectedClient, setSelectedClient] = React.useState("");
   const [insight, setInsight] = React.useState(null);
   const [aiBusy, setAiBusy] = React.useState(false);
+  const [tasks, setTasks] = React.useState([]);
 
   React.useEffect(() => {
     (async () => {
       const s = await api.get(`/sites/${siteId}`);
       setSite(s.data);
+
+      const taskRes = await api.get(`/site-tasks/${siteId}`);
+      setTasks(taskRes.data);
       if (user.role === "CONTRACTOR") {
         const teamRes = await api.get("/team");
         setTeam(teamRes.data);
@@ -128,53 +132,161 @@ export default function SiteDetail() {
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-gray-50 border-t">
-          <div className="bg-white rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-gray-500">Budget</p>
-            <h3 className="text-lg font-bold">{inr(site.budget)}</h3>
-          </div>
+        {/* Site Summary + Team Assignment */}
+        <div className="bg-gradient-to-br from-gray-50 to-orange-50 border-t p-6">
 
-          <div className="bg-white rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-gray-500">Progress</p>
-            <h3 className="text-lg font-bold">{site.progress}%</h3>
-          </div>
+          <div className="grid lg:grid-cols-3 gap-6">
 
-          <div className="bg-white rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-gray-500">Supervisor</p>
-            <h3 className="text-lg font-bold">
-              {site.supervisor_name || "Not Assigned"}
-            </h3>
-          </div>
+            {/* LEFT CONTENT */}
+            <div className="lg:col-span-2 space-y-6">
 
-          <div className="bg-white rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-gray-500">Client</p>
-            <h3 className="text-lg font-bold">
-              {site.client_name || "Not Assigned"}
-            </h3>
-          </div>
-        </div>
-        <div className="px-6 py-4 grid md:grid-cols-4 gap-4 text-sm">
-          {user.role === "CONTRACTOR" && (
-            <div className="px-6 pb-6">
-              <div className="bg-white border rounded-2xl p-6 shadow-sm">
+              {/* Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
 
-                <h2 className="text-xl font-bold mb-5">
-                  Team Assignment
-                </h2>
+                <div className="bg-white rounded-2xl p-5 border border-orange-100 shadow-sm hover:shadow-md transition-all">
+                  <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">
+                    Budget
+                  </p>
+                  <h3 className="text-2xl font-extrabold text-[#171717]">
+                    {inr(site.budget)}
+                  </h3>
+                </div>
 
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="bg-white rounded-2xl p-5 border border-orange-100 shadow-sm hover:shadow-md transition-all">
+                  <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">
+                    Progress
+                  </p>
+                  <h3 className="text-2xl font-extrabold text-[#F97316]">
+                    {site.progress}%
+                  </h3>
 
-                  <div>
-                    <label className="text-sm font-semibold">
+                  <div className="w-full h-2 bg-gray-200 rounded-full mt-3 overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-orange-500 to-orange-400 rounded-full"
+                      style={{ width: `${site.progress}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl p-5 border border-orange-100 shadow-sm hover:shadow-md transition-all">
+                  <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">
+                    Supervisor
+                  </p>
+                  <h3 className="text-lg font-bold text-[#171717]">
+                    {site.supervisor_name || "Not Assigned"}
+                  </h3>
+                </div>
+
+                <div className="bg-white rounded-2xl p-5 border border-orange-100 shadow-sm hover:shadow-md transition-all">
+                  <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">
+                    Client
+                  </p>
+                  <h3 className="text-lg font-bold text-[#171717]">
+                    {site.client_name || "Not Assigned"}
+                  </h3>
+                </div>
+
+              </div>
+
+              {/* Project Details */}
+              <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm">
+
+                <h3 className="text-lg font-bold mb-5">
+                  Project Information
+                </h3>
+
+                <div className="grid md:grid-cols-2 gap-5">
+
+                  <div className="flex flex-col">
+                    <span className="text-xs uppercase tracking-wider text-gray-500">
+                      Client
+                    </span>
+
+                    <span className="font-semibold text-lg mt-1">
+                      {site.client_name || "Not Assigned"}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col">
+                    <span className="text-xs uppercase tracking-wider text-gray-500">
+                      Email
+                    </span>
+
+                    <span className="font-semibold text-lg mt-1">
+                      {site.client_email || "—"}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col">
+                    <span className="text-xs uppercase tracking-wider text-gray-500">
+                      Start Date
+                    </span>
+
+                    <span className="font-semibold text-lg mt-1">
+                      {fmtDate(site.start_date)}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col">
+                    <span className="text-xs uppercase tracking-wider text-gray-500">
+                      End Date
+                    </span>
+
+                    <span className="font-semibold text-lg mt-1">
+                      {fmtDate(site.end_date)}
+                    </span>
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+            {/* TEAM ASSIGNMENT SIDEBAR */}
+            {user.role === "CONTRACTOR" && (
+              <div>
+
+                <div className="
+          bg-white
+          rounded-3xl
+          border
+          border-orange-100
+          p-6
+          shadow-sm
+          hover:shadow-lg
+          transition-all
+          sticky
+          top-6
+        ">
+
+                  <h2 className="text-2xl font-bold text-[#171717] mb-6">
+                    Team Assignment
+                  </h2>
+
+                  {/* Supervisor */}
+                  <div className="mb-6">
+
+                    <label className="block text-sm font-semibold mb-2">
                       Supervisor
                     </label>
 
                     <select
-                      className="ss-input mt-2"
                       value={selectedSupervisor}
                       onChange={(e) =>
                         setSelectedSupervisor(e.target.value)
                       }
+                      className="
+                w-full
+                h-12
+                rounded-xl
+                border
+                border-gray-200
+                px-4
+                focus:outline-none
+                focus:ring-2
+                focus:ring-orange-400
+              "
                     >
                       <option value="">
                         Select Supervisor
@@ -190,24 +302,49 @@ export default function SiteDetail() {
                     </select>
 
                     <button
-                      className="ss-btn-accent mt-3 w-full"
                       onClick={assignSupervisor}
+                      className="
+                mt-3
+                w-full
+                h-12
+                rounded-xl
+                bg-gradient-to-r
+                from-orange-500
+                to-orange-600
+                text-white
+                font-semibold
+                hover:shadow-lg
+                transition-all
+              "
                     >
                       Save Supervisor
                     </button>
+
                   </div>
 
+                  {/* Client */}
                   <div>
-                    <label className="text-sm font-semibold">
+
+                    <label className="block text-sm font-semibold mb-2">
                       Client
                     </label>
 
                     <select
-                      className="ss-input mt-2"
                       value={selectedClient}
                       onChange={(e) =>
                         setSelectedClient(e.target.value)
                       }
+                      className="
+                w-full
+                h-12
+                rounded-xl
+                border
+                border-gray-200
+                px-4
+                focus:outline-none
+                focus:ring-2
+                focus:ring-orange-400
+              "
                     >
                       <option value="">
                         Select Client
@@ -223,23 +360,39 @@ export default function SiteDetail() {
                     </select>
 
                     <button
-                      className="ss-btn-accent mt-3 w-full"
                       onClick={assignClient}
+                      className="
+                mt-3
+                w-full
+                h-12
+                rounded-xl
+                bg-gradient-to-r
+                from-orange-500
+                to-orange-600
+                text-white
+                font-semibold
+                hover:shadow-lg
+                transition-all
+              "
                     >
                       Save Client
                     </button>
+
                   </div>
 
                 </div>
+
               </div>
-            </div>
-          )}
-          <div><span className="text-gray-500">Client:</span> <span className="font-semibold">{site.client_name}</span></div>
-          <div><span className="text-gray-500">Email:</span> <span className="font-semibold">{site.client_email || "—"}</span></div>
-          <div><span className="text-gray-500">Start:</span> <span className="font-semibold">{fmtDate(site.start_date)}</span></div>
-          <div><span className="text-gray-500">End:</span> <span className="font-semibold">{fmtDate(site.end_date)}</span></div>
+
+
+            )}
+
+          </div>
+
         </div>
       </div>
+
+
 
       <Tabs defaultValue="overview">
         <TabsList className="bg-white border border-gray-200 p-1">
@@ -418,6 +571,49 @@ export default function SiteDetail() {
           </TabsContent>
         )}
       </Tabs>
+      <div className="bg-white rounded-2xl p-6 shadow-sm mt-6">
+
+        <h3 className="text-lg font-bold mb-4">
+          Construction Tasks
+        </h3>
+
+        <div className="space-y-3">
+
+          {tasks.map(task => (
+
+            <div
+              key={task.id}
+              className="flex items-center justify-between border rounded-xl p-3"
+            >
+
+              <div>
+                <p className="font-medium">
+                  {task.title}
+                </p>
+
+                <p className="text-xs text-gray-500">
+                  Weight: {task.weight}%
+                </p>
+              </div>
+
+              <span
+                className={
+                  task.completed
+                    ? "text-green-600"
+                    : "text-orange-500"
+                }
+              >
+                {task.completed
+                  ? "Completed"
+                  : "Pending"}
+              </span>
+
+            </div>
+
+          ))}
+
+        </div>
+      </div>
     </div>
   );
 }

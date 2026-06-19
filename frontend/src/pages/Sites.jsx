@@ -22,6 +22,7 @@ export default function Sites() {
     setLoading(true);
     const { data } = await api.get("/sites");
     setSites(data);
+
     setLoading(false);
   };
   React.useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
@@ -113,9 +114,11 @@ function SiteForm({ onDone }) {
   const [f, setF] = React.useState({
     name: "", client_id: "",
     supervisor_id: "", location: "", budget: 0,
+    floors: 1, has_boring: false, has_septic_tank: false,
+    has_soak_pit: false, has_mumty: false,
     start_date: new Date().toISOString().slice(0, 10),
     end_date: new Date(Date.now() + 1000 * 60 * 60 * 24 * 180).toISOString().slice(0, 10),
-    status: "ACTIVE", progress: 0, description: "",
+    status: "ACTIVE", description: "",
   });
   const [busy, setBusy] = React.useState(false);
   const [team, setTeam] = React.useState([]);
@@ -129,7 +132,19 @@ function SiteForm({ onDone }) {
     e.preventDefault();
     setBusy(true);
     try {
-      await api.post("/sites", { ...f, budget: Number(f.budget), progress: Number(f.progress) });
+      await api.post("/sites", {
+        ...f, budget: Number(f.budget), floors: f.floors, has_boring: f.has_boring,
+
+        has_septic_tank:
+          f.has_septic_tank,
+
+        has_soak_pit:
+          f.has_soak_pit,
+
+        has_mumty:
+          f.has_mumty
+
+      });
       toast.success("Site created");
       onDone();
     } catch (err) { toast.error(err?.response?.data?.detail || "Failed"); }
@@ -142,7 +157,7 @@ function SiteForm({ onDone }) {
         <div className="md:col-span-2">
           <div className="md:col-span-2 border-b pb-2">
             <h3 className="text-lg font-bold">
-             Basic Information
+              Basic Information
             </h3>
           </div>
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Site Name</label>
@@ -156,11 +171,7 @@ function SiteForm({ onDone }) {
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
             Supervisor
           </label>
-          <div className="md:col-span-2 border-b pb-2 mt-4">
-            <h3 className="text-lg font-bold">
-                 Team Assignment
-            </h3>
-          </div>
+
           <select
             className="ss-input mt-1"
             value={f.supervisor_id}
@@ -209,19 +220,6 @@ function SiteForm({ onDone }) {
           </select>
         </div>
         <div>
-          <div className="md:col-span-2 border-b pb-2 mt-4">
-            <h3 className="text-lg font-bold">
-               Project Details
-            </h3>
-          </div>
-          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Budget (₹)</label>
-          <input className="ss-input mt-1" type="number" required value={f.budget} onChange={set("budget")} data-testid="site-budget" />
-        </div>
-        <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Progress %</label>
-          <input className="ss-input mt-1" type="number" min={0} max={100} value={f.progress} onChange={set("progress")} data-testid="site-progress" />
-        </div>
-        <div>
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Start</label>
           <input className="ss-input mt-1" type="date" required value={f.start_date} onChange={set("start_date")} data-testid="site-start" />
         </div>
@@ -229,6 +227,113 @@ function SiteForm({ onDone }) {
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">End</label>
           <input className="ss-input mt-1" type="date" required value={f.end_date} onChange={set("end_date")} data-testid="site-end" />
         </div>
+        <div>
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+              Budget (₹)
+            </label>
+
+            <input
+              className="ss-input mt-1"
+              type="number"
+              required
+              value={f.budget}
+              onChange={set("budget")}
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+              Total Floors
+            </label>
+
+            <select
+              className="ss-input mt-1"
+              value={f.floors}
+              onChange={(e) =>
+                setF({
+                  ...f,
+                  floors: Number(e.target.value)
+                })
+              }
+            >
+              <option value={1}>Ground Floor</option>
+              <option value={2}>Ground + First</option>
+              <option value={3}>Ground + First + Second</option>
+              <option value={4}>Ground + First + Second + Third</option>
+            </select>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-3">
+
+            <label className="flex items-center gap-2">
+
+              <input
+                type="checkbox"
+                checked={f.has_boring}
+                onChange={(e) =>
+                  setF({
+                    ...f,
+                    has_boring: e.target.checked
+                  })
+                }
+              />
+
+              Boring
+            </label>
+
+            <label className="flex items-center gap-2">
+
+              <input
+                type="checkbox"
+                checked={f.has_septic_tank}
+                onChange={(e) =>
+                  setF({
+                    ...f,
+                    has_septic_tank: e.target.checked
+                  })
+                }
+              />
+
+              Septic Tank
+            </label>
+
+            <label className="flex items-center gap-2">
+
+              <input
+                type="checkbox"
+                checked={f.has_soak_pit}
+                onChange={(e) =>
+                  setF({
+                    ...f,
+                    has_soak_pit: e.target.checked
+                  })
+                }
+              />
+
+              Soak Pit
+            </label>
+
+            <label className="flex items-center gap-2">
+
+              <input
+                type="checkbox"
+                checked={f.has_mumty}
+                onChange={(e) =>
+                  setF({
+                    ...f,
+                    has_mumty: e.target.checked
+                  })
+                }
+              />
+              Mumty
+            </label>
+
+          </div>
+
+        </div>
+
+
         <div>
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Status</label>
           <Select value={f.status} onValueChange={(v) => setF({ ...f, status: v })}>
@@ -241,6 +346,9 @@ function SiteForm({ onDone }) {
             </SelectContent>
           </Select>
         </div>
+
+
+
         <div className="md:col-span-2">
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Description</label>
           <textarea className="ss-input mt-1 min-h-[80px]" value={f.description} onChange={set("description")} data-testid="site-description" />
