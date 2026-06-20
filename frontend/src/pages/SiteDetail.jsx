@@ -24,6 +24,44 @@ export default function SiteDetail() {
   const [aiBusy, setAiBusy] = React.useState(false);
   const [tasks, setTasks] = React.useState([]);
 
+  const completeTask = async (taskId) => {
+
+    try {
+
+      const { data } = await api.put(
+        `/site-tasks/${taskId}/complete`
+      );
+
+      setTasks(prev =>
+        prev.map(task =>
+          task.id === taskId
+            ? {
+              ...task,
+              completed: true
+            }
+            : task
+        )
+      );
+
+      setSite(prev => ({
+        ...prev,
+        progress: data.progress
+      }));
+
+      toast.success(
+        "Task completed successfully"
+      );
+
+    } catch (err) {
+
+      toast.error(
+        "Unable to complete task"
+      );
+
+    }
+
+  };
+
   React.useEffect(() => {
     (async () => {
       const s = await api.get(`/sites/${siteId}`);
@@ -31,6 +69,7 @@ export default function SiteDetail() {
 
       const taskRes = await api.get(`/site-tasks/${siteId}`);
       setTasks(taskRes.data);
+
       if (user.role === "CONTRACTOR") {
         const teamRes = await api.get("/team");
         setTeam(teamRes.data);
@@ -583,30 +622,73 @@ export default function SiteDetail() {
 
             <div
               key={task.id}
-              className="flex items-center justify-between border rounded-xl p-3"
+              className="
+      flex
+      items-center
+      justify-between
+      border
+      rounded-xl
+      p-4
+      bg-white
+    "
             >
 
               <div>
-                <p className="font-medium">
+
+                <p className="font-semibold">
                   {task.title}
                 </p>
 
                 <p className="text-xs text-gray-500">
-                  Weight: {task.weight}%
+                  Weight : {task.weight}%
                 </p>
+
               </div>
 
-              <span
-                className={
-                  task.completed
-                    ? "text-green-600"
-                    : "text-orange-500"
-                }
-              >
-                {task.completed
-                  ? "Completed"
-                  : "Pending"}
-              </span>
+              {task.completed ? (
+
+                <div
+                  className="
+      px-4
+      py-2
+      rounded-lg
+      bg-green-100
+      text-green-700
+      font-semibold
+    "
+                >
+                  Completed
+                </div>
+
+              ) : user.role === "SUPERVISOR" ? (
+
+                <button
+                  onClick={() =>
+                    completeTask(task.id)
+                  }
+                  className="
+      px-4
+      py-2
+      rounded-lg
+      bg-orange-500
+      text-white
+    "
+                >
+                  Mark Complete
+                </button>
+
+              ) : (
+
+                <span
+                  className="
+      text-orange-500
+      font-semibold
+    "
+                >
+                  Pending
+                </span>
+
+              )}
 
             </div>
 
