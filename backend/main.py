@@ -1053,7 +1053,7 @@ async def create_payment(body: PaymentIn, user: dict = Depends(require_roles("CO
 
 class TaskStatusIn(BaseModel):
     completed: bool = True
-    
+
 @api.get("/site-tasks/{site_id}")
 async def get_site_tasks(
     site_id: str,
@@ -1098,16 +1098,10 @@ async def recalculate_site_progress(site_id):
         }
     )
     
-    
 @api.post("/site-tasks/{task_id}/complete")
 async def complete_task(
     task_id: str,
-    user: dict = Depends(
-        require_roles(
-            "SUPERVISOR",
-            "CONTRACTOR"
-        )
-    )
+    user = Depends(require_roles(["CONTRACTOR", "SUPERVISOR"]))
 ):
 
     task = await db.site_tasks.find_one(
@@ -1116,8 +1110,8 @@ async def complete_task(
 
     if not task:
         raise HTTPException(
-            404,
-            "Task not found"
+            status_code=404,
+            detail="Task not found"
         )
 
     await db.site_tasks.update_one(
@@ -1129,11 +1123,37 @@ async def complete_task(
         }
     )
 
-    await recalculate_site_progress(
-        task["site_id"]
+    site_id = task["site_id"]
+
+    completed = await db.site_tasks.count_documents({
+        "site_id": site_id,
+        "completed": True
+    })
+
+    total = await db.site_tasks.count_documents({
+        "site_id": site_id
+    })
+
+    progress = 0
+
+    if total > 0:
+        progress = round(
+            (completed / total) * 100
+        )
+
+    await db.sites.update_one(
+        {"id": site_id},
+        {
+            "$set": {
+                "progress": progress
+            }
+        }
     )
 
-    return {"success": True}
+    return {
+        "success": True,
+        "progress": progress
+    }
 
 # ---------- DAILY REPORTS ----------
 @api.get("/daily-reports")

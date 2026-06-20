@@ -28,7 +28,7 @@ export default function SiteDetail() {
 
     try {
 
-      const { data } = await api.put(
+      const { data } = await api.post(
         `/site-tasks/${taskId}/complete`
       );
 
