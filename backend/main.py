@@ -1101,8 +1101,14 @@ async def recalculate_site_progress(site_id):
 @api.post("/site-tasks/{task_id}/complete")
 async def complete_task(
     task_id: str,
-    user = Depends(require_roles(["CONTRACTOR", "SUPERVISOR"]))
+    user = Depends(
+        require_roles(
+            "CONTRACTOR",
+            "SUPERVISOR"
+        )
+    )
 ):
+    print("CURRENT USER =", user)
 
     task = await db.site_tasks.find_one(
         {"id": task_id}
