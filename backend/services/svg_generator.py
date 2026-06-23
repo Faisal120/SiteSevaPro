@@ -1,24 +1,36 @@
 from services.layout_engine import generate_layout
-
+from html import escape
 
 def generate_floor_svg(data):
 
     rooms = generate_layout(data)
 
     plot_width = data.get("plot_width", 30)
-    company_name = data.get(
-    "company_name",
-    ""
-)
-
-    client_name = data.get(
-        "client_name",
-        ""
+    company_name = escape(
+    str(
+        data.get(
+            "company_name",
+            ""
+            )
+        )
     )
 
-    project_name = data.get(
-        "project_name",
-        ""
+    client_name = escape(
+        str(
+            data.get(
+                "client_name",
+                ""
+            )
+        )
+    )
+
+    project_name = escape(
+        str(
+            data.get(
+                "project_name",
+                ""
+            )
+        )
     )
     plot_length = data.get("plot_length", 50)
     facing = data.get("facing", "East")
@@ -42,7 +54,7 @@ def generate_floor_svg(data):
         y="40"
         font-size="28"
         font-weight="bold">
-        {company_name}
+        {company_name.replace("&", "&amp;")}
         </text>
 
         <text
