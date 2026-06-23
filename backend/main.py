@@ -56,9 +56,6 @@ os.makedirs(
     exist_ok=True
 )
 
-file_name = f"{doc['id']}.svg"
-
-file_path = f"uploads/maps/{file_name}"
 
 # -------- Models --------
 Role = Literal["SUPER_ADMIN", "CONTRACTOR", "SUPERVISOR", "CLIENT"]
@@ -1376,7 +1373,6 @@ async def map_file(
         f"uploads/maps/{filename}"
     )
 
-@api.post("/maps/generate")
 @api.get("/maps")
 async def get_maps(
     user: dict = Depends(
@@ -1396,6 +1392,8 @@ async def get_maps(
         "created_at",
         -1
     ).to_list(500)
+
+@api.post("/maps/generate")
 async def generate_map(
     body: MapRequestIn,
     user: dict = Depends(
