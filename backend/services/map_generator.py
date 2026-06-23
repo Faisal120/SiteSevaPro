@@ -1,4 +1,5 @@
 import os
+from urllib import response
 import requests
 import cloudinary.uploader
 
@@ -33,6 +34,9 @@ async def generate_floor_plan(
         json=payload,
         timeout=120
     )
+    
+    print("STATUS:", response.status_code)
+    print("BODY:", response.text)
 
     response.raise_for_status()
 
