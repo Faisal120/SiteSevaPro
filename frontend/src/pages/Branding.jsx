@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { api, uploadToCloudinary } from "@/lib/api";
 import { toast } from "sonner";
 
+
 export default function Branding() {
+    const [logoFile, setLogoFile] = useState(null);
 
     const [form, setForm] = useState({
         company_name: "",
@@ -29,18 +31,69 @@ export default function Branding() {
             console.log(err);
         }
     }
+    async function uploadLogo() {
+
+        if (!logoFile) return;
+
+        try {
+
+            const uploaded =
+                await uploadToCloudinary(
+                    logoFile,
+                    "siteseva/company_logos"
+                );
+
+            setForm(prev => ({
+                ...prev,
+                logo_url: uploaded.url
+            }));
+
+            toast.success(
+                "Logo uploaded successfully"
+            );
+
+            return uploaded.url;
+
+        } catch (err) {
+
+            toast.error(
+                "Logo upload failed"
+            );
+
+            return null;
+        }
+    }
 
     async function saveBranding() {
+
         try {
+
+            let logoUrl =
+                form.logo_url;
+
+            if (logoFile) {
+
+                const uploadedUrl =
+                    await uploadLogo();
+
+                if (uploadedUrl)
+                    logoUrl =
+                        uploadedUrl;
+            }
 
             await api.put(
                 "/branding",
-                form
+                {
+                    ...form,
+                    logo_url: logoUrl
+                }
             );
 
             toast.success(
-                "Branding Saved"
+                "Branding Saved Successfully"
             );
+
+            loadBranding();
 
         } catch (err) {
 
@@ -144,6 +197,35 @@ export default function Branding() {
                         })
                     }
                 />
+
+                <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) =>
+                        setLogoFile(
+                            e.target.files[0]
+                        )
+                    }
+                />
+
+                {
+                    form.logo_url && (
+
+                        <img
+                            src={form.logo_url}
+                            alt="Company Logo"
+                            className="
+    h-24
+    w-24
+    object-contain
+    border
+    rounded-lg
+    p-2
+    "
+                        />
+
+                    )
+                }
 
                 <button
                     onClick={saveBranding}

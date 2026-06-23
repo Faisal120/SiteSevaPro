@@ -11,11 +11,20 @@ export default function Estimates() {
   const nav = useNavigate();
   const [list, setList] = React.useState([]);
   const [result, setResult] = React.useState(null);
+  const [branding, setBranding] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
   const [f, setF] = React.useState({ name: "", plot_area_sqft: 1200, floors: 2, basement: false, construction_type: "RESIDENTIAL", quality: "STANDARD", budget: 4500000 });
 
   const load = async () => { const { data } = await api.get("/estimates"); setList(data); };
-  React.useEffect(() => { load(); }, []);
+  React.useEffect(() => {
+
+    load();
+
+    api.get("/branding")
+      .then((r) => setBranding(r.data))
+      .catch(() => { });
+
+  }, []);
 
   const effectiveFloors = Number(f.floors || 0) + (f.basement ? 0.85 : 0);
   const builtup = Number(f.plot_area_sqft || 0) * effectiveFloors;
@@ -58,10 +67,10 @@ export default function Estimates() {
       <div className="grid lg:grid-cols-2 gap-5">
         <form onSubmit={compute} className="ss-card p-6 grid gap-4">
           <SectionTitle title="Inputs" subtitle="Quick smart-formula estimation" />
-          <div><label className="text-xs font-bold uppercase text-gray-500">Project name</label><input required className="ss-input mt-1" value={f.name} onChange={(e)=>setF({...f, name:e.target.value})} data-testid="est-name" /></div>
+          <div><label className="text-xs font-bold uppercase text-gray-500">Project name</label><input required className="ss-input mt-1" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} data-testid="est-name" /></div>
           <div className="grid grid-cols-2 gap-3">
-            <div><label className="text-xs font-bold uppercase text-gray-500">Plot area (sqft)</label><input type="number" required className="ss-input mt-1" value={f.plot_area_sqft} onChange={(e)=>setF({...f, plot_area_sqft:e.target.value})} data-testid="est-area" /></div>
-            <div><label className="text-xs font-bold uppercase text-gray-500">Floors</label><input type="number" required className="ss-input mt-1" value={f.floors} onChange={(e)=>setF({...f, floors:e.target.value})} data-testid="est-floors" /></div>
+            <div><label className="text-xs font-bold uppercase text-gray-500">Plot area (sqft)</label><input type="number" required className="ss-input mt-1" value={f.plot_area_sqft} onChange={(e) => setF({ ...f, plot_area_sqft: e.target.value })} data-testid="est-area" /></div>
+            <div><label className="text-xs font-bold uppercase text-gray-500">Floors</label><input type="number" required className="ss-input mt-1" value={f.floors} onChange={(e) => setF({ ...f, floors: e.target.value })} data-testid="est-floors" /></div>
           </div>
           <label className="flex items-center gap-2 cursor-pointer select-none">
             <input
@@ -76,7 +85,7 @@ export default function Estimates() {
           </label>
           <div className="grid grid-cols-2 gap-3">
             <div><label className="text-xs font-bold uppercase text-gray-500">Type</label>
-              <Select value={f.construction_type} onValueChange={(v)=>setF({...f, construction_type:v})}>
+              <Select value={f.construction_type} onValueChange={(v) => setF({ ...f, construction_type: v })}>
                 <SelectTrigger className="mt-1" data-testid="est-type"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="RESIDENTIAL">Residential</SelectItem>
@@ -87,7 +96,7 @@ export default function Estimates() {
               </Select>
             </div>
             <div><label className="text-xs font-bold uppercase text-gray-500">Quality</label>
-              <Select value={f.quality} onValueChange={(v)=>setF({...f, quality:v})}>
+              <Select value={f.quality} onValueChange={(v) => setF({ ...f, quality: v })}>
                 <SelectTrigger className="mt-1" data-testid="est-quality"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ECONOMY">Economy</SelectItem>
@@ -100,7 +109,7 @@ export default function Estimates() {
             </div>
           </div>
           <div><label className="text-xs font-bold uppercase text-gray-500">Budget (₹)</label>
-            <input type="number" required min="1" className="ss-input mt-1" value={f.budget} onChange={(e)=>setF({...f, budget:e.target.value})} data-testid="est-budget" />
+            <input type="number" required min="1" className="ss-input mt-1" value={f.budget} onChange={(e) => setF({ ...f, budget: e.target.value })} data-testid="est-budget" />
           </div>
           <div className="rounded-lg bg-gray-50 p-3 flex items-center justify-between text-sm">
             <div>
@@ -117,12 +126,65 @@ export default function Estimates() {
 
         <div className="ss-card p-6">
           <SectionTitle title="Result" />
+          {branding && (
+
+            <div className="
+border-b
+pb-4
+mb-4
+">
+
+              <div className="
+flex
+gap-4
+items-center
+">
+
+                {branding.logo_url && (
+
+                  <img
+                    src={branding.logo_url}
+                    className="
+h-16
+w-16
+object-contain
+"
+                  />
+
+                )}
+
+                <div>
+
+                  <h2 className="
+font-bold
+text-xl
+">
+                    {branding.company_name}
+                  </h2>
+
+                  <p>
+                    GST:
+                    {branding.gst_number}
+                  </p>
+
+                  <p>
+                    {branding.phone}
+                  </p>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          )}
           {!result ? (
             <div className="text-center py-12 text-gray-400">
               <Calculator className="h-10 w-10 mx-auto mb-2" />
               <p className="text-sm">Fill the form and hit generate.</p>
             </div>
           ) : (
+
             <div className="space-y-4">
               <div className="text-3xl font-extrabold text-[#171717] font-display">{inr(result.total)}</div>
               <div className="text-xs text-gray-500">Built-up {result.builtup_sqft} sqft @ {inr(result.rate_per_sqft)}/sqft</div>

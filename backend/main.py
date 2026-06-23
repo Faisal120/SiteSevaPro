@@ -11,7 +11,7 @@ from typing import List, Literal, Optional
 
 import cloudinary
 import cloudinary.utils
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query
+from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, EmailStr, Field
 from starlette.middleware.cors import CORSMiddleware
 
@@ -1198,6 +1198,37 @@ async def complete_task(
     return {
         "success": True,
         "progress": progress
+    }
+    
+@api.post("/branding/logo")
+async def upload_logo(
+    file: UploadFile = File(...),
+    user: dict = Depends(
+        require_roles("CONTRACTOR")
+    )
+):
+
+    result = cloudinary.uploader.upload(
+        file.file,
+        folder="siteseva/company_logos"
+    )
+
+    logo_url = result["secure_url"]
+
+    await db.companies.update_one(
+        {
+            "id": user["company_id"]
+        },
+        {
+            "$set": {
+                "branding.logo_url":
+                logo_url
+            }
+        }
+    )
+
+    return {
+        "logo_url": logo_url
     }
 
 # ---------- DAILY REPORTS ----------
