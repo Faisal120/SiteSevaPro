@@ -1252,6 +1252,58 @@ async def create_report(body: DailyReportIn, user: dict = Depends(require_roles(
         })
     return doc
 
+class BrandingIn(BaseModel):
+    company_name:str=""
+    gst_number:str=""
+    company_address:str=""
+    phone:str=""
+    website:str=""
+    email:str=""
+    logo_url:str=""
+
+@api.get("/branding")
+async def get_branding(
+    user: dict = Depends(
+        require_roles("CONTRACTOR")
+    )
+):
+
+    company = await db.companies.find_one(
+        {
+            "id": user["company_id"]
+        }
+    )
+
+    return company.get(
+        "branding",
+        {}
+    )
+
+
+@api.put("/branding")
+async def save_branding(
+    body: BrandingIn,
+    user: dict = Depends(
+        require_roles("CONTRACTOR")
+    )
+):
+
+    await db.companies.update_one(
+        {
+            "id": user["company_id"]
+        },
+        {
+            "$set": {
+                "branding":
+                body.model_dump()
+            }
+        }
+    )
+
+    return {
+        "success": True
+    }
+
 # ---------- NOTIFICATIONS ----------
 @api.get("/notifications")
 async def list_notifications(user: dict = Depends(get_current_user)):

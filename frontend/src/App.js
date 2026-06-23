@@ -40,6 +40,7 @@ import Subscriptions from "@/pages/admin/Subscriptions";
 import Revenue from "@/pages/admin/Revenue";
 import AdminPayments from "@/pages/admin/AdminPayments";
 import AuditLogs from "@/pages/admin/AuditLogs";
+import Branding from "@/pages/Branding";
 
 function Protected({ children, roles }) {
   const { user, loading } = useAuth();
@@ -97,6 +98,14 @@ function App() {
               <Route path="reports" element={<DailyReports />} />
               <Route path="notifications" element={<Notifications />} />
               <Route path="subscription" element={<Subscription />} />
+              <Route
+                path="branding"
+                element={
+                  <Protected roles={["CONTRACTOR"]}>
+                    <Branding />
+                  </Protected>
+                }
+              />
               <Route path="settings" element={<Settings />} />
 
               <Route path="admin" element={<Protected roles={["SUPER_ADMIN"]}><AdminDashboard /></Protected>} />

@@ -220,7 +220,11 @@ export default function SiteDetail() {
                     Supervisor
                   </p>
                   <h3 className="text-lg font-bold text-[#171717]">
-                    {site.supervisor_name || "Not Assigned"}
+                    {
+                      site.supervisor_names?.length
+                        ? site.supervisor_names.join(", ")
+                        : "Not Assigned"
+                    }
                   </h3>
                 </div>
 

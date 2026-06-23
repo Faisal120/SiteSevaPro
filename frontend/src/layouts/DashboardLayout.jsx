@@ -89,6 +89,7 @@ export default function DashboardLayout() {
       <NavGroup title="Account">
         <NavItem to="/app/notifications" icon={Bell} label="Notifications" />
         <NavItem to="/app/subscription" icon={CreditCard} label="Subscription" />
+        <NavItem to="/app/branding" icon={Building} label="Company Branding" />
         <NavItem to="/app/settings" icon={SettingsIcon} label="Settings" />
       </NavGroup>
     </>
