@@ -1,36 +1,44 @@
 import os
-import base64
+import requests
 import cloudinary.uploader
 
-from openai import OpenAI
-
-client = OpenAI(
-    api_key=os.getenv(
-        "OPENAI_API_KEY"
-    )
+GEMINI_API_KEY = os.getenv(
+    "GEMINI_API_KEY"
 )
 
 async def generate_floor_plan(
     prompt: str
 ):
 
-    result = client.images.generate(
-        model="gpt-image-1",
-        prompt=prompt,
-        size="1024x1024"
+    url = (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        "gemini-2.0-flash-preview-image-generation:generateContent"
+        f"?key={GEMINI_API_KEY}"
     )
 
-    image_base64 = (
-        result.data[0].b64_json
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {
+                        "text": prompt
+                    }
+                ]
+            }
+        ]
+    }
+
+    response = requests.post(
+        url,
+        json=payload,
+        timeout=120
     )
 
-    image_bytes = base64.b64decode(
-        image_base64
-    )
+    response.raise_for_status()
 
-    upload = cloudinary.uploader.upload(
-        image_bytes,
-        folder="siteseva/maps"
-    )
+    data = response.json()
 
-    return upload["secure_url"]
+    # first implementation:
+    # return raw response for debugging
+
+    return data
