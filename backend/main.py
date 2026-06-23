@@ -51,11 +51,6 @@ def gen_username(company: str) -> str:
 def gen_password() -> str:
     return "Site@" + secrets.token_urlsafe(6).replace("-", "x").replace("_", "y")
 
-os.makedirs(
-    "uploads/maps",
-    exist_ok=True
-)
-
 
 # -------- Models --------
 Role = Literal["SUPER_ADMIN", "CONTRACTOR", "SUPERVISOR", "CLIENT"]
@@ -1474,10 +1469,10 @@ async def generate_map(
     )
 
     branding = await db.companies.find_one(
-    {
-        "id": user["company_id"]
-    }
-)
+        {
+            "id": user.get("company_id")
+        }
+    ) or {}
 
     svg_data = {
         **body.model_dump(),
@@ -1504,6 +1499,10 @@ async def generate_map(
     svg = generate_floor_svg(
         svg_data
     )
+    
+    print("SITE =", site)
+    print("BRANDING =", branding)
+    print("SVG DATA =", svg_data)
 
     file_name = f"{doc['id']}.svg"
 
@@ -1539,7 +1538,14 @@ async def generate_map(
     doc["image_url"] = image_url
     doc["status"] = "COMPLETED"
 
-    return doc
+    doc.pop("_id", None)
+
+    return {
+        "id": doc["id"],
+        "image_url": doc["image_url"],
+        "status": doc["status"],
+        "project_name": doc["project_name"]
+    }
 
 # ---------- NOTIFICATIONS ----------
 @api.get("/notifications")
