@@ -737,7 +737,6 @@ async def assign_supervisor(
     )
 
     names = []
-
     for sid in updated_site.get(
         "supervisor_ids",
         []
