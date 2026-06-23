@@ -1440,6 +1440,17 @@ async def generate_map(
 
     return doc
 
+@api.get("/gemini-test")
+async def gemini_test():
+
+    from services.map_generator import generate_floor_plan
+
+    result = await generate_floor_plan(
+        "simple house"
+    )
+
+    return result
+
 @api.post("/maps/generate-ai")
 async def generate_ai_map(
     body: MapRequestIn,
