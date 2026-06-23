@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from asyncio import tasks
 import os
+from pydoc import doc
 import secrets
 import site
 import time
@@ -14,9 +15,7 @@ import cloudinary.utils
 from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, EmailStr, Field
 from starlette.middleware.cors import CORSMiddleware
-from services.map_generator import (
-    generate_floor_plan
-)
+from services.svg_generator import generate_floor_svg
 
 # Shared infra — single source of truth for db, auth, helpers
 from core import (
@@ -51,6 +50,15 @@ def gen_username(company: str) -> str:
 
 def gen_password() -> str:
     return "Site@" + secrets.token_urlsafe(6).replace("-", "x").replace("_", "y")
+
+os.makedirs(
+    "uploads/maps",
+    exist_ok=True
+)
+
+file_name = f"{doc['id']}.svg"
+
+file_path = f"uploads/maps/{file_name}"
 
 # -------- Models --------
 Role = Literal["SUPER_ADMIN", "CONTRACTOR", "SUPERVISOR", "CLIENT"]
@@ -1355,14 +1363,43 @@ class MapRequestIn(BaseModel):
     floors: int
 
     type: str = "2D"
+    
+from fastapi.responses import FileResponse
+@api.get(
+    "/maps/files/{filename}"
+)
+async def map_file(
+    filename: str
+):
+
+    return FileResponse(
+        f"uploads/maps/{filename}"
+    )
 
 @api.post("/maps/generate")
+@api.get("/maps")
+async def get_maps(
+    user: dict = Depends(
+        require_roles("CONTRACTOR")
+    )
+):
+
+    return await db.map_requests.find(
+        {
+            "company_id":
+            user["company_id"]
+        },
+        {
+            "_id": 0
+        }
+    ).sort(
+        "created_at",
+        -1
+    ).to_list(500)
 async def generate_map(
     body: MapRequestIn,
     user: dict = Depends(
-        require_roles(
-            "CONTRACTOR"
-        )
+        require_roles("CONTRACTOR")
     )
 ):
 
@@ -1438,145 +1475,66 @@ async def generate_map(
         doc
     )
 
-    return doc
+    branding = await db.companies.find_one(
+    {
+        "id": user["company_id"]
+    }
+)
 
-@api.get("/gemini-test")
-async def gemini_test():
+    svg_data = {
+        **body.model_dump(),
 
-    from services.map_generator import generate_floor_plan
-
-    result = await generate_floor_plan(
-        "simple house"
-    )
-
-    return result
-
-@api.post("/maps/generate-ai")
-async def generate_ai_map(
-    body: MapRequestIn,
-    user: dict = Depends(
-        require_roles(
-            "CONTRACTOR"
-        )
-    )
-):
-
-    sub = await db.subscriptions.find_one(
-        {
-            "company_id":
-            user["company_id"]
-        }
-    )
-
-    plan = (
-        sub or {}
-    ).get(
-        "plan",
-        "FREE"
-    )
-
-    if plan == "FREE":
-
-        raise HTTPException(
-            403,
-            "Upgrade required"
-        )
-
-    if (
-        body.type == "3D"
-        and plan != "ENTERPRISE"
-    ):
-        raise HTTPException(
-            403,
-            "3D available only in Pro Plus"
-        )
-
-    site = await db.sites.find_one(
-        {
-            "id":
-            body.site_id
-        }
-    )
-
-    company = await db.companies.find_one(
-        {
-            "id":
-            user["company_id"]
-        }
-    )
-
-    branding = company.get(
-        "branding",
-        {}
-    )
-
-    prompt = f"""
-Create a professional architectural
-{body.type} floor plan.
-
-Plot Size:
-{body.plot_width} x {body.plot_length} feet
-
-Facing:
-{body.facing}
-
-Floors:
-{body.floors}
-
-Bedrooms:
-{body.bedrooms}
-
-Bathrooms:
-{body.bathrooms}
-
-Black and white CAD style.
-
-Dimension labels included.
-
-Architectural presentation quality.
-"""
-
-    image_url = await generate_floor_plan(
-        prompt
-    )
-
-    doc = {
-        "id": new_id(),
-
-        "company_id":
-        user["company_id"],
-
-        "site_id":
-        body.site_id,
+        "company_name":
+        branding.get(
+            "name",
+            "SiteSeva Pro"
+        ),
 
         "client_name":
         site.get(
-            "client_name"
+            "client_name",
+            ""
         ),
 
         "project_name":
         site.get(
-            "name"
-        ),
-
-        "map_type":
-        body.type,
-
-        "image_url":
-        image_url,
-
-        **body.model_dump(),
-
-        "status":
-        "COMPLETED",
-
-        "created_at":
-        now_iso()
+            "name",
+            ""
+        )
     }
 
-    await db.map_requests.insert_one(
-        doc
+    svg = generate_floor_svg(
+        svg_data
     )
+
+    file_name = f"{doc['id']}.svg"
+
+    file_path = f"uploads/maps/{file_name}"
+
+    with open(file_path, "w") as f:
+        f.write(svg)
+
+    BACKEND_URL = os.getenv(
+        "APP_URL",
+        "https://sitesevapro-production.up.railway.app"
+    )
+
+    image_url = (
+        f"{BACKEND_URL}/api/maps/files/{file_name}"
+    )
+
+    await db.map_requests.update_one(
+        {"id": doc["id"]},
+        {
+            "$set": {
+                "image_url": image_url,
+                "status": "COMPLETED"
+            }
+        }
+    )
+
+    doc["image_url"] = image_url
+    doc["status"] = "COMPLETED"
 
     return doc
 

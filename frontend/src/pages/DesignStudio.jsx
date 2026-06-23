@@ -73,66 +73,110 @@ export default function DesignStudio() {
     return (
         <div className="space-y-6">
 
-            <div>
-                <h1 className="font-display text-3xl font-extrabold">
-                    Design Studio
-                </h1>
+            <div className="ss-card p-6 bg-orange-50 border border-orange-200">
 
-                <p className="text-gray-500">
-                    Generate branded 2D & 3D construction plans.
+                <h2 className="font-bold text-xl">
+                    AI Design Studio
+                </h2>
+
+                <p className="text-gray-600 mt-2">
+                    Generate professional construction drawings.
                 </p>
+
+                <div className="grid md:grid-cols-3 gap-3 mt-4">
+
+                    <div className="bg-white p-3 rounded-lg">
+                        <b>Pro Plan</b>
+                        <p className="text-sm">
+                            2D Floor Plans
+                        </p>
+                    </div>
+
+                    <div className="bg-white p-3 rounded-lg">
+                        <b>Pro Plus</b>
+                        <p className="text-sm">
+                            2D + 3D Elevation
+                        </p>
+                    </div>
+
+                    <div className="bg-white p-3 rounded-lg">
+                        <b>Branding Included</b>
+                        <p className="text-sm">
+                            Client & Company Details
+                        </p>
+                    </div>
+
+                </div>
+
             </div>
 
             <div className="ss-card p-6 grid md:grid-cols-2 gap-4">
 
-                <select
-                    className="ss-input"
-                    value={form.site_id}
-                    onChange={(e) =>
-                        setForm({
-                            ...form,
-                            site_id: e.target.value
-                        })
-                    }
-                >
-                    <option value="">
+                <div>
+                    <label className="text-sm font-medium">
                         Select Site
-                    </option>
+                    </label>
 
-                    {sites.map(site => (
-                        <option
-                            key={site.id}
-                            value={site.id}
-                        >
-                            {site.name}
+                    <select
+                        className="ss-input"
+                        value={form.site_id}
+                        onChange={(e) =>
+                            setForm({
+                                ...form,
+                                site_id: e.target.value
+                            })
+                        }
+                    >
+                        <option value="">
+                            Select Site
                         </option>
-                    ))}
 
-                </select>
+                        {sites.map(site => (
+                            <option
+                                key={site.id}
+                                value={site.id}
+                            >
+                                {site.name}
+                            </option>
+                        ))}
 
-                <input
-                    className="ss-input"
-                    placeholder="Plot Width (ft)"
-                    value={form.plot_width}
-                    onChange={(e) =>
-                        setForm({
-                            ...form,
-                            plot_width: e.target.value
-                        })
-                    }
-                />
+                    </select>
+                </div>
 
-                <input
-                    className="ss-input"
-                    placeholder="Plot Length (ft)"
-                    value={form.plot_length}
-                    onChange={(e) =>
-                        setForm({
-                            ...form,
-                            plot_length: e.target.value
-                        })
-                    }
-                />
+                <div>
+                    <label className="text-sm font-medium">
+                        Plot Width (Feet)
+                    </label>
+
+                    <input
+                        className="ss-input mt-1"
+                        placeholder="Plot Width (ft)"
+                        value={form.plot_width}
+                        onChange={(e) =>
+                            setForm({
+                                ...form,
+                                plot_width: e.target.value
+                            })
+                        }
+                    />
+                </div>
+
+                <div>
+                    <label className="text-sm font-medium">
+                        Plot Length (Feet)
+                    </label>
+                    <input
+                        className="ss-input mt-1"
+                        placeholder="Plot Length (ft)"
+                        value={form.plot_length}
+                        onChange={(e) =>
+                            setForm({
+                                ...form,
+                                plot_length: e.target.value
+                            })
+                        }
+                    />
+                </div>
 
                 <select
                     className="ss-input"
