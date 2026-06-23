@@ -41,6 +41,7 @@ import Revenue from "@/pages/admin/Revenue";
 import AdminPayments from "@/pages/admin/AdminPayments";
 import AuditLogs from "@/pages/admin/AuditLogs";
 import Branding from "@/pages/Branding";
+import DesignStudio from "@/pages/DesignStudio";
 
 function Protected({ children, roles }) {
   const { user, loading } = useAuth();
@@ -72,6 +73,14 @@ function App() {
                 </Protected>
               }
             >
+              <Route
+                path="maps"
+                element={
+                  <Protected roles={["CONTRACTOR"]}>
+                    <DesignStudio />
+                  </Protected>
+                }
+              />
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="executive" element={<Protected roles={["CONTRACTOR"]}><ExecutiveDashboard /></Protected>} />

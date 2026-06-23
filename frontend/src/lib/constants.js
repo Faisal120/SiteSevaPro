@@ -16,6 +16,10 @@ export const PLAN_FEATURES = {
       "Advanced Analytics",
       "Client Portal",
       "Material & Vendor Tracking",
+      "2D Map Generator",
+      "Branded PDF Export",
+      "10 AI Map Credits",
+      "AI 2D Floor Plans",
     ],
   },
   ENTERPRISE: {
@@ -29,6 +33,12 @@ export const PLAN_FEATURES = {
       "AI Consumption Analysis",
       "AI Daily Reports & Client Updates",
       "Priority Support",
+      "2D Map Generator",
+      "3D Elevation Generator",
+      "50 AI Map Credits",
+      "AI 3D Elevations",
+      "Multiple Variants",
+      "Branded PDF Export",
     ],
   },
 };

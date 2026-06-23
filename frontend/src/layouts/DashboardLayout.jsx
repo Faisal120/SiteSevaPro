@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Map } from "lucide-react";
 
 function NavItem({ to, icon: Icon, label, end, badge }) {
   return (
@@ -85,6 +86,11 @@ export default function DashboardLayout() {
       <NavGroup title="Planning">
         <NavItem to="/app/estimates" icon={Calculator} label="Estimator" />
         <NavItem to="/app/boq" icon={FileText} label="BOQ" />
+        <NavItem
+          to="/app/maps"
+          icon={Map}
+          label="Design Studio"
+        />
       </NavGroup>
       <NavGroup title="Account">
         <NavItem to="/app/notifications" icon={Bell} label="Notifications" />

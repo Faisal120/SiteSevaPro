@@ -14,6 +14,9 @@ import cloudinary.utils
 from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, EmailStr, Field
 from starlette.middleware.cors import CORSMiddleware
+from services.map_generator import (
+    generate_floor_plan
+)
 
 # Shared infra — single source of truth for db, auth, helpers
 from core import (
@@ -1334,6 +1337,237 @@ async def save_branding(
     return {
         "success": True
     }
+    
+class MapRequestIn(BaseModel):
+
+    site_id: str
+
+    plot_width: float
+
+    plot_length: float
+
+    facing: str
+
+    bedrooms: int
+
+    bathrooms: int
+
+    floors: int
+
+    type: str = "2D"
+
+@api.post("/maps/generate")
+async def generate_map(
+    body: MapRequestIn,
+    user: dict = Depends(
+        require_roles(
+            "CONTRACTOR"
+        )
+    )
+):
+
+    sub = await db.subscriptions.find_one(
+        {
+            "company_id":
+            user["company_id"]
+        }
+    )
+
+    plan = (
+        sub or {}
+    ).get(
+        "plan",
+        "FREE"
+    )
+
+    if plan == "FREE":
+
+        raise HTTPException(
+            403,
+            "Upgrade required"
+        )
+
+    if (
+        body.type == "3D"
+        and plan != "ENTERPRISE"
+    ):
+        raise HTTPException(
+            403,
+            "3D available only in Pro Plus"
+        )
+
+    site = await db.sites.find_one(
+        {
+            "id":
+            body.site_id
+        }
+    )
+
+    if not site:
+
+        raise HTTPException(
+            404,
+            "Site not found"
+        )
+
+    doc = {
+        "id": new_id(),
+
+        "company_id":
+        user["company_id"],
+
+        "site_id":
+        body.site_id,
+
+        "project_name":
+        site.get("name"),
+
+        "client_name":
+        site.get("client_name"),
+
+        **body.model_dump(),
+
+        "status":
+        "PENDING",
+
+        "created_at":
+        now_iso()
+    }
+
+    await db.map_requests.insert_one(
+        doc
+    )
+
+    return doc
+
+@api.post("/maps/generate-ai")
+async def generate_ai_map(
+    body: MapRequestIn,
+    user: dict = Depends(
+        require_roles(
+            "CONTRACTOR"
+        )
+    )
+):
+
+    sub = await db.subscriptions.find_one(
+        {
+            "company_id":
+            user["company_id"]
+        }
+    )
+
+    plan = (
+        sub or {}
+    ).get(
+        "plan",
+        "FREE"
+    )
+
+    if plan == "FREE":
+
+        raise HTTPException(
+            403,
+            "Upgrade required"
+        )
+
+    if (
+        body.type == "3D"
+        and plan != "ENTERPRISE"
+    ):
+        raise HTTPException(
+            403,
+            "3D available only in Pro Plus"
+        )
+
+    site = await db.sites.find_one(
+        {
+            "id":
+            body.site_id
+        }
+    )
+
+    company = await db.companies.find_one(
+        {
+            "id":
+            user["company_id"]
+        }
+    )
+
+    branding = company.get(
+        "branding",
+        {}
+    )
+
+    prompt = f"""
+Create a professional architectural
+{body.type} floor plan.
+
+Plot Size:
+{body.plot_width} x {body.plot_length} feet
+
+Facing:
+{body.facing}
+
+Floors:
+{body.floors}
+
+Bedrooms:
+{body.bedrooms}
+
+Bathrooms:
+{body.bathrooms}
+
+Black and white CAD style.
+
+Dimension labels included.
+
+Architectural presentation quality.
+"""
+
+    image_url = await generate_floor_plan(
+        prompt
+    )
+
+    doc = {
+        "id": new_id(),
+
+        "company_id":
+        user["company_id"],
+
+        "site_id":
+        body.site_id,
+
+        "client_name":
+        site.get(
+            "client_name"
+        ),
+
+        "project_name":
+        site.get(
+            "name"
+        ),
+
+        "map_type":
+        body.type,
+
+        "image_url":
+        image_url,
+
+        **body.model_dump(),
+
+        "status":
+        "COMPLETED",
+
+        "created_at":
+        now_iso()
+    }
+
+    await db.map_requests.insert_one(
+        doc
+    )
+
+    return doc
 
 # ---------- NOTIFICATIONS ----------
 @api.get("/notifications")
