@@ -4,6 +4,7 @@ from __future__ import annotations
 from asyncio import tasks
 import os
 import secrets
+import site
 import time
 from datetime import datetime, timedelta, timezone
 from typing import List, Literal, Optional
@@ -109,7 +110,7 @@ class SiteIn(BaseModel):
     status: Literal["PLANNING","ACTIVE","ON_HOLD","COMPLETED"] = "ACTIVE"
     progress: int = 0
     description: Optional[str] = None
-    supervisor_id: Optional[str] = None
+    supervisor_ids: List[str] = []
     client_id: Optional[str] = None
     cover_image: Optional[str] = None
     floors: int = 1
@@ -519,15 +520,20 @@ async def create_site(body: SiteIn, user: dict = Depends(require_roles("CONTRACT
             raise HTTPException(402, "Free plan allows only 1 site. Upgrade to Premium.")
     site_id = new_id()
     site_data = body.model_dump()
-
-    supervisor = None
     client = None
 
-    if body.supervisor_id:
-        supervisor = await db.users.find_one({
-            "id": body.supervisor_id,
-            "company_id": user["company_id"]
+    supervisors = []
+
+    for sup_id in body.supervisor_ids:
+
+        sup = await db.users.find_one({
+        "id": sup_id,
+        "company_id": user["company_id"],
+        "role": "SUPERVISOR"
         })
+
+    if sup:
+        supervisors.append(sup)
 
     if body.client_id:
         client = await db.users.find_one({
@@ -543,8 +549,12 @@ async def create_site(body: SiteIn, user: dict = Depends(require_roles("CONTRACT
 
         **site_data,
 
-        "supervisor_name":
-            supervisor.get("full_name") if supervisor else None,
+       "supervisor_ids": body.supervisor_ids,
+
+    "supervisor_names": [
+        s["full_name"]
+            for s in supervisors
+        ] if supervisors else None,
 
          "client_name":
             client.get("full_name") if client else None,
@@ -716,11 +726,9 @@ async def assign_supervisor(
         "$addToSet": {
             "supervisor_ids": body.user_id
             },
-        "$set": {
-            "supervisor_name": supervisor.get("full_name")
-            }
         }
     )
+    
 
     await db.users.update_one(
         {"id": body.user_id},

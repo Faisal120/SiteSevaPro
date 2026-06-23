@@ -35,7 +35,7 @@ export default function Dashboard() {
           setStats(s.data);
           setSites(st.data);
           setTeam(tm.data);
-          setStats(s.data); 
+          setStats(s.data);
           setSites(st.data);
           const photos = reports.data
             .flatMap(r =>
@@ -93,7 +93,7 @@ function ContractorDash({
   greeting,
   nav
 }) {
-  const COLORS = ["#171717", "#F97316", "#EAB308"];
+  const COLORS = ["#171717", "#F97316", "#272725"];
   return (
     <div className="space-y-6 ss-fade-in">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -369,7 +369,7 @@ function ClientDash({ user, sites, greeting, nav, stats }) {
         <p className="text-sm text-gray-500">{greeting},</p>
         <h1 className="font-display text-4xl font-extrabold tracking-tight">{user.full_name}</h1>
         <p className="text-sm text-gray-500 mt-1">Welcome to your project portal.</p>
-        
+
       </div>
       <div className="grid md:grid-cols-2 gap-5">
         {sites.map((s) => (

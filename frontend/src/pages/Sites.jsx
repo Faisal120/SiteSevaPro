@@ -113,7 +113,7 @@ export default function Sites() {
 function SiteForm({ onDone }) {
   const [f, setF] = React.useState({
     name: "", client_id: "",
-    supervisor_id: "", location: "", budget: 0,
+    supervisor_ids: [], location: "", budget: 0,
     floors: 1, has_boring: false, has_septic_tank: false,
     has_soak_pit: false, has_mumty: false,
     start_date: new Date().toISOString().slice(0, 10),
@@ -171,27 +171,71 @@ function SiteForm({ onDone }) {
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
             Supervisor
           </label>
+          <div>
 
-          <select
-            className="ss-input mt-1"
-            value={f.supervisor_id}
-            onChange={(e) =>
-              setF({
-                ...f,
-                supervisor_id: e.target.value
-              })
-            }
-          >
-            <option value="">Select Supervisor</option>
+            <label className="text-xs font-bold">
+              Supervisors
+            </label>
 
-            {team
-              .filter((u) => u.role === "SUPERVISOR")
-              .map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.full_name}
-                </option>
-              ))}
-          </select>
+            <div className="space-y-2 mt-2">
+
+              {
+                team
+                  .filter(
+                    u => u.role === "SUPERVISOR"
+                  )
+                  .map(
+                    sup => (
+
+                      <label
+                        key={sup.id}
+                        className="flex items-center gap-2"
+                      >
+
+                        <input
+                          type="checkbox"
+                          checked={
+                            f.supervisor_ids.includes(
+                              sup.id
+                            )
+                          }
+                          onChange={(e) => {
+
+                            if (e.target.checked) {
+
+                              setF({
+                                ...f,
+                                supervisor_ids: [
+                                  ...f.supervisor_ids,
+                                  sup.id
+                                ]
+                              })
+
+                            } else {
+
+                              setF({
+                                ...f,
+                                supervisor_ids:
+                                  f.supervisor_ids.filter(
+                                    id => id !== sup.id
+                                  )
+                              })
+
+                            }
+
+                          }}
+                        />
+
+                        {sup.full_name}
+
+                      </label>
+
+                    ))
+              }
+
+            </div>
+
+          </div>
         </div>
         <div>
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">

@@ -212,7 +212,11 @@ export default function SiteDetail() {
                     Supervisor
                   </p>
                   <h3 className="text-lg font-bold text-[#171717]">
-                    {site.supervisor_name || "Not Assigned"}
+                    {
+                      site.supervisor_names?.length
+                        ? site.supervisor_names.join(", ")
+                        : "Not Assigned"
+                    }
                   </h3>
                 </div>
 
@@ -358,6 +362,37 @@ export default function SiteDetail() {
                     >
                       Save Supervisor
                     </button>
+
+                    {
+                      site.supervisor_names?.length > 0 && (
+
+                        <div className="mt-4">
+
+                          <h4 className="font-semibold mb-2">
+                            Assigned Supervisors
+                          </h4>
+
+                          {
+                            site.supervisor_names.map(
+                              (name, index) => (
+                                <div
+                                  key={index}
+                                  className="
+border
+rounded-lg
+p-2
+mb-2
+"
+                                >
+                                  {name}
+                                </div>
+                              ))
+                          }
+
+                        </div>
+
+                      )
+                    }
 
                   </div>
 
