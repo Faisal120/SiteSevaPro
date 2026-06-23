@@ -98,6 +98,14 @@ export default function SiteDetail() {
         user_id: selectedSupervisor,
       });
 
+      const res = await api.get(
+        `/sites/${siteId}`
+      );
+
+      setSite(
+        res.data
+      );
+
       toast.success("Supervisor assigned");
     } catch (e) {
       toast.error("Assignment failed");
@@ -212,11 +220,7 @@ export default function SiteDetail() {
                     Supervisor
                   </p>
                   <h3 className="text-lg font-bold text-[#171717]">
-                    {
-                      site.supervisor_names?.length
-                        ? site.supervisor_names.join(", ")
-                        : "Not Assigned"
-                    }
+                    {site.supervisor_name || "Not Assigned"}
                   </h3>
                 </div>
 

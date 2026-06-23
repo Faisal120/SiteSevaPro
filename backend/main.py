@@ -532,8 +532,8 @@ async def create_site(body: SiteIn, user: dict = Depends(require_roles("CONTRACT
         "role": "SUPERVISOR"
         })
 
-    if sup:
-        supervisors.append(sup)
+        if sup:
+            supervisors.append(sup)
 
     if body.client_id:
         client = await db.users.find_one({
@@ -628,9 +628,12 @@ async def create_site(body: SiteIn, user: dict = Depends(require_roles("CONTRACT
             ("Handover", 1)
     ])
 
-    if supervisor:
+    for supervisor in supervisors:
+
         await db.users.update_one(
-            {"id": supervisor["id"]},
+            {
+                "id": supervisor["id"]
+            },
             {
                 "$addToSet": {
                     "site_ids": site_id
@@ -725,7 +728,36 @@ async def assign_supervisor(
      {
         "$addToSet": {
             "supervisor_ids": body.user_id
-            },
+            },          
+        }   
+    )
+    
+    updated_site = await db.sites.find_one(
+    {"id": site_id}
+    )
+
+    names = []
+
+    for sid in updated_site.get(
+        "supervisor_ids",
+        []
+    ):
+
+        sup = await db.users.find_one(
+            {"id": sid}
+        )
+
+        if sup:
+            names.append(
+                sup["full_name"]
+            )
+
+    await db.sites.update_one(
+        {"id": site_id},
+        {
+            "$set": {
+                "supervisor_names": names
+            }
         }
     )
     
