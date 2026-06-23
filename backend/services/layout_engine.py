@@ -3,93 +3,95 @@ def generate_layout(data):
     plot_width = float(data["plot_width"])
     plot_length = float(data["plot_length"])
 
-    bedrooms = int(data["bedrooms"])
-    bathrooms = int(data["bathrooms"])
+    scale = 15
 
-    scale = 12
-
-    plot_w = plot_width * scale
-    plot_l = plot_length * scale
+    W = plot_width * scale
+    H = plot_length * scale
 
     rooms = []
 
-    # Living Room
+    parking_w = W * 0.35
+
+    living_w = W * 0.45
+    living_h = H * 0.22
 
     rooms.append({
-        "name": "Living Room",
-        "x": 50,
-        "y": 250,
-        "w": plot_w * 0.45,
-        "h": plot_l * 0.22
-    })
 
-    # Dining
+        "name":"Living Room",
+
+        "x":40,
+
+        "y":80,
+
+        "w":living_w,
+
+        "h":living_h,
+
+        "furniture":"SOFA"
+    })
 
     rooms.append({
-        "name": "Dining",
-        "x": 50,
-        "y": 250 + (plot_l * 0.22),
-        "w": plot_w * 0.30,
-        "h": plot_l * 0.15
+        "name":"Dining",
+        "x":40,
+        "y":80 + living_h,
+        "w":living_w * 0.65,
+        "h":100
     })
-
-    # Kitchen
 
     rooms.append({
-        "name": "Kitchen",
-        "x": plot_w * 0.55,
-        "y": 250,
-        "w": plot_w * 0.22,
-        "h": plot_l * 0.18
+        "name":"Kitchen",
+        "x":40 + living_w,
+        "y":80,
+        "w":140,
+        "h":120
     })
-
-    # Staircase
 
     rooms.append({
-        "name": "Stair",
-        "x": plot_w * 0.80,
-        "y": 250,
-        "w": plot_w * 0.15,
-        "h": plot_l * 0.22
+        "name":"Stair",
+        "x":40 + living_w + 160,
+        "y":80,
+        "w":90,
+        "h":140
     })
 
-    current_y = 520
+    rooms.append({
+        "name":"Parking",
+        "x":W - parking_w,
+        "y":80,
+        "w":parking_w - 60,
+        "h":180
+    })
+
+    bedroom_y = 320
 
     for i in range(bedrooms):
 
         rooms.append({
+
             "name": f"Bedroom {i+1}",
-            "x": 50 + ((i % 2) * 320),
-            "y": current_y,
-            "w": 280,
-            "h": 180
+
+            "x": 40 + (i % 2) * 280,
+
+            "y": bedroom_y,
+
+            "w": 240,
+
+            "h": 180,
+
+            "furniture": "BED"
+
         })
 
-        if i % 2 == 1:
-            current_y += 210
+    bath_x = 620
 
-    bath_y = 520
-
-    for i in range(bathrooms):
+    for i in range(int(data["bathrooms"])):
 
         rooms.append({
-            "name": f"Bath {i+1}",
-            "x": 720,
-            "y": bath_y,
-            "w": 140,
-            "h": 100
+            "name":f"Bath {i+1}",
+            "x":bath_x,
+            "y":320 + i*120,
+            "w":120,
+            "h":90
         })
-
-        bath_y += 120
-
-    # Parking
-
-    rooms.append({
-        "name": "Parking",
-        "x": 920,
-        "y": 250,
-        "w": 220,
-        "h": 180
-    })
 
     return rooms
