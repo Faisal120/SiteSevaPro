@@ -46,7 +46,7 @@ export default function DesignStudio() {
 
             const { data } =
                 await api.post(
-                    "/maps/generate-ai",
+                    "/maps/generate",
                     form
                 );
 

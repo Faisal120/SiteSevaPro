@@ -1508,6 +1508,11 @@ async def generate_map(
     file_name = f"{doc['id']}.svg"
 
     file_path = f"uploads/maps/{file_name}"
+    
+    os.makedirs(
+    "uploads/maps",
+    exist_ok=True
+    )
 
     with open(file_path, "w") as f:
         f.write(svg)
