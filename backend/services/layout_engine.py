@@ -2,18 +2,20 @@ def generate_layout(data):
 
     plot_width = float(data["plot_width"])
     plot_length = float(data["plot_length"])
+    bedrooms = int(data["bedrooms"])
+    bathrooms = int(data["bathrooms"])
 
-    scale = 15
+    scale = 18
 
     W = plot_width * scale
     H = plot_length * scale
 
     rooms = []
 
-    parking_w = W * 0.35
+    parking_w = W * 0.28
 
     living_w = W * 0.45
-    living_h = H * 0.22
+    living_h = H * 0.18
 
     rooms.append({
 

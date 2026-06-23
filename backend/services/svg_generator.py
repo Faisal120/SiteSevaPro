@@ -44,126 +44,82 @@ def generate_floor_svg(data):
     bathrooms = data.get("bathrooms", 2)
 
     svg = f"""
-    <svg xmlns="http://www.w3.org/2000/svg"
-         width="1400"
-         height="1000">
+        <svg xmlns="http://www.w3.org/2000/svg"
+            width="1400"
+            height="1000">
 
-    <rect
-        x="0"
-        y="0"
-        width="1400"
-        height="1000"
-        fill="white"/>
+        <rect
+            x="0"
+            y="0"
+            width="1400"
+            height="1000"
+            fill="white"/>
 
-    <text
-        x="420"
-        y="40"
-        font-size="28"
-        font-weight="bold">
-        {company_name.replace("&", "&amp;")}
+        <text
+            x="420"
+            y="40"
+            font-size="28"
+            font-weight="bold">
+            {company_name.replace("&", "&amp;")}
+            </text>
+
+            <text
+            x="40"
+            y="210"
+            font-size="18">
+            Project : {project_name}
+            </text>
+
+            <text
+            x="40"
+            y="235"
+            font-size="18">
+            Client : {client_name}
+            </text>
+
+        <text
+            x="40"
+            y="80"
+            font-size="18">
+            Plot Size : {plot_width} x {plot_length} ft
         </text>
 
         <text
-        x="40"
-        y="210"
-        font-size="18">
-        Project : {project_name}
+            x="40"
+            y="110"
+            font-size="18">
+            Facing : {facing}
         </text>
 
         <text
-        x="40"
-        y="235"
-        font-size="18">
-        Client : {client_name}
+            x="40"
+            y="140"
+            font-size="18">
+            Bedrooms : {bedrooms}
         </text>
 
-    <text
-        x="40"
-        y="80"
-        font-size="18">
-        Plot Size : {plot_width} x {plot_length} ft
-    </text>
+        <text
+            x="40"
+            y="170"
+            font-size="18">
+            Bathrooms : {bathrooms}
+        </text>
 
-    <text
-        x="40"
-        y="110"
-        font-size="18">
-        Facing : {facing}
-    </text>
+        <rect
+            x="30"
+            y="220"
+            width="1200"
+            height="700"
+            fill="none"
+            stroke="black"
+            stroke-width="5"
+        />
 
-    <text
-        x="40"
-        y="140"
-        font-size="18">
-        Bedrooms : {bedrooms}
-    </text>
-
-    <text
-        x="40"
-        y="170"
-        font-size="18">
-        Bathrooms : {bathrooms}
-    </text>
-
-    <rect
-        x="30"
-        y="220"
-        width="1200"
-        height="700"
-        fill="none"
-        stroke="black"
-        stroke-width="5"
-    />
-
-    """
+        """
 
     for room in rooms:
         
-        if room.get("furniture") == "BED":
-
-            svg += bed(
-                room["x"] + 20,
-                room["y"] + 40
-            )
-
-        if room.get("furniture") == "SOFA":
-
-            svg += sofa(
-                room["x"] + 20,
-                room["y"] + 50
-            )
-            
-        svg += door(
-            room["x"] + room["w"] - 45,
-            room["y"] + room["h"] - 5
-        )
-        
-        svg += window(
-            room["x"] + 40,
-            room["y"]
-        )
-
-        svg += f"""
-        <rect
-            x="{room['x']}"
-            y="{room['y']}"
-            width="{room['w']}"
-            height="{room['h']}"
-            fill="#f8fafc"
-            stroke="black"
-            stroke-width="2"
-        />
-
-        <text
-            x="{room['x'] + 20}"
-            y="{room['y'] + 35}"
-            font-size="18"
-            font-weight="bold">
-            {room['name']}
-        </text>
-        """
-
-        svg += f"""
+        svg += """
 
         <line
             x1="1280"
@@ -194,5 +150,57 @@ def generate_floor_svg(data):
 
         </svg>
         """
+        
+    if room.get("furniture") == "BED":
 
-    return svg
+        svg += bed(
+            room["x"] + 20,
+            room["y"] + 40
+        )
+
+    if room.get("furniture") == "SOFA":
+
+        svg += sofa(
+                room["x"] + 20,
+                room["y"] + 50
+            )
+            
+        svg += door(
+            room["x"] + room["w"] - 45,
+            room["y"] + room["h"] - 5
+        )
+        
+        svg += window(
+            room["x"] + 40,
+            room["y"]
+        )
+
+        svg += f"""
+        <rect
+            x="{room['x']}"
+            y="{room['y']}"
+            width="{room['w']}"
+            height="{room['h']}"
+            fill="#ffffff"
+            stroke="black"
+            stroke-width="5"
+        />
+
+        <text
+            x="{room['x'] + 20}"
+            y="{room['y'] + 35}"
+            font-size="18"
+            font-weight="bold">
+            {room['name']}
+            <text
+            x="{room['x'] + 20}"
+            y="{room['y'] + 60}"
+            font-size="12">
+
+            {round(room['w']/15)} x {round(room['h']/15)} ft
+
+            </text>
+        </text>
+        """
+
+        return svg
