@@ -10,6 +10,7 @@ def door(x, y):
         fill="none"
     />
     """
+    
 
 
 def window(x, y, width=60):
