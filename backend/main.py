@@ -10,6 +10,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from typing import List, Literal, Optional
 
+
 import cloudinary
 import cloudinary.utils
 from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, UploadFile
@@ -1497,7 +1498,11 @@ async def generate_map(
     }
     
     plan = generate_plan(
-    body.model_dump()
+    plot_width=body.plot_width,
+    plot_length=body.plot_length,
+    bedrooms=body.bedrooms,
+    bathrooms=body.bathrooms,
+    facing=body.facing
     )
 
     await db.floor_plans.insert_one(

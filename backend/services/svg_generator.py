@@ -1,0 +1,226 @@
+from services.layout_engine import generate_layout
+from services.cad_renderer import (
+draw_wall,
+draw_door,
+draw_window
+)
+
+from services.furniture_symbols import (
+    bed,
+    sofa,
+    toilet,
+    basin,
+    car
+)
+from services.dimension_engine import (
+    horizontal_dimension,
+    vertical_dimension
+)
+from html import escape
+
+def generate_floor_svg(data):
+    
+    rooms = generate_layout(data)
+
+    company_name = escape(
+        str(data.get("company_name", ""))
+    )
+
+    project_name = escape(
+        str(data.get("project_name", ""))
+    )
+
+    client_name = escape(
+        str(data.get("client_name", ""))
+    )
+
+    plot_width = data.get("plot_width", 30)
+    plot_length = data.get("plot_length", 50)
+
+    svg = f"""
+    <svg xmlns="http://www.w3.org/2000/svg"
+        width="1400"
+        height="1000">
+
+        <rect
+            x="0"
+            y="0"
+            width="1400"
+            height="1000"
+            fill="white"/>
+
+        <text
+            x="520"
+            y="40"
+            font-size="28"
+            font-weight="bold">
+            {company_name}
+        </text>
+
+        <text
+            x="40"
+            y="80"
+            font-size="18">
+            Project : {project_name}
+        </text>
+
+        <text
+            x="40"
+            y="110"
+            font-size="18">
+            Client : {client_name}
+        </text>
+
+        <text
+            x="40"
+            y="140"
+            font-size="18">
+            Plot Size : {plot_width} x {plot_length} ft
+        </text>
+
+        <rect
+            x="30"
+            y="180"
+            width="1200"
+            height="720"
+            fill="none"
+            stroke="black"
+            stroke-width="5"
+        />
+    """
+
+    for room in rooms:
+        
+        if room["name"].startswith("Bedroom"):
+
+            svg += bed(
+                room["x"] + 20,
+                room["y"] + 40
+            )
+
+        if room["name"] == "Living Room":
+
+            svg += sofa(
+                room["x"] + 20,
+                room["y"] + 60
+            )
+
+        if room["name"].startswith("Bath"):
+
+            svg += toilet(
+                room["x"] + 40,
+                room["y"] + 50
+            )
+
+            svg += basin(
+                room["x"] + 90,
+                room["y"] + 40
+            )
+
+        if room["name"] == "Parking":
+
+            svg += car(
+                room["x"] + 20,
+                room["y"] + 20
+            )
+            
+        if room["name"] == "Stair":
+
+            svg += stairs(
+                room["x"] + 10,
+                room["y"] + 10
+            )
+    
+        if room["name"] == "Kitchen":
+
+            svg += f"""
+            <rect
+                x="{room['x']+10}"
+                y="{room['y']+10}"
+                width="{room['w']-20}"
+                height="20"
+                fill="none"
+                stroke="black"
+            />
+            """    
+
+            svg += draw_wall(
+                room["x"],
+                room["y"],
+                room["w"],
+                room["h"]
+            )
+
+            svg += draw_door(
+                room["x"] + room["w"] - 40,
+                room["y"] + room["h"]
+            )
+
+            svg += draw_window(
+                room["x"] + 40,
+                room["y"]
+            )
+
+            svg += f"""
+            <text
+                x="{room['x'] + 10}"
+                y="{room['y'] + 25}"
+                font-size="16"
+                font-weight="bold">
+                {room['name']}
+            </text>
+
+            <text
+                x="{room['x'] + 10}"
+                y="{room['y'] + 45}"
+                font-size="12">
+                {round(room['w']/15,1)} x {round(room['h']/15,1)} ft
+            </text>
+            """
+        
+        svg += horizontal_dimension(
+            100,
+            80,
+            900,
+            f"{plot_width} FEET"
+        )
+
+        svg += vertical_dimension(
+            60,
+            120,
+            700,
+            f"{plot_length} FEET"
+        )
+        
+        svg += """
+        <line
+                        x1="1280"
+                        y1="250"
+                        x2="1280"
+                        y2="180"
+                        stroke="red"
+                        stroke-width="4"/>
+                
+                        <polygon
+                        points="1280,160 1270,180 1290,180"
+                        fill="red"/>
+                
+                        <text
+                        x="1270"
+                        y="150"
+                        font-size="18"
+                        font-weight="bold">
+                        N
+                    </text>
+                
+                    <text
+                    x="40"
+                    y="960"
+                    font-size="14">
+                    Generated by SiteSeva Pro
+                </text>
+                
+            </svg>
+            """
+
+        return svg

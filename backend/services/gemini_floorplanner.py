@@ -1,6 +1,7 @@
 import os
 import json
 import google.generativeai as genai
+from services.gemini_floorplanner import generate_plan
 
 genai.configure(
     api_key=os.getenv("AQ.Ab8RN6Lqapl-cqL7oYNzpvwLIXuO2EG5hLUG1VEPhNaHmMAZ-g")
