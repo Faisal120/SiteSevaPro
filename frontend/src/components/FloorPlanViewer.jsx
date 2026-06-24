@@ -4,7 +4,7 @@ import {
     Window,
     Bed,
     Sofa
-} from "./CADSymbols";
+} from "./CADsymbols";
 
 export default function FloorPlanViewer({ layout }) {
 
