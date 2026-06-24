@@ -1500,12 +1500,13 @@ async def generate_map(
     plan = generate_plan(
     body.model_dump()
     )
-    
+
     await db.floor_plans.insert_one(
         {
             "id": doc["id"],
             "company_id": user["company_id"],
             "site_id": body.site_id,
+            "project_name": site.get("name"),
             **plan,
             "created_at": now_iso()
         }
@@ -1563,16 +1564,30 @@ async def generate_map(
     }
     
 @api.get("/plans/{plan_id}")
-async def get_plan(plan_id:str):
+async def get_plan(
+    plan_id: str,
+    user: dict = Depends(
+        require_roles("CONTRACTOR")
+    )
+):
 
-    return await db.floor_plans.find_one(
+    plan = await db.floor_plans.find_one(
         {
-            "id":plan_id
+            "id": plan_id,
+            "company_id": user["company_id"]
         },
         {
-            "_id":0
+            "_id": 0
         }
     )
+
+    if not plan:
+        raise HTTPException(
+            404,
+            "Plan not found"
+        )
+
+    return plan
 
 # ---------- NOTIFICATIONS ----------
 @api.get("/notifications")
