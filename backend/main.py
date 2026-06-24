@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, Upl
 from pydantic import BaseModel, EmailStr, Field
 from starlette.middleware.cors import CORSMiddleware
 from services.svg_generator import generate_floor_svg
+from services.plan_generator import generate_plan
 
 # Shared infra — single source of truth for db, auth, helpers
 from core import (
@@ -1495,6 +1496,20 @@ async def generate_map(
             ""
         )
     }
+    
+    plan = generate_plan(
+    body.model_dump()
+    )
+    
+    await db.floor_plans.insert_one(
+        {
+            "id": doc["id"],
+            "company_id": user["company_id"],
+            "site_id": body.site_id,
+            **plan,
+            "created_at": now_iso()
+        }
+    )
 
     svg = generate_floor_svg(
         svg_data
@@ -1546,6 +1561,18 @@ async def generate_map(
         "status": doc["status"],
         "project_name": doc["project_name"]
     }
+    
+@api.get("/plans/{plan_id}")
+async def get_plan(plan_id:str):
+
+    return await db.floor_plans.find_one(
+        {
+            "id":plan_id
+        },
+        {
+            "_id":0
+        }
+    )
 
 # ---------- NOTIFICATIONS ----------
 @api.get("/notifications")
