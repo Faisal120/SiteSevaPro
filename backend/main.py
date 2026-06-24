@@ -1589,6 +1589,26 @@ async def get_plan(
 
     return plan
 
+@api.get("/plans")
+async def get_all_plans(
+    user: dict = Depends(
+        require_roles("CONTRACTOR")
+    )
+):
+
+    return await db.floor_plans.find(
+        {
+            "company_id":
+            user["company_id"]
+        },
+        {
+            "_id": 0
+        }
+    ).sort(
+        "created_at",
+        -1
+    ).to_list(100)
+
 # ---------- NOTIFICATIONS ----------
 @api.get("/notifications")
 async def list_notifications(user: dict = Depends(get_current_user)):

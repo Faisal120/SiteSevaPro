@@ -1,34 +1,52 @@
 import React from "react";
 
-export default function FloorPlanViewer({plan}) {
+export default function FloorPlanViewer({ plan }) {
+
+  if (!plan) return null;
+
+  const scale = 20;
 
   return (
-
     <div
-      style={{
-        position:"relative",
-        width:"1000px",
-        height:"700px",
-        border:"2px solid black"
-      }}
+      className="bg-white border rounded-xl p-4 overflow-auto"
     >
+      <div
+        style={{
+          position: "relative",
+          width: plan.plot_width * scale,
+          height: plan.plot_length * scale,
+          border: "4px solid black",
+          background: "#fff"
+        }}
+      >
+        {plan.rooms.map((room, index) => (
 
-      {plan.rooms.map(room=>(
-        <div
-          key={room.name}
-          style={{
-            position:"absolute",
-            left:room.x*20,
-            top:room.y*20,
-            width:room.width*20,
-            height:room.height*20,
-            border:"2px solid black"
-          }}
-        >
-          {room.name}
-        </div>
-      ))}
+          <div
+            key={index}
+            style={{
+              position: "absolute",
+              left: room.x * scale,
+              top: room.y * scale,
+              width: room.width * scale,
+              height: room.height * scale,
+              border: "2px solid black",
+              background: "#f8fafc",
+              padding: "4px",
+              fontSize: "12px",
+              overflow: "hidden"
+            }}
+          >
+            <strong>
+              {room.name}
+            </strong>
 
+            <br />
+
+            {room.width} × {room.height} ft
+          </div>
+
+        ))}
+      </div>
     </div>
   );
 }

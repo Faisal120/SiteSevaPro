@@ -2,16 +2,15 @@ import React from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+import FloorPlanViewer from "./FloorPlanViewer";
 
-export default function DesignStudio() {
+export default async function DesignStudio() {
 
     const { user } = useAuth();
-
     const [sites, setSites] = React.useState([]);
     const [loading, setLoading] = React.useState(false);
-
-    const [preview, setPreview] =
-        React.useState(null);
+    const [preview, setPreview] = React.useState(null);
+    const [plan, setPlan] = React.useState(null);
 
     const [form, setForm] = React.useState({
         site_id: "",
@@ -69,6 +68,15 @@ export default function DesignStudio() {
 
         }
     }
+
+    const planRes =
+        await api.get(
+            `/plans/${data.id}`
+        );
+
+    setPlan(
+        planRes.data
+    );
 
     return (
         <div className="space-y-6">
@@ -319,6 +327,14 @@ rounded-lg
 
                     </div>
 
+                )
+            }
+
+            {
+                plan && (
+                    <FloorPlanViewer
+                        plan={plan}
+                    />
                 )
             }
 
