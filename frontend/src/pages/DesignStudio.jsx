@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import FloorPlanViewer from "./FloorPlanViewer";
 
-export default async function DesignStudio() {
+export default function DesignStudio() {
 
     const { user } = useAuth();
     const [sites, setSites] = React.useState([]);
@@ -49,11 +49,20 @@ export default async function DesignStudio() {
                     form
                 );
 
+            setPreview(data);
+
+            const planRes =
+                await api.get(
+                    `/plans/${data.id}`
+                );
+
+            setPlan(
+                planRes.data
+            );
+
             toast.success(
                 "Map Request Created"
             );
-
-            setPreview(data);
 
         } catch (e) {
 
@@ -69,14 +78,7 @@ export default async function DesignStudio() {
         }
     }
 
-    const planRes =
-        await api.get(
-            `/plans/${data.id}`
-        );
 
-    setPlan(
-        planRes.data
-    );
 
     return (
         <div className="space-y-6">
