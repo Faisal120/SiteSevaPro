@@ -15,8 +15,6 @@ import cloudinary.utils
 from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, EmailStr, Field
 from starlette.middleware.cors import CORSMiddleware
-from services.svg_generator import generate_floor_svg
-from services.plan_generator import generate_plan
 from services.gemini_floorplanner import (generate_floor_plan)
 
 # Shared infra — single source of truth for db, auth, helpers
