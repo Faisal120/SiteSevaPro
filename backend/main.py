@@ -15,8 +15,10 @@ import cloudinary.utils
 from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, EmailStr, Field
 from starlette.middleware.cors import CORSMiddleware
+from backend.services.gemini_floorplanner import generate_floor_plan
 from services.svg_generator import generate_floor_svg
 from services.plan_generator import generate_plan
+from services.gemini_floorplanner import (generate_floor_plan)
 
 # Shared infra — single source of truth for db, auth, helpers
 from core import (
@@ -1512,9 +1514,13 @@ async def generate_map(
         }
     )
 
-    svg = generate_floor_svg(
-        svg_data
+       
+
+    layout = generate_floor_plan(
+        body.model_dump()
     )
+    
+    doc["layout"] = layout
     
     print("SITE =", site)
     print("BRANDING =", branding)

@@ -2,7 +2,7 @@ import React from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
-import FloorPlanViewer from "./FloorPlanViewer";
+import FloorPlanViewer from "../components/FloorPlanViewer";
 
 export default function DesignStudio() {
 
@@ -11,6 +11,7 @@ export default function DesignStudio() {
     const [loading, setLoading] = React.useState(false);
     const [preview, setPreview] = React.useState(null);
     const [plan, setPlan] = React.useState(null);
+    const [layout, setLayout] = React.useState(null);
 
     const [form, setForm] = React.useState({
         site_id: "",
@@ -49,7 +50,9 @@ export default function DesignStudio() {
                     form
                 );
 
-            setPreview(data);
+            setLayout(
+                data.layout
+            );
 
             const planRes =
                 await api.get(
@@ -283,60 +286,19 @@ export default function DesignStudio() {
                         : "Generate Plan"
                 }
             </button>
-
-
             {
-                preview && (
+                layout && (
+                    <div className="ss-card p-6">
 
-                    <div className="
-ss-card
-p-6
-space-y-4
-">
-
-                        <h3 className="
-font-bold
-text-xl
-">
-                            Generated Plan
+                        <h3 className="font-bold text-xl mb-4">
+                            Generated Floor Plan
                         </h3>
 
-                        <img
-                            src={preview.image_url}
-                            alt="Floor Plan"
-                            className="
-w-full
-rounded-lg
-border
-"
+                        <FloorPlanViewer
+                            layout={layout}
                         />
 
-                        <a
-                            href={preview.image_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="
-inline-block
-bg-green-600
-text-white
-px-4
-py-2
-rounded-lg
-"
-                        >
-                            Download Image
-                        </a>
-
                     </div>
-
-                )
-            }
-
-            {
-                plan && (
-                    <FloorPlanViewer
-                        plan={plan}
-                    />
                 )
             }
 
