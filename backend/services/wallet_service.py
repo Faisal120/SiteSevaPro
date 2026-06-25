@@ -1,6 +1,5 @@
 from bson import ObjectId
-from database import db
-from utils import new_id, now_iso
+from core import db, now_iso, new_id
 
 
 async def create_wallet(company_id: str, credits: int = 0):
