@@ -17,7 +17,6 @@ from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, Upl
 from pydantic import BaseModel, EmailStr, Field
 from starlette.middleware.cors import CORSMiddleware
 from backend.services.gemini_floorplanner import generate_floor_plan
-from services.svg_generator import *
 
 # Shared infra — single source of truth for db, auth, helpers
 from core import (
