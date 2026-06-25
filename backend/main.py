@@ -16,7 +16,8 @@ import cloudinary.utils
 from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, EmailStr, Field
 from starlette.middleware.cors import CORSMiddleware
-from services.gemini_floorplanner import (generate_floor_plan)
+from backend.services.gemini_floorplanner import generate_floor_plan
+from services.svg_generator import *
 
 # Shared infra — single source of truth for db, auth, helpers
 from core import (
@@ -1357,17 +1358,6 @@ class MapRequestIn(BaseModel):
 
     type: str = "2D"
     
-from fastapi.responses import FileResponse
-@api.get(
-    "/maps/files/{filename}"
-)
-async def map_file(
-    filename: str
-):
-
-    return FileResponse(
-        f"uploads/maps/{filename}"
-    )
 
 @api.get("/maps")
 async def get_maps(
@@ -1468,37 +1458,8 @@ async def generate_map(
     await db.map_requests.insert_one(
         doc
     )
-
-    branding = await db.companies.find_one(
-        {
-            "id": user.get("company_id")
-        }
-    ) or {}
-
-    svg_data = {
-        **body.model_dump(),
-
-        "company_name":
-        branding.get(
-            "name",
-            "SiteSeva Pro"
-        ),
-
-        "client_name":
-        site.get(
-            "client_name",
-            ""
-        ),
-
-        "project_name":
-        site.get(
-            "name",
-            ""
-        )
-    }
     
-    plan = generate_floor_plan(
-            {
+    plan = generate_floor_plan({
         "plot_width": body.plot_width,
         "plot_length": body.plot_length,
         "bedrooms": body.bedrooms,
@@ -1506,73 +1467,16 @@ async def generate_map(
         "floors": body.floors,
         "facing": body.facing,
         "type": body.type
-        }
-    )
+    })
 
-    await db.floor_plans.insert_one(
-        {
-            "id": doc["id"],
-            "company_id": user["company_id"],
-            "site_id": body.site_id,
-            "project_name": site.get("name"),
-            **plan,
-            "created_at": now_iso()
-        }
-    )
+    doc["layout"] = plan
 
-       
-
-    layout = generate_floor_plan(
-        body.model_dump()
-    )
-    
-    doc["layout"] = layout
-    
-    print("SITE =", site)
-    print("BRANDING =", branding)
-    print("SVG DATA =", svg_data)
-
-    file_name = f"{doc['id']}.svg"
-
-    file_path = f"uploads/maps/{file_name}"
-    
-    os.makedirs(
-    "uploads/maps",
-    exist_ok=True
-    )
-
-    with open(file_path, "w") as f:
-        f.write(svg)
-
-    BACKEND_URL = os.getenv(
-        "APP_URL",
-        "https://sitesevapro-production.up.railway.app"
-    )
-
-    image_url = (
-        f"{BACKEND_URL}/api/maps/files/{file_name}"
-    )
-
-    await db.map_requests.update_one(
-        {"id": doc["id"]},
-        {
-            "$set": {
-                "image_url": image_url,
-                "status": "COMPLETED"
-            }
-        }
-    )
-
-    doc["image_url"] = image_url
-    doc["status"] = "COMPLETED"
-
-    doc.pop("_id", None)
+    await db.map_requests.insert_one(doc)
 
     return {
-        "id": doc["id"],
-        "image_url": doc["image_url"],
-        "status": doc["status"],
-        "project_name": doc["project_name"]
+        "success": True,
+        "layout": plan,
+        "request_id": doc["id"]
     }
     
 @api.get("/plans/{plan_id}")
@@ -1738,7 +1642,7 @@ app.add_middleware(
 @app.on_event("startup")
 async def on_start():
     try:
-        await seed()
+        pass
     except Exception:
         logger.exception("Seed failed")
 
