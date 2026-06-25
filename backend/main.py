@@ -1497,12 +1497,14 @@ async def generate_map(
         )
     }
     
-    plan = generate_plan(
-    plot_width=body.plot_width,
-    plot_length=body.plot_length,
-    bedrooms=body.bedrooms,
-    bathrooms=body.bathrooms,
-    facing=body.facing
+    plan = generate_floor_plan(
+        {
+            "plot_width": body.plot_width,
+            "plot_length": body.plot_length,
+            "bedrooms": body.bedrooms,
+            "bathrooms": body.bathrooms,
+            "facing": body.facing,
+        }
     )
 
     await db.floor_plans.insert_one(
