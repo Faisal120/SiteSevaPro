@@ -1465,7 +1465,11 @@ async def generate_map(
 
     await db.floor_plans.insert_one(floor_plan)
 
-    return floor_plan
+    return {
+    "success": True,
+    "plan_id": floor_plan["id"],
+    "layout": floor_plan["layout"]
+    }
     
 @api.get("/plans/{plan_id}")
 async def get_plan(
