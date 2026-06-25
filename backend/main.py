@@ -1430,34 +1430,6 @@ async def generate_map(
             "Site not found"
         )
 
-    doc = {
-        "id": new_id(),
-
-        "company_id":
-        user["company_id"],
-
-        "site_id":
-        body.site_id,
-
-        "project_name":
-        site.get("name"),
-
-        "client_name":
-        site.get("client_name"),
-
-        **body.model_dump(),
-
-        "status":
-        "PENDING",
-
-        "created_at":
-        now_iso()
-    }
-
-    await db.map_requests.insert_one(
-        doc
-    )
-    
     plan = generate_floor_plan({
         "plot_width": body.plot_width,
         "plot_length": body.plot_length,
@@ -1468,15 +1440,32 @@ async def generate_map(
         "type": body.type
     })
 
-    doc["layout"] = plan
-
-    await db.map_requests.insert_one(doc)
-
-    return {
-        "success": True,
-        "layout": plan,
-        "request_id": doc["id"]
+    request_doc = {
+        "id": new_id(),
+        "company_id": user["company_id"],
+        "site_id": body.site_id,
+        "status": "COMPLETED",
+        "created_at": now_iso()
     }
+
+    await db.map_requests.insert_one(request_doc)
+
+    floor_plan = {
+        "id": new_id(),
+        "company_id": user["company_id"],
+        "site_id": body.site_id,
+        "project_name": site.get("name"),
+        "client_name": site.get("client_name"),
+        "plot_width": body.plot_width,
+        "plot_length": body.plot_length,
+        "floors": body.floors,
+        "layout": plan,
+        "created_at": now_iso()
+    }
+
+    await db.floor_plans.insert_one(floor_plan)
+
+    return floor_plan
     
 @api.get("/plans/{plan_id}")
 async def get_plan(
