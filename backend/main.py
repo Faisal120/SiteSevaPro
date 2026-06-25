@@ -17,6 +17,11 @@ from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, Upl
 from pydantic import BaseModel, EmailStr, Field
 from starlette.middleware.cors import CORSMiddleware
 from services.gemini_floorplanner import generate_floor_plan
+from services.openai_floorplanner import (
+    generate_floorplan_image
+)
+
+from fastapi.responses import Response
 
 # Shared infra — single source of truth for db, auth, helpers
 from core import (
@@ -1392,6 +1397,30 @@ async def get_maps(
         -1
     ).to_list(500)
 
+@api.get("/test-openai")
+async def test_openai():
+
+    image = generate_floorplan_image({
+
+        "plot_width":30,
+
+        "plot_length":50,
+
+        "bedrooms":3,
+
+        "bathrooms":2,
+
+        "floors":1,
+
+        "facing":"East"
+
+    })
+
+    return Response(
+        content=image,
+        media_type="image/png"
+    )
+    
 @api.post("/maps/generate")
 async def generate_map(
     body: MapRequestIn,

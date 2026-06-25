@@ -421,9 +421,14 @@ export default function DesignStudio() {
 
                         </h2>
 
-                        <FloorPlanViewer
-                            layout={layout}
+                        <img
+                            src={data.image_url}
+                            className="w-full rounded-lg border"
                         />
+
+                        <a href={data.image_url} download>
+                            Download PNG
+                        </a>
 
                     </div>
 
