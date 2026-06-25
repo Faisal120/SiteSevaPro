@@ -1498,12 +1498,14 @@ async def generate_map(
     }
     
     plan = generate_floor_plan(
-        {
-            "plot_width": body.plot_width,
-            "plot_length": body.plot_length,
-            "bedrooms": body.bedrooms,
-            "bathrooms": body.bathrooms,
-            "facing": body.facing,
+            {
+        "plot_width": body.plot_width,
+        "plot_length": body.plot_length,
+        "bedrooms": body.bedrooms,
+        "bathrooms": body.bathrooms,
+        "floors": body.floors,
+        "facing": body.facing,
+        "type": body.type
         }
     )
 
