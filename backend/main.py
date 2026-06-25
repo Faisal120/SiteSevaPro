@@ -39,11 +39,9 @@ from core import (
 )
 
 from services.wallet_service import (
-    ensure_wallet,
-    has_credits,
-    deduct_credits,
     create_wallet,
     get_wallet,
+    deduct_credit,
     add_credit,
     wallet_history
 )
@@ -371,7 +369,10 @@ async def approve_application(app_id: str, _: dict = Depends(require_roles("SUPE
         "expires_at": (datetime.now(timezone.utc) + timedelta(days=365)).isoformat(),
     }
     await db.subscriptions.insert_one(dict(sub))
-    await create_wallet(company_id, 20)
+    await create_wallet(
+    company_id,
+    0
+    )
     await db.applications.update_one({"id": app_id}, {"$set": {"status": "APPROVED", "approved_at": now_iso(), "user_id": user_id}})
     await db.notifications.insert_one({
         "id": new_id(), "user_id": user_id, "company_id": company_id,
@@ -1420,15 +1421,13 @@ async def generate_map(
             "3D available only in Pro Plus"
         )
 
-    wallet = await ensure_wallet(
-        user["company_id"],
-        current_plan
+    
+
+    wallet = await get_wallet(
+    user["company_id"]
     )
 
-    allowed = await has_credits(
-        user["company_id"],
-        MAP_GENERATION_COST
-    )
+    allowed = wallet["credits"] >= MAP_GENERATION_COST
 
     if not allowed:
 
@@ -1474,15 +1473,17 @@ async def generate_map(
 
     await db.map_requests.insert_one({
 
-        "id": request_id,
+    "id": request_id,
 
-        "company_id": user["company_id"],
+    "company_id": user["company_id"],
 
-        "site_id": body.site_id,
+    "site_id": body.site_id,
 
-        "status": "COMPLETED",
+    "status": "COMPLETED",
 
-        "created_at": now_iso()
+    "layout": layout,
+
+    "created_at": now_iso()
 
     })
 
@@ -1512,7 +1513,7 @@ async def generate_map(
 
     })
 
-    await deduct_credits(
+    await deduct_credit(
 
         user["company_id"],
 
@@ -1526,7 +1527,6 @@ async def generate_map(
         user["company_id"]
     )
 
-    wallet.pop("_id", None)
 
     return {
 
@@ -1597,8 +1597,6 @@ async def get_wallet_api(
     wallet = await get_wallet(
         user["company_id"]
     )
-
-    wallet.pop("_id", None)
 
     return wallet
 
