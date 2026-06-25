@@ -7,11 +7,17 @@ import FloorPlanViewer from "../components/FloorPlanViewer";
 export default function DesignStudio() {
 
     const { user } = useAuth();
+
     const [sites, setSites] = React.useState([]);
+    const [wallet, setWallet] = React.useState({
+        credits: 0
+    });
+
     const [loading, setLoading] = React.useState(false);
-    const [preview, setPreview] = React.useState(null);
-    const [plan, setPlan] = React.useState(null);
+
     const [layout, setLayout] = React.useState(null);
+
+    const [plan, setPlan] = React.useState(null);
 
     const [form, setForm] = React.useState({
         site_id: "",
@@ -25,18 +31,47 @@ export default function DesignStudio() {
     });
 
     React.useEffect(() => {
-        api.get("/sites")
-            .then(r => setSites(r.data || []));
+
+        async function load() {
+
+            try {
+
+                const siteRes = await api.get("/sites");
+                setSites(siteRes.data || []);
+
+                try {
+
+                    const walletRes = await api.get("/wallet");
+                    setWallet(walletRes.data);
+
+                } catch {
+
+                    setWallet({
+                        credits: 0
+                    });
+
+                }
+
+            } catch {
+
+                toast.error("Unable to load data");
+
+            }
+
+        }
+
+        load();
+
     }, []);
 
     async function generateMap() {
 
-        if (
-            user?.plan === "FREE"
-        ) {
+        if (user?.plan === "FREE") {
+
             toast.error(
-                "Upgrade to Pro to use Design Studio"
+                "Upgrade to Pro to use AI Design Studio"
             );
+
             return;
         }
 
@@ -44,80 +79,106 @@ export default function DesignStudio() {
 
         try {
 
-            const { data } =
-                await api.post(
-                    "/maps/generate",
-                    form
-                );
+            const { data } = await api.post(
+                "/maps/generate",
+                form
+            );
 
             setLayout(
                 data.layout
             );
 
-            const planRes =
-                await api.get(
-                    `/plans/${data.id}`
+            if (data.plan_id) {
+
+                const planRes =
+                    await api.get(
+                        `/plans/${data.plan_id}`
+                    );
+
+                setPlan(
+                    planRes.data
                 );
 
-            setPlan(
-                planRes.data
-            );
+            }
+
+            try {
+
+                const walletRes =
+                    await api.get("/wallet");
+
+                setWallet(
+                    walletRes.data
+                );
+
+            } catch { }
 
             toast.success(
-                "Map Request Created"
+                "AI Floor Plan Generated Successfully"
             );
 
-        } catch (e) {
+        }
+
+        catch (e) {
+
+            if (
+                e?.response?.status === 402
+            ) {
+
+                toast.error(
+                    "Insufficient AI Credits"
+                );
+
+                return;
+
+            }
 
             toast.error(
+
                 e?.response?.data?.detail ||
-                "Failed"
+
+                "Failed to generate plan"
+
             );
 
-        } finally {
+        }
+
+        finally {
 
             setLoading(false);
 
         }
+
     }
 
-
-
     return (
+
         <div className="space-y-6">
 
             <div className="ss-card p-6 bg-orange-50 border border-orange-200">
 
-                <h2 className="font-bold text-xl">
+                <h2 className="font-bold text-2xl">
                     AI Design Studio
                 </h2>
 
                 <p className="text-gray-600 mt-2">
-                    Generate professional construction drawings.
+
+                    Generate professional AI Floor Plans.
+
                 </p>
 
-                <div className="grid md:grid-cols-3 gap-3 mt-4">
+                <div className="mt-4 inline-flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow">
 
-                    <div className="bg-white p-3 rounded-lg">
-                        <b>Pro Plan</b>
-                        <p className="text-sm">
-                            2D Floor Plans
-                        </p>
-                    </div>
+                    <span className="font-semibold">
 
-                    <div className="bg-white p-3 rounded-lg">
-                        <b>Pro Plus</b>
-                        <p className="text-sm">
-                            2D + 3D Elevation
-                        </p>
-                    </div>
+                        AI Credits
 
-                    <div className="bg-white p-3 rounded-lg">
-                        <b>Branding Included</b>
-                        <p className="text-sm">
-                            Client & Company Details
-                        </p>
-                    </div>
+                    </span>
+
+                    <span className="text-orange-600 font-bold text-xl">
+
+                        {wallet?.credits ?? 0}
+
+                    </span>
 
                 </div>
 
@@ -126,9 +187,8 @@ export default function DesignStudio() {
             <div className="ss-card p-6 grid md:grid-cols-2 gap-4">
 
                 <div>
-                    <label className="text-sm font-medium">
-                        Select Site
-                    </label>
+
+                    <label>Select Site</label>
 
                     <select
                         className="ss-input"
@@ -140,30 +200,40 @@ export default function DesignStudio() {
                             })
                         }
                     >
+
                         <option value="">
                             Select Site
                         </option>
 
-                        {sites.map(site => (
-                            <option
-                                key={site.id}
-                                value={site.id}
-                            >
-                                {site.name}
-                            </option>
-                        ))}
+                        {
+
+                            sites.map(site => (
+
+                                <option
+                                    key={site.id}
+                                    value={site.id}
+                                >
+
+                                    {site.name}
+
+                                </option>
+
+                            ))
+
+                        }
 
                     </select>
+
                 </div>
 
                 <div>
-                    <label className="text-sm font-medium">
+
+                    <label>
                         Plot Width (Feet)
                     </label>
 
                     <input
-                        className="ss-input mt-1"
-                        placeholder="Plot Width (ft)"
+                        className="ss-input"
                         value={form.plot_width}
                         onChange={(e) =>
                             setForm({
@@ -172,15 +242,17 @@ export default function DesignStudio() {
                             })
                         }
                     />
+
                 </div>
 
                 <div>
-                    <label className="text-sm font-medium">
+
+                    <label>
                         Plot Length (Feet)
                     </label>
+
                     <input
-                        className="ss-input mt-1"
-                        placeholder="Plot Length (ft)"
+                        className="ss-input"
                         value={form.plot_length}
                         onChange={(e) =>
                             setForm({
@@ -189,119 +261,178 @@ export default function DesignStudio() {
                             })
                         }
                     />
+
                 </div>
 
-                <select
-                    className="ss-input"
-                    value={form.facing}
-                    onChange={(e) =>
-                        setForm({
-                            ...form,
-                            facing: e.target.value
-                        })
-                    }
-                >
-                    <option>East</option>
-                    <option>West</option>
-                    <option>North</option>
-                    <option>South</option>
-                </select>
+                <div>
 
-                <input
-                    type="number"
-                    className="ss-input"
-                    value={form.bedrooms}
-                    onChange={(e) =>
-                        setForm({
-                            ...form,
-                            bedrooms: Number(e.target.value)
-                        })
-                    }
-                />
+                    <label>
+                        Facing
+                    </label>
 
-                <input
-                    type="number"
-                    className="ss-input"
-                    value={form.bathrooms}
-                    onChange={(e) =>
-                        setForm({
-                            ...form,
-                            bathrooms: Number(e.target.value)
-                        })
-                    }
-                />
+                    <select
+                        className="ss-input"
+                        value={form.facing}
+                        onChange={(e) =>
+                            setForm({
+                                ...form,
+                                facing: e.target.value
+                            })
+                        }
+                    >
 
-                <input
-                    type="number"
-                    className="ss-input"
-                    value={form.floors}
-                    onChange={(e) =>
-                        setForm({
-                            ...form,
-                            floors: Number(e.target.value)
-                        })
-                    }
-                />
+                        <option>East</option>
+                        <option>West</option>
+                        <option>North</option>
+                        <option>South</option>
 
-                <select
-                    className="ss-input"
-                    value={form.type}
-                    onChange={(e) =>
-                        setForm({
-                            ...form,
-                            type: e.target.value
-                        })
-                    }
-                >
-                    <option value="2D">
-                        2D Plan
-                    </option>
+                    </select>
 
-                    {user?.plan ===
-                        "ENTERPRISE" && (
-                            <option value="3D">
-                                3D Elevation
-                            </option>
-                        )}
+                </div>
 
-                </select>
+                <div>
+
+                    <label>
+                        Bedrooms
+                    </label>
+
+                    <input
+                        type="number"
+                        className="ss-input"
+                        value={form.bedrooms}
+                        onChange={(e) =>
+                            setForm({
+                                ...form,
+                                bedrooms: Number(e.target.value)
+                            })
+                        }
+                    />
+
+                </div>
+
+                <div>
+
+                    <label>
+                        Bathrooms
+                    </label>
+
+                    <input
+                        type="number"
+                        className="ss-input"
+                        value={form.bathrooms}
+                        onChange={(e) =>
+                            setForm({
+                                ...form,
+                                bathrooms: Number(e.target.value)
+                            })
+                        }
+                    />
+
+                </div>
+
+                <div>
+
+                    <label>
+                        Floors
+                    </label>
+
+                    <input
+                        type="number"
+                        className="ss-input"
+                        value={form.floors}
+                        onChange={(e) =>
+                            setForm({
+                                ...form,
+                                floors: Number(e.target.value)
+                            })
+                        }
+                    />
+
+                </div>
+
+                <div>
+
+                    <label>
+                        Plan Type
+                    </label>
+
+                    <select
+                        className="ss-input"
+                        value={form.type}
+                        onChange={(e) =>
+                            setForm({
+                                ...form,
+                                type: e.target.value
+                            })
+                        }
+                    >
+
+                        <option value="2D">
+                            2D Floor Plan
+                        </option>
+
+                        {
+
+                            user?.plan === "ENTERPRISE" && (
+
+                                <option value="3D">
+
+                                    3D Elevation
+
+                                </option>
+
+                            )
+
+                        }
+
+                    </select>
+
+                </div>
 
             </div>
 
             <button
                 onClick={generateMap}
                 disabled={loading}
-                className="
-        bg-[#F97316]
-        text-white
-        px-6
-        py-3
-        rounded-lg
-        font-semibold
-        "
+                className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-lg font-semibold"
             >
+
                 {
+
                     loading
-                        ? "Generating..."
+
+                        ? "Generating AI Plan..."
+
                         : "Generate Plan"
+
                 }
+
             </button>
+
             {
+
                 layout && (
+
                     <div className="ss-card p-6">
 
-                        <h3 className="font-bold text-xl mb-4">
+                        <h2 className="font-bold text-xl mb-4">
+
                             Generated Floor Plan
-                        </h3>
+
+                        </h2>
 
                         <FloorPlanViewer
                             layout={layout}
                         />
 
                     </div>
+
                 )
+
             }
 
         </div>
+
     );
+
 }

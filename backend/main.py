@@ -38,6 +38,18 @@ from core import (
     require_roles,
 )
 
+from services.wallet_service import (
+    ensure_wallet,
+    has_credits,
+    deduct_credits,
+    create_wallet,
+    get_wallet,
+    add_credit,
+    wallet_history
+)
+
+MAP_GENERATION_COST = 5
+
 cloudinary.config(
     cloud_name=os.environ["CLOUDINARY_CLOUD_NAME"],
     api_key=os.environ["CLOUDINARY_API_KEY"],
@@ -359,6 +371,7 @@ async def approve_application(app_id: str, _: dict = Depends(require_roles("SUPE
         "expires_at": (datetime.now(timezone.utc) + timedelta(days=365)).isoformat(),
     }
     await db.subscriptions.insert_one(dict(sub))
+    await create_wallet(company_id, 20)
     await db.applications.update_one({"id": app_id}, {"$set": {"status": "APPROVED", "approved_at": now_iso(), "user_id": user_id}})
     await db.notifications.insert_one({
         "id": new_id(), "user_id": user_id, "company_id": company_id,
@@ -1381,94 +1394,150 @@ async def get_maps(
 @api.post("/maps/generate")
 async def generate_map(
     body: MapRequestIn,
-    user: dict = Depends(
-        require_roles("CONTRACTOR")
-    )
+    user: dict = Depends(require_roles("CONTRACTOR"))
 ):
 
-    sub = await db.subscriptions.find_one(
-        {
-            "company_id":
-            user["company_id"]
-        }
-    )
+    subscription = await db.subscriptions.find_one({
+        "company_id": user["company_id"]
+    })
 
-    plan = (
-        sub or {}
+    current_plan = (
+        subscription or {}
     ).get(
         "plan",
         "FREE"
     )
 
-    if plan == "FREE":
-
+    if current_plan == "FREE":
         raise HTTPException(
             403,
             "Upgrade required"
         )
 
-    if (
-        body.type == "3D"
-        and plan != "ENTERPRISE"
-    ):
+    if body.type == "3D" and current_plan != "ENTERPRISE":
         raise HTTPException(
             403,
             "3D available only in Pro Plus"
         )
 
+    wallet = await ensure_wallet(
+        user["company_id"],
+        current_plan
+    )
+
+    allowed = await has_credits(
+        user["company_id"],
+        MAP_GENERATION_COST
+    )
+
+    if not allowed:
+
+        raise HTTPException(
+            402,
+            "Insufficient AI Credits"
+        )
+
     site = await db.sites.find_one(
         {
-            "id":
-            body.site_id
+            "id": body.site_id
+        },
+        {
+            "_id": 0
         }
     )
 
     if not site:
-
         raise HTTPException(
             404,
             "Site not found"
         )
 
-    plan = generate_floor_plan({
+    layout = generate_floor_plan({
+
         "plot_width": body.plot_width,
+
         "plot_length": body.plot_length,
+
         "bedrooms": body.bedrooms,
+
         "bathrooms": body.bathrooms,
+
         "floors": body.floors,
+
         "facing": body.facing,
+
         "type": body.type
+
     })
 
-    request_doc = {
-        "id": new_id(),
+    request_id = new_id()
+
+    await db.map_requests.insert_one({
+
+        "id": request_id,
+
         "company_id": user["company_id"],
+
         "site_id": body.site_id,
+
         "status": "COMPLETED",
+
         "created_at": now_iso()
-    }
 
-    await db.map_requests.insert_one(request_doc)
+    })
 
-    floor_plan = {
-        "id": new_id(),
+    plan_id = new_id()
+
+    await db.floor_plans.insert_one({
+
+        "id": plan_id,
+
         "company_id": user["company_id"],
-        "site_id": body.site_id,
-        "project_name": site.get("name"),
-        "client_name": site.get("client_name"),
-        "plot_width": body.plot_width,
-        "plot_length": body.plot_length,
-        "floors": body.floors,
-        "layout": plan,
-        "created_at": now_iso()
-    }
 
-    await db.floor_plans.insert_one(floor_plan)
+        "site_id": body.site_id,
+
+        "project_name": site.get("name"),
+
+        "client_name": site.get("client_name"),
+
+        "plot_width": body.plot_width,
+
+        "plot_length": body.plot_length,
+
+        "floors": body.floors,
+
+        "layout": layout,
+
+        "created_at": now_iso()
+
+    })
+
+    await deduct_credits(
+
+        user["company_id"],
+
+        MAP_GENERATION_COST,
+
+        "AI Floor Plan"
+
+    )
+
+    wallet = await get_wallet(
+        user["company_id"]
+    )
+
+    wallet.pop("_id", None)
 
     return {
-    "success": True,
-    "plan_id": floor_plan["id"],
-    "layout": floor_plan["layout"]
+
+        "success": True,
+
+        "id": plan_id,
+
+        "layout": layout,
+
+        "wallet": wallet
+
     }
     
 @api.get("/plans/{plan_id}")
@@ -1516,6 +1585,36 @@ async def get_all_plans(
         "created_at",
         -1
     ).to_list(100)
+    
+    
+@api.get("/wallet")
+async def get_wallet_api(
+    user: dict = Depends(
+        require_roles("CONTRACTOR")
+    )
+):
+
+    wallet = await get_wallet(
+        user["company_id"]
+    )
+
+    wallet.pop("_id", None)
+
+    return wallet
+
+
+@api.get("/wallet/history")
+async def wallet_history_api(
+    user: dict = Depends(
+        require_roles("CONTRACTOR")
+    )
+):
+
+    history = await wallet_history(
+        user["company_id"]
+    )
+
+    return history
 
 # ---------- NOTIFICATIONS ----------
 @api.get("/notifications")
