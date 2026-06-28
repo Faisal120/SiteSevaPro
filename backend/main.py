@@ -1746,6 +1746,20 @@ async def ai_insight(body: AIInsightIn, user: dict = Depends(require_roles("CONT
 # ---------- MOUNT ----------
 app.include_router(api)
 
+from api.auth import router as auth_router
+from api.sites import router as sites_router
+from api.tasks import router as tasks_router
+from api.reports import router as reports_router
+from api.materials import router as materials_router
+from api.payments import router as payments_router
+
+app.include_router(auth_router)
+app.include_router(sites_router)
+app.include_router(tasks_router)
+app.include_router(reports_router)
+app.include_router(materials_router)
+app.include_router(payments_router)
+
 # V2 Phase A routes
 from v2 import v2_router  # noqa: E402
 app.include_router(v2_router)

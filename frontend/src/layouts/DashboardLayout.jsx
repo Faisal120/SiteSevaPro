@@ -150,25 +150,111 @@ export default function DashboardLayout() {
   const initials = (user?.full_name || user?.email || "U").slice(0, 2).toUpperCase();
 
   const Sidebar = (
-    <aside className="flex flex-col w-64 bg-[#171717] text-white border-r border-[#262626] h-screen overflow-y-auto">
-      <Link to="/" className="flex items-center gap-2 px-5 h-16 border-b border-white/5 shrink-0" onClick={closeMobile}>
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#F97316]"><HardHat className="h-5 w-5" /></div>
-        <span className="font-display text-base font-extrabold">Site Seva <span className="text-[#F97316]">Pro</span></span>
+    <aside className="flex flex-col w-72 bg-[#020817] text-white border-r border-[#262626] h-screen overflow-y-auto">
+      <Link
+        to="/"
+        className="flex items-center gap-4 px-6 h-20 border-b border-slate-800"
+      >
+
+        <div
+          className="
+      h-12
+      w-12
+      rounded-2xl
+      bg-gradient-to-br
+      from-blue-600
+      to-blue-800
+      flex
+      items-center
+      justify-center
+      shadow-xl
+    "
+        >
+          <HardHat className="h-6 w-6 text-white" />
+        </div>
+
+        <div className="flex flex-col">
+
+          <h1 className="font-display text-xl font-bold tracking-tight text-white">
+
+            SiteSeva
+
+          </h1>
+
+          <span className="text-xs tracking-[0.25em] uppercase text-slate-400">
+
+            Construction OS
+
+          </span>
+
+        </div>
+
       </Link>
       <div className="px-3 py-3 flex flex-col gap-1 flex-1" onClick={closeMobile}>
         {role === "CONTRACTOR" && (
-          <div className="mx-3 mb-4 rounded-2xl bg-[#262626] p-4 border border-white/5">
-            <div className="text-xs text-gray-400">
+          <div
+            className="
+    mx-4
+    mb-6
+    rounded-3xl
+    border
+    border-slate-700
+    bg-gradient-to-br
+    from-slate-800
+    to-slate-900
+    p-5
+    shadow-xl
+  "
+          >
+
+            <div className="text-xs uppercase tracking-[0.18em] text-slate-400">
+
               Company
+
             </div>
 
-            <div className="font-bold text-white mt-1">
+            <div className="mt-2 text-lg font-bold text-white">
+
               {user?.company_name}
+
             </div>
 
-            <div className="text-xs text-gray-500 mt-2">
-              Contractor Account
+            <div className="mt-4 flex items-center justify-between">
+
+              <div>
+
+                <div className="text-xs text-slate-500">
+
+                  Account
+
+                </div>
+
+                <div className="font-semibold text-blue-400">
+
+                  Professional
+
+                </div>
+
+              </div>
+
+              <div
+                className="
+        h-10
+        w-10
+        rounded-xl
+        bg-blue-600/20
+        flex
+        items-center
+        justify-center
+      "
+              >
+
+                <Building2 className="h-5 w-5 text-blue-400" />
+
+              </div>
+
             </div>
+
           </div>
         )}
         {role === "SUPER_ADMIN" && (
@@ -181,14 +267,32 @@ export default function DashboardLayout() {
       {role === "CONTRACTOR" && (
         <div className="p-3">
           <button
-            onClick={() => nav("/app/sites")}
-            className="w-full bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl py-3 font-semibold"
+            className="
+w-full
+rounded-2xl
+bg-gradient-to-r
+from-blue-600
+to-blue-700
+py-3.5
+font-semibold
+text-white
+shadow-lg
+hover:scale-[1.02]
+transition
+"
           >
-            + Create New Site
+
+            Create New Site
+
           </button>
         </div>
       )}
-      <div className="p-3 border-t border-white/5 shrink-0">
+      <div className="
+ss-sidebar-link
+w-full
+hover:bg-red-500/10
+hover:text-red-400
+">
         <button onClick={() => { logout(); nav("/login"); }} className="ss-sidebar-link w-full" data-testid="sidebar-logout">
           <LogOut className="h-4 w-4" /> Logout
         </button>
