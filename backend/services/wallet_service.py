@@ -1,143 +1,457 @@
-from bson import ObjectId
-from core import db, now_iso, new_id
+from fastapi import HTTPException
+
+from core.utils import new_id, now_iso
+
+from repositories.wallet_repository import wallet_repository
 
 
-async def create_wallet(company_id: str, credits: int = 0):
+class WalletService:
 
-    wallet = await db.wallets.find_one(
-        {
-            "company_id": company_id
-        }
-    )
+    # =====================================================
+    # GET WALLET
+    # =====================================================
 
-    if wallet:
-        return wallet
+    async def get_wallet(
+        self,
+        labour_id: str,
+        user,
+    ):
 
-    wallet = {
-        "id": new_id(),
-        "company_id": company_id,
-        "credits": credits,
-        "created_at": now_iso(),
-        "updated_at": now_iso()
-    }
-
-    await db.wallets.insert_one(wallet)
-
-    return wallet
-
-
-async def get_wallet(company_id: str):
-
-    wallet = await db.wallets.find_one(
-        {
-            "company_id": company_id
-        }
-    )
-
-    if not wallet:
-
-        wallet = await create_wallet(
-            company_id,
-            0
+        labour = await wallet_repository.get_labour(
+            labour_id
         )
 
-    wallet.pop("_id", None)
+        if labour is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Labour not found",
+            )
 
-    return wallet
+        if labour["company_id"] != user["company_id"]:
+            raise HTTPException(
+                status_code=403,
+                detail="Forbidden",
+            )
 
+        wallet = await wallet_repository.get_wallet(
+            labour_id
+        )
 
-async def deduct_credit(
-    company_id: str,
-    credits: int,
-    reason: str
-):
+        if wallet is None:
 
-    wallet = await get_wallet(company_id)
+            wallet = await self.recompute_wallet(
+                labour_id
+            )
 
-    if wallet["credits"] < credits:
+        return wallet
 
-        return False
+    # =====================================================
+    # LEDGER SUMMARY
+    # =====================================================
 
-    new_balance = wallet["credits"] - credits
+    async def ledger_summary(
+        self,
+        labour_id: str,
+    ):
 
-    await db.wallets.update_one(
-        {
-            "company_id": company_id
-        },
-        {
-            "$set": {
-                "credits": new_balance,
-                "updated_at": now_iso()
-            }
+        ledger = await wallet_repository.ledger(
+            labour_id
+        )
+
+        earned = 0
+        advance = 0
+        paid = 0
+        bonus = 0
+        deduction = 0
+
+        for item in ledger:
+
+            amount = float(
+                item.get(
+                    "amount",
+                    0,
+                )
+            )
+
+            txn_type = item.get(
+                "type"
+            )
+
+            if txn_type == "EARNING":
+                earned += amount
+
+            elif txn_type == "ADVANCE":
+                advance += amount
+
+            elif txn_type == "PAYMENT":
+                paid += amount
+
+            elif txn_type == "BONUS":
+                bonus += amount
+
+            elif txn_type == "DEDUCTION":
+                deduction += amount
+
+        return {
+
+            "earned": round(
+                earned,
+                2,
+            ),
+
+            "advance": round(
+                advance,
+                2,
+            ),
+
+            "paid": round(
+                paid,
+                2,
+            ),
+
+            "bonus": round(
+                bonus,
+                2,
+            ),
+
+            "deduction": round(
+                deduction,
+                2,
+            ),
+
         }
-    )
 
-    await db.wallet_transactions.insert_one(
-        {
+    # =====================================================
+    # RECOMPUTE WALLET
+    # =====================================================
+
+    async def recompute_wallet(
+        self,
+        labour_id: str,
+    ):
+
+        labour = await wallet_repository.get_labour(
+            labour_id
+        )
+
+        if labour is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Labour not found",
+            )
+
+        summary = await self.ledger_summary(
+            labour_id
+        )
+
+        balance = (
+
+            summary["earned"]
+
+            + summary["bonus"]
+
+            - summary["advance"]
+
+            - summary["paid"]
+
+            - summary["deduction"]
+
+        )
+
+        existing = await wallet_repository.get_wallet(
+            labour_id
+        )
+
+        wallet = {
+
+            "id": (
+                existing["id"]
+                if existing
+                else new_id()
+            ),
+
+            "company_id": labour["company_id"],
+
+            "labour_id": labour_id,
+
+            "site_id": labour.get(
+                "site_id"
+            ),
+
+            "earned": summary["earned"],
+
+            "advance": summary["advance"],
+
+            "paid": summary["paid"],
+
+            "bonus": summary["bonus"],
+
+            "deduction": summary["deduction"],
+
+            "balance": round(
+                balance,
+                2,
+            ),
+
+            "updated_at": now_iso(),
+
+        }
+
+        await wallet_repository.save_wallet(
+            wallet
+        )
+
+        return wallet
+
+    # =====================================================
+    # SETTLE PAYMENT
+    # =====================================================
+
+    async def settle_payment(
+
+        self,
+
+        body,
+
+        user,
+
+    ):
+
+        labour = await wallet_repository.get_labour(
+
+            body.labour_id
+
+        )
+
+        if labour is None:
+
+            raise HTTPException(
+
+                status_code=404,
+
+                detail="Labour not found",
+
+            )
+
+        if labour["company_id"] != user["company_id"]:
+
+            raise HTTPException(
+
+                status_code=403,
+
+                detail="Forbidden",
+
+            )
+
+        ledger = {
+
             "id": new_id(),
-            "wallet_id": wallet["id"],
-            "company_id": company_id,
-            "type": "DEBIT",
-            "credits": credits,
-            "reason": reason,
-            "balance_after": new_balance,
-            "created_at": now_iso()
+
+            "company_id": user["company_id"],
+
+            "labour_id": body.labour_id,
+
+            "site_id": labour.get(
+                "site_id"
+            ),
+
+            "type": "PAYMENT",
+
+            "amount": body.amount,
+
+            "note": body.remarks,
+
+            "payment_mode": body.payment_mode,
+
+            "date": now_iso()[:10],
+
+            "created_at": now_iso(),
+
         }
-    )
 
-    return True
+        await wallet_repository.create_ledger(
 
+            ledger
 
-async def add_credit(
-    company_id: str,
-    credits: int,
-    reason: str
-):
+        )
 
-    wallet = await get_wallet(company_id)
+        wallet = await self.recompute_wallet(
 
-    new_balance = wallet["credits"] + credits
+            body.labour_id
 
-    await db.wallets.update_one(
-        {
-            "company_id": company_id
-        },
-        {
-            "$set": {
-                "credits": new_balance,
-                "updated_at": now_iso()
-            }
+        )
+
+        return {
+
+            "wallet": wallet,
+
+            "ledger": ledger,
+
         }
-    )
+        
+        
+    # =====================================================
+    # MONTHLY PAYROLL
+    # =====================================================
 
-    await db.wallet_transactions.insert_one(
-        {
+    async def generate_payroll(
+
+        self,
+
+        labour_id,
+
+        month,
+
+    ):
+
+        labour = await wallet_repository.get_labour(
+
+            labour_id
+
+        )
+
+        if labour is None:
+
+            raise HTTPException(
+
+                404,
+
+                "Labour not found",
+
+            )
+
+        ledger = await wallet_repository.ledger(
+
+            labour_id
+
+        )
+
+        earned = 0
+
+        advance = 0
+
+        paid = 0
+
+        bonus = 0
+
+        deduction = 0
+
+        for row in ledger:
+
+            if not row["date"].startswith(
+                month
+            ):
+                continue
+
+            amount = float(
+                row["amount"]
+            )
+
+            if row["type"] == "EARNING":
+
+                earned += amount
+
+            elif row["type"] == "ADVANCE":
+
+                advance += amount
+
+            elif row["type"] == "PAYMENT":
+
+                paid += amount
+
+            elif row["type"] == "BONUS":
+
+                bonus += amount
+
+            elif row["type"] == "DEDUCTION":
+
+                deduction += amount
+
+        payroll = {
+
             "id": new_id(),
-            "wallet_id": wallet["id"],
-            "company_id": company_id,
-            "type": "CREDIT",
-            "credits": credits,
-            "reason": reason,
-            "balance_after": new_balance,
-            "created_at": now_iso()
+
+            "company_id": labour["company_id"],
+
+            "labour_id": labour_id,
+
+            "labour_name": labour["full_name"],
+
+            "month": month,
+
+            "earned": round(
+                earned,
+                2,
+            ),
+
+            "advance": round(
+                advance,
+                2,
+            ),
+
+            "paid": round(
+                paid,
+                2,
+            ),
+
+            "bonus": round(
+                bonus,
+                2,
+            ),
+
+            "deduction": round(
+                deduction,
+                2,
+            ),
+
+            "balance": round(
+
+                earned
+
+                + bonus
+
+                - advance
+
+                - paid
+
+                - deduction,
+
+                2,
+
+            ),
+
+            "generated_at": now_iso(),
+
         }
-    )
 
-    return True
+        await wallet_repository.save_payroll(
 
+            payroll
 
-async def wallet_history(company_id: str):
+        )
 
-    history = await db.wallet_transactions.find(
-        {
-            "company_id": company_id
-        },
-        {
-            "_id": 0
-        }
-    ).sort(
-        "created_at",
-        -1
-    ).to_list(500)
+        return payroll
+    
+    # =====================================================
+    # PAYROLL SUMMARY
+    # =====================================================
 
-    return history
+    async def monthly_summary(
+
+        self,
+
+        month,
+
+        user,
+
+    ):
+
+        return await wallet_repository.payrolls(
+
+            user["company_id"],
+
+            month,
+
+        )
+
+wallet_service = WalletService()

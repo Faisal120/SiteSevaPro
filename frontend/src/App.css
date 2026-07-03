@@ -1,2 +1,5 @@
 /* App-specific overrides */
+@import "./styles/theme.css";
+
+@import "./styles/components.css";
 .App { min-height: 100vh; }

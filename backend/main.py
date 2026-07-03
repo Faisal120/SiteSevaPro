@@ -1,6 +1,16 @@
 """Site Seva Pro - FastAPI backend (main app + V1 routes)."""
 from __future__ import annotations
 
+from models.auth import (
+    Role,
+    Plan,
+    UserOut,
+    LoginIn,
+    TokenOut,
+    RegisterApplicationIn,
+    ApplicationOut,
+)
+
 from asyncio import tasks
 import os
 from pydoc import doc
@@ -22,6 +32,35 @@ from services.openai_floorplanner import (
 )
 
 from fastapi.responses import Response
+from models.site import (
+    SiteIn,
+    SiteAssignmentIn,
+)
+
+from models.common import (
+    MessageResponse,
+    IdResponse,
+)
+
+from models.site import (
+    SiteSummary,
+    SiteDetail,
+)
+
+from api.dashboard import router as dashboard_router
+from api.labour import router as labour_router
+from api.attendance import router as attendance_router
+from api.dashboard import router as dashboard_router
+from api.wallet import (
+    router as wallet_router
+)
+from api.notifications import (
+    router as notifications_router,
+)
+
+from api.admin import (
+router as admin_router
+)
 
 # Shared infra — single source of truth for db, auth, helpers
 from core import (
@@ -60,6 +99,8 @@ cloudinary.config(
     secure=True,
 )
 
+
+
 def gen_username(company: str) -> str:
     slug = "".join(c.lower() for c in company if c.isalnum())[:10] or "user"
     return f"{slug}{secrets.randbelow(9000) + 1000}"
@@ -69,128 +110,128 @@ def gen_password() -> str:
 
 
 # -------- Models --------
-Role = Literal["SUPER_ADMIN", "CONTRACTOR", "SUPERVISOR", "CLIENT"]
-Plan = Literal["FREE", "PREMIUM", "ENTERPRISE"]
+# Role = Literal["SUPER_ADMIN", "CONTRACTOR", "SUPERVISOR", "CLIENT"]
+# Plan = Literal["FREE", "PREMIUM", "ENTERPRISE"]
 
-class UserOut(BaseModel):
-    id: str
-    email: EmailStr
-    username: Optional[str] = None
-    role: Role
-    full_name: str
-    company_id: Optional[str] = None
-    company_name: Optional[str] = None
-    plan: Optional[Plan] = None
-    site_ids: List[str] = []
-    blocked: bool = False
-    created_at: str
+# class UserOut(BaseModel):
+#     id: str
+#     email: EmailStr
+#     username: Optional[str] = None
+#     role: Role
+#     full_name: str
+#     company_id: Optional[str] = None
+#     company_name: Optional[str] = None
+#     plan: Optional[Plan] = None
+#     site_ids: List[str] = []
+#     blocked: bool = False
+#     created_at: str
 
-class LoginIn(BaseModel):
-    email: EmailStr
-    password: str
+# class LoginIn(BaseModel):
+#     email: EmailStr
+#     password: str
 
-class TokenOut(BaseModel):
-    token: str
-    user: UserOut
+# class TokenOut(BaseModel):
+#     token: str
+#     user: UserOut
 
-class RegisterApplicationIn(BaseModel):
-    company_name: str
-    owner_name: str
-    mobile: str
-    email: EmailStr
-    gst_number: Optional[str] = None
-    office_address: str
-    city: str
-    state: str
-    active_projects: int = 0
-    employee_count: int = 0
+# class RegisterApplicationIn(BaseModel):
+#     company_name: str
+#     owner_name: str
+#     mobile: str
+#     email: EmailStr
+#     gst_number: Optional[str] = None
+#     office_address: str
+#     city: str
+#     state: str
+#     active_projects: int = 0
+#     employee_count: int = 0
 
-class ApplicationOut(BaseModel):
-    id: str
-    company_name: str
-    owner_name: str
-    mobile: str
-    email: EmailStr
-    gst_number: Optional[str] = None
-    office_address: str
-    city: str
-    state: str
-    active_projects: int
-    employee_count: int
-    status: Literal["PENDING", "APPROVED", "REJECTED"]
-    created_at: str
+# class ApplicationOut(BaseModel):
+#     id: str
+#     company_name: str
+#     owner_name: str
+#     mobile: str
+#     email: EmailStr
+#     gst_number: Optional[str] = None
+#     office_address: str
+#     city: str
+#     state: str
+#     active_projects: int
+#     employee_count: int
+#     status: Literal["PENDING", "APPROVED", "REJECTED"]
+#     created_at: str
 
-class SiteIn(BaseModel):
-    name: str
-    location: str
-    budget: float
-    start_date: str
-    end_date: str
-    status: Literal["PLANNING","ACTIVE","ON_HOLD","COMPLETED"] = "ACTIVE"
-    progress: int = 0
-    description: Optional[str] = None
-    supervisor_ids: List[str] = []
-    client_id: Optional[str] = None
-    cover_image: Optional[str] = None
-    floors: int = 1
-    has_boring: bool = False
-    has_septic_tank: bool = True
-    has_soak_pit: bool = True
-    has_mumty: bool = True
+# class SiteIn(BaseModel):
+#     name: str
+#     location: str
+#     budget: float
+#     start_date: str
+#     end_date: str
+#     status: Literal["PLANNING","ACTIVE","ON_HOLD","COMPLETED"] = "ACTIVE"
+#     progress: int = 0
+#     description: Optional[str] = None
+#     supervisor_ids: List[str] = []
+#     client_id: Optional[str] = None
+#     cover_image: Optional[str] = None
+#     floors: int = 1
+#     has_boring: bool = False
+#     has_septic_tank: bool = True
+#     has_soak_pit: bool = True
+#     has_mumty: bool = True
 
-class LabourIn(BaseModel):
-    site_id: str
-    name: str
-    role: str
-    daily_wage: float
-    mobile: Optional[str] = None
-    aadhaar: Optional[str] = None
+# class LabourIn(BaseModel):
+#     site_id: str
+#     name: str
+#     role: str
+#     daily_wage: float
+#     mobile: Optional[str] = None
+#     aadhaar: Optional[str] = None
 
-class AttendanceIn(BaseModel):
-    site_id: str
-    date: str  # YYYY-MM-DD
-    entries: List[dict]  # [{labour_id, status: PRESENT|HALF|ABSENT, present?: bool (legacy), overtime_hours, advance}]
+# class AttendanceIn(BaseModel):
+#     site_id: str
+#     date: str  # YYYY-MM-DD
+#     entries: List[dict]  # [{labour_id, status: PRESENT|HALF|ABSENT, present?: bool (legacy), overtime_hours, advance}]
 
-class MaterialIn(BaseModel):
-    site_id: str
-    name: str
-    category: Literal["Cement", "Steel", "Sand", "Bricks", "Electrical", "Plumbing", "Tiles", "Paint", "Other"]
-    unit: str
-    stock: float = 0
-    low_stock_threshold: float = 10
-    rate: float = 0
+# class MaterialIn(BaseModel):
+#     site_id: str
+#     name: str
+#     category: Literal["Cement", "Steel", "Sand", "Bricks", "Electrical", "Plumbing", "Tiles", "Paint", "Other"]
+#     unit: str
+#     stock: float = 0
+#     low_stock_threshold: float = 10
+#     rate: float = 0
 
-class MaterialTxnIn(BaseModel):
-    material_id: str
-    site_id: str
-    type: Literal["INWARD", "OUTWARD"]
-    quantity: float
-    rate: Optional[float] = None
-    vendor: Optional[str] = None
-    note: Optional[str] = None
-    invoice_url: Optional[str] = None
+# class MaterialTxnIn(BaseModel):
+#     material_id: str
+#     site_id: str
+#     type: Literal["INWARD", "OUTWARD"]
+#     quantity: float
+#     rate: Optional[float] = None
+#     vendor: Optional[str] = None
+#     note: Optional[str] = None
+#     invoice_url: Optional[str] = None
 
-class PaymentIn(BaseModel):
-    site_id: str
-    type: Literal["CLIENT_RECEIVED", "EXPENSE", "LABOUR", "MATERIAL"]
-    amount: float
-    description: str
-    date: str
-    party: Optional[str] = None
-    invoice_url: Optional[str] = None
+# class PaymentIn(BaseModel):
+#     site_id: str
+#     type: Literal["CLIENT_RECEIVED", "EXPENSE", "LABOUR", "MATERIAL"]
+#     amount: float
+#     description: str
+#     date: str
+#     party: Optional[str] = None
+#     invoice_url: Optional[str] = None
     
-class SiteTaskIn(BaseModel):
-    site_id: str
-    title: str
-    weight: int = 10
+# class SiteTaskIn(BaseModel):
+#     site_id: str
+#     title: str
+#     weight: int = 10
 
-class DailyReportIn(BaseModel):
-    site_id: str
-    date: str
-    notes: str
-    completed_tasks: List[str] = []
-    issues: List[str] = []
-    media_urls: List[dict] = []  # [{url, type: image|video, public_id}]
+# class DailyReportIn(BaseModel): 
+#     site_id: str
+#     date: str
+#     notes: str
+#     completed_tasks: List[str] = []
+#     issues: List[str] = []
+#     media_urls: List[dict] = []  # [{url, type: image|video, public_id}]
 
 class NotificationIn(BaseModel):
     user_id: Optional[str] = None
@@ -246,44 +287,230 @@ async def root():
     return {"app": "Site Seva Pro", "status": "ok", "time": now_iso()}
 
 # ---------- AUTH ----------
-@api.post("/auth/login", response_model=TokenOut)
-async def login(body: LoginIn):
-    user = await db.users.find_one({"email": body.email.lower()}, {"_id": 0})
-    if not user or not verify_password(body.password, user["password_hash"]):
-        raise HTTPException(401, "Invalid credentials")
-    if user.get("blocked"):
-        raise HTTPException(403, "Account blocked")
-    token = create_jwt({"sub": user["id"], "role": user["role"]})
-    return {"token": token, "user": serialize_user(user)}
+# @api.post("/auth/login", response_model=TokenOut)
+# async def login(body: LoginIn):
+#     user = await db.users.find_one({"email": body.email.lower()}, {"_id": 0})
+#     if not user or not verify_password(body.password, user["password_hash"]):
+#         raise HTTPException(401, "Invalid credentials")
+#     if user.get("blocked"):
+#         raise HTTPException(403, "Account blocked")
+#     token = create_jwt({"sub": user["id"], "role": user["role"]})
+#     return {"token": token, "user": serialize_user(user)}
 
-@api.get("/auth/me", response_model=UserOut)
-async def me(user: dict = Depends(get_current_user)):
-    return serialize_user(user)
+# @api.get("/auth/me", response_model=UserOut)
+# async def me(user: dict = Depends(get_current_user)):
+#     return serialize_user(user)
 
-@api.post("/auth/register", response_model=ApplicationOut)
-async def register_contractor(body: RegisterApplicationIn):
-    existing = await db.applications.find_one({"email": body.email.lower(), "status": "PENDING"})
-    if existing:
-        raise HTTPException(400, "Application already pending for this email")
-    if await db.users.find_one({"email": body.email.lower()}):
-        raise HTTPException(400, "Email already registered")
-    doc = {
-        "id": new_id(),
-        "company_name": body.company_name,
-        "owner_name": body.owner_name,
-        "mobile": body.mobile,
-        "email": body.email.lower(),
-        "gst_number": body.gst_number,
-        "office_address": body.office_address,
-        "city": body.city,
-        "state": body.state,
-        "active_projects": body.active_projects,
-        "employee_count": body.employee_count,
-        "status": "PENDING",
-        "created_at": now_iso(),
-    }
-    await db.applications.insert_one(dict(doc))
-    return doc
+# @api.get("/dashboard/bootstrap")
+# async def dashboard_bootstrap(
+#     user: dict = Depends(get_current_user)
+# ):
+#     contractor_id = user["id"]
+    
+#     # -----------------------------
+#     # Operations Control Center
+#     # -----------------------------
+#     alerts = []
+
+#     # -----------------------------
+#     # Dashboard Statistics
+#     # -----------------------------
+
+#     active_sites = await db.sites.count_documents({
+#         "contractor_id": contractor_id
+#     })
+
+#     total_labours = await db.labours.count_documents({
+#         "contractor_id": contractor_id
+#     })
+
+#     pending_tasks = await db.site_tasks.count_documents({
+#         "contractor_id": contractor_id,
+#         "completed": False
+#     })
+    
+#     if pending_tasks > 0:
+
+#         alerts.append({
+
+#             "type": "task",
+
+#             "title": f"{pending_tasks} Pending Tasks",
+
+#             "description": "Complete today's assigned work.",
+
+#             "route": "/app/tasks"
+
+#         })
+        
+#     low_progress = await db.sites.count_documents({
+
+#         "contractor_id": contractor_id,
+
+#         "progress": {
+
+#             "$lt": 30
+
+#         }
+
+#     })
+    
+#     if low_progress > 0:
+
+#         alerts.append({
+
+#             "type": "site",
+
+#             "title": f"{low_progress} Sites Need Attention",
+
+#             "description": "Progress is below expected.",
+
+#             "route": "/app/sites"
+
+#         })
+
+#     # -----------------------------
+#     # Payments
+#     # -----------------------------
+
+#     pipeline = [
+
+#         {
+#             "$match": {
+#                 "contractor_id": contractor_id
+#             }
+#         },
+
+#         {
+#             "$group": {
+#                 "_id": None,
+#                 "total": {
+#                     "$sum": "$amount"
+#                 }
+#             }
+#         }
+
+#     ]
+
+#     payment_result = await db.payments.aggregate(
+#         pipeline
+#     ).to_list(1)
+
+#     cash_flow = 0
+
+#     if payment_result:
+#         cash_flow = payment_result[0]["total"]
+
+#     # -----------------------------
+#     # Recent Sites
+#     # -----------------------------
+
+#     recent_sites = await db.sites.find(
+
+#         {
+#             "contractor_id": contractor_id
+#         }
+
+#     ).sort(
+
+#         "created_at",
+#         -1
+
+#     ).limit(
+
+#         5
+
+#     ).to_list(5)
+
+#     # -----------------------------
+#     # Today's Tasks
+#     # -----------------------------
+
+#     today_tasks = await db.site_tasks.find(
+
+#         {
+#             "contractor_id": contractor_id,
+#             "completed": False
+#         }
+
+#     ).limit(
+
+#         5
+
+#     ).to_list(5)
+
+#     return {
+
+#         "profile": {
+
+#             "id": user["id"],
+
+#             "name": user["full_name"],
+
+#             "email": user["email"],
+
+#             "role": user["role"],
+
+#             "company": user.get("company_name")
+
+#         },
+
+#         "stats": {
+
+#             "active_sites": active_sites,
+
+#             "labours": total_labours,
+
+#             "pending_tasks": pending_tasks,
+
+#             "cash_flow": cash_flow
+
+#         },
+
+#         "recent_sites": recent_sites,
+
+#         "today_tasks": today_tasks,
+
+#         "notifications": [],
+
+#         "weather": {
+
+#             "city": "Lucknow",
+
+#             "temp": 34,
+
+#             "condition": "Sunny"
+
+#         }
+
+#     }
+    
+
+
+# @api.post("/auth/register", response_model=ApplicationOut)
+# async def register_contractor(body: RegisterApplicationIn):
+#     existing = await db.applications.find_one({"email": body.email.lower(), "status": "PENDING"})
+#     if existing:
+#         raise HTTPException(400, "Application already pending for this email")
+#     if await db.users.find_one({"email": body.email.lower()}):
+#         raise HTTPException(400, "Email already registered")
+#     doc = {
+#         "id": new_id(),
+#         "company_name": body.company_name,
+#         "owner_name": body.owner_name,
+#         "mobile": body.mobile,
+#         "email": body.email.lower(),
+#         "gst_number": body.gst_number,
+#         "office_address": body.office_address,
+#         "city": body.city,
+#         "state": body.state,
+#         "active_projects": body.active_projects,
+#         "employee_count": body.employee_count,
+#         "status": "PENDING",
+#         "created_at": now_iso(),
+#     }
+#     await db.applications.insert_one(dict(doc))
+#     return doc
 
 # ---------- ADMIN ----------
 @api.get("/admin/stats")
@@ -519,597 +746,597 @@ async def toggle_team_member(
     }
 
 # ---------- SITES ----------
-@api.get("/sites")
-async def list_sites(user: dict = Depends(get_current_user)):
-    q: dict = {}
-    if user["role"] == "CONTRACTOR":
-        q["company_id"] = user["company_id"]
-    elif user["role"] == "SUPERVISOR":
-        q["id"] = {"$in": user.get("site_ids", [])}
-    elif user["role"] == "CLIENT":
-        q["id"] = {"$in": user.get("site_ids", [])}
-    else:
-        raise HTTPException(403, "Forbidden")
-    sites = await db.sites.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)
-    return sites
+# @api.get("/sites")
+# async def list_sites(user: dict = Depends(get_current_user)):
+#     q: dict = {}
+#     if user["role"] == "CONTRACTOR":
+#         q["company_id"] = user["company_id"]
+#     elif user["role"] == "SUPERVISOR":
+#         q["id"] = {"$in": user.get("site_ids", [])}
+#     elif user["role"] == "CLIENT":
+#         q["id"] = {"$in": user.get("site_ids", [])}
+#     else:
+#         raise HTTPException(403, "Forbidden")
+#     sites = await db.sites.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)
+#     return sites
 
-@api.post("/sites")
-async def create_site(body: SiteIn, user: dict = Depends(require_roles("CONTRACTOR"))):
-    sub = await db.subscriptions.find_one({"company_id": user["company_id"], "status": "ACTIVE"})
-    plan = (sub or {}).get("plan", "FREE")
-    if plan == "FREE":
-        cnt = await db.sites.count_documents({"company_id": user["company_id"]})
-        if cnt >= 1:
-            raise HTTPException(402, "Free plan allows only 1 site. Upgrade to Premium.")
-    site_id = new_id()
-    site_data = body.model_dump()
-    client = None
+# @api.post("/sites")
+# async def create_site(body: SiteIn, user: dict = Depends(require_roles("CONTRACTOR"))):
+#     sub = await db.subscriptions.find_one({"company_id": user["company_id"], "status": "ACTIVE"})
+#     plan = (sub or {}).get("plan", "FREE")
+#     if plan == "FREE":
+#         cnt = await db.sites.count_documents({"company_id": user["company_id"]})
+#         if cnt >= 1:
+#             raise HTTPException(402, "Free plan allows only 1 site. Upgrade to Premium.")
+#     site_id = new_id()
+#     site_data = body.model_dump()
+#     client = None
 
-    supervisors = []
+#     supervisors = []
 
-    for sup_id in body.supervisor_ids:
+#     for sup_id in body.supervisor_ids:
 
-        sup = await db.users.find_one({
-        "id": sup_id,
-        "company_id": user["company_id"],
-        "role": "SUPERVISOR"
-        })
+#         sup = await db.users.find_one({
+#         "id": sup_id,
+#         "company_id": user["company_id"],
+#         "role": "SUPERVISOR"
+#         })
 
-        if sup:
-            supervisors.append(sup)
+#         if sup:
+#             supervisors.append(sup)
 
-    if body.client_id:
-        client = await db.users.find_one({
-            "id": body.client_id,
-            "company_id": user["company_id"]
-        })
+#     if body.client_id:
+#         client = await db.users.find_one({
+#             "id": body.client_id,
+#             "company_id": user["company_id"]
+#         })
 
-    doc = {
-        "id": site_id,
-        "company_id": user["company_id"],
-        "created_by": user["id"],
-        "created_at": now_iso(),
+#     doc = {
+#         "id": site_id,
+#         "company_id": user["company_id"],
+#         "created_by": user["id"],
+#         "created_at": now_iso(),
 
-        **site_data,
+#         **site_data,
 
-       "supervisor_ids": body.supervisor_ids,
+#        "supervisor_ids": body.supervisor_ids,
 
-    "supervisor_names": [
-        s["full_name"]
-            for s in supervisors
-        ] if supervisors else None,
+#     "supervisor_names": [
+#         s["full_name"]
+#             for s in supervisors
+#         ] if supervisors else None,
 
-         "client_name":
-            client.get("full_name") if client else None,
+#          "client_name":
+#             client.get("full_name") if client else None,
 
-        "client_email":
-            client.get("email") if client else None
-         }
+#         "client_email":
+#             client.get("email") if client else None
+#          }
 
-    await db.sites.insert_one(dict(doc))
-    tasks = []
+#     await db.sites.insert_one(dict(doc))
+#     tasks = []
 
-    tasks.extend([
-        ("Site Layout", 1),
-        ("Excavation", 2),
-        ("Mitti Filling", 2)
-    ])
+#     tasks.extend([
+#         ("Site Layout", 1),
+#         ("Excavation", 2),
+#         ("Mitti Filling", 2)
+#     ])
 
-    if body.has_boring:
-        tasks.append(("Boring", 2))
+#     if body.has_boring:
+#         tasks.append(("Boring", 2))
 
-    if body.has_septic_tank:
-        tasks.append(("Septic Tank", 2))
+#     if body.has_septic_tank:
+#         tasks.append(("Septic Tank", 2))
 
-    if body.has_soak_pit:
-        tasks.append(("Soak Pit", 2))
+#     if body.has_soak_pit:
+#         tasks.append(("Soak Pit", 2))
         
-    tasks.extend([
-            ("PCC", 3),
-            ("Footing", 4),
-            ("Plinth Beam", 4)
-    ])
+#     tasks.extend([
+#             ("PCC", 3),
+#             ("Footing", 4),
+#             ("Plinth Beam", 4)
+#     ])
 
-    tasks.extend([
-            ("GF Column", 4),
-            ("GF Brickwork", 5),
-            ("GF Slab", 6)
-    ])
+#     tasks.extend([
+#             ("GF Column", 4),
+#             ("GF Brickwork", 5),
+#             ("GF Slab", 6)
+#     ])
 
-    if body.floors >= 2:
-        tasks.extend([
-            ("FF Column", 4),
-            ("FF Brickwork", 5),
-            ("FF Slab", 6)
-        ])
+#     if body.floors >= 2:
+#         tasks.extend([
+#             ("FF Column", 4),
+#             ("FF Brickwork", 5),
+#             ("FF Slab", 6)
+#         ])
 
-    if body.floors >= 3:
-        tasks.extend([
-            ("SF Column", 4),
-            ("SF Brickwork", 5),
-            ("SF Slab", 6)
-        ])
+#     if body.floors >= 3:
+#         tasks.extend([
+#             ("SF Column", 4),
+#             ("SF Brickwork", 5),
+#             ("SF Slab", 6)
+#         ])
 
-    if body.floors >= 4:
-        tasks.extend([
-            ("TF Column", 4),
-            ("TF Brickwork", 5),
-            ("TF Slab", 6)
-        ])
+#     if body.floors >= 4:
+#         tasks.extend([
+#             ("TF Column", 4),
+#             ("TF Brickwork", 5),
+#             ("TF Slab", 6)
+#         ])
 
-    if body.has_mumty:
-        tasks.extend([
-            ("Mumty Brickwork", 2),
-            ("Mumty Slab", 2)
-        ])
+#     if body.has_mumty:
+#         tasks.extend([
+#             ("Mumty Brickwork", 2),
+#             ("Mumty Slab", 2)
+#         ])
 
-    tasks.extend([  
-            ("Electrical", 3),
-            ("Plumbing", 3),
-            ("Flooring", 3),
-            ("Painting", 3),
-            ("Handover", 1)
-    ])
+#     tasks.extend([  
+#             ("Electrical", 3),
+#             ("Plumbing", 3),
+#             ("Flooring", 3),
+#             ("Painting", 3),
+#             ("Handover", 1)
+#     ])
 
-    for supervisor in supervisors:
+#     for supervisor in supervisors:
 
-        await db.users.update_one(
-            {
-                "id": supervisor["id"]
-            },
-            {
-                "$addToSet": {
-                    "site_ids": site_id
-                }
-            }
-        )
+#         await db.users.update_one(
+#             {
+#                 "id": supervisor["id"]
+#             },
+#             {
+#                 "$addToSet": {
+#                     "site_ids": site_id
+#                 }
+#             }
+#         )
 
-    if client:
-        await db.users.update_one(
-            {"id": client["id"]},
-            {
-                "$addToSet": {
-                    "site_ids": site_id
-                }
-            }
-        )
-    # Create default site tasks
+#     if client:
+#         await db.users.update_one(
+#             {"id": client["id"]},
+#             {
+#                 "$addToSet": {
+#                     "site_ids": site_id
+#                 }
+#             }
+#         )
+#     # Create default site tasks
 
-    for title, weight in tasks:
+#     for title, weight in tasks:
 
-        await db.site_tasks.insert_one({
+#         await db.site_tasks.insert_one({
 
-            "id": new_id(),
+#             "id": new_id(),
 
-            "site_id": site_id,
+#             "site_id": site_id,
 
-            "company_id": user["company_id"],
+#             "company_id": user["company_id"],
 
-            "title": title,
+#             "title": title,
 
-            "weight": weight,
+#             "weight": weight,
 
-            "completed": False,
+#             "completed": False,
 
-            "created_at": now_iso()
+#             "created_at": now_iso()
 
-        })
+#         })
         
-    return doc
+#     return doc
 
-@api.get("/sites/{site_id}")
-async def get_site(site_id: str, user: dict = Depends(get_current_user)):
-    site = await db.sites.find_one({"id": site_id}, {"_id": 0})
-    if not site:
-        raise HTTPException(404, "Site not found")
-    if user["role"] == "CONTRACTOR" and site["company_id"] != user["company_id"]:
-        raise HTTPException(403, "Forbidden")
-    if user["role"] == "SUPERVISOR" and site_id not in user.get("site_ids", []):
-        raise HTTPException(403, "Not assigned")
-    if user["role"] == "CLIENT" and site.get("client_email") != user["email"]:
-        raise HTTPException(403, "Forbidden")
-    return site
+# @api.get("/sites/{site_id}")
+# async def get_site(site_id: str, user: dict = Depends(get_current_user)):
+#     site = await db.sites.find_one({"id": site_id}, {"_id": 0})
+#     if not site:
+#         raise HTTPException(404, "Site not found")
+#     if user["role"] == "CONTRACTOR" and site["company_id"] != user["company_id"]:
+#         raise HTTPException(403, "Forbidden")
+#     if user["role"] == "SUPERVISOR" and site_id not in user.get("site_ids", []):
+#         raise HTTPException(403, "Not assigned")
+#     if user["role"] == "CLIENT" and site.get("client_email") != user["email"]:
+#         raise HTTPException(403, "Forbidden")
+#     return site
 
-@api.put("/sites/{site_id}")
-async def update_site(site_id: str, body: SiteIn, user: dict = Depends(require_roles("CONTRACTOR"))):
-    res = await db.sites.update_one({"id": site_id, "company_id": user["company_id"]}, {"$set": body.model_dump()})
-    if res.matched_count == 0:
-        raise HTTPException(404, "Site not found")
-    return await db.sites.find_one({"id": site_id}, {"_id": 0})
+# @api.put("/sites/{site_id}")
+# async def update_site(site_id: str, body: SiteIn, user: dict = Depends(require_roles("CONTRACTOR"))):
+#     res = await db.sites.update_one({"id": site_id, "company_id": user["company_id"]}, {"$set": body.model_dump()})
+#     if res.matched_count == 0:
+#         raise HTTPException(404, "Site not found")
+#     return await db.sites.find_one({"id": site_id}, {"_id": 0})
 
-@api.delete("/sites/{site_id}")
-async def delete_site(site_id: str, user: dict = Depends(require_roles("CONTRACTOR"))):
-    await db.sites.delete_one({"id": site_id, "company_id": user["company_id"]})
-    return {"ok": True}
+# @api.delete("/sites/{site_id}")
+# async def delete_site(site_id: str, user: dict = Depends(require_roles("CONTRACTOR"))):
+#     await db.sites.delete_one({"id": site_id, "company_id": user["company_id"]})
+#     return {"ok": True}
 
-@api.post("/sites/{site_id}/assign-supervisor")
-async def assign_supervisor(
-    site_id: str,
-    body: SiteAssignmentIn,
-    user: dict = Depends(require_roles("CONTRACTOR"))
-):
+# @api.post("/sites/{site_id}/assign-supervisor")
+# async def assign_supervisor(
+#     site_id: str,
+#     body: SiteAssignmentIn,
+#     user: dict = Depends(require_roles("CONTRACTOR"))
+# ):
 
-    site = await db.sites.find_one({
-        "id": site_id,
-        "company_id": user["company_id"]
-    })
+    # site = await db.sites.find_one({
+    #     "id": site_id,
+    #     "company_id": user["company_id"]
+    # })
 
-    if not site:
-        raise HTTPException(404, "Site not found")
+    # if not site:
+    #     raise HTTPException(404, "Site not found")
 
-    supervisor = await db.users.find_one({
-        "id": body.user_id,
-        "company_id": user["company_id"],
-        "role": "SUPERVISOR"
-    })
+    # supervisor = await db.users.find_one({
+    #     "id": body.user_id,
+    #     "company_id": user["company_id"],
+    #     "role": "SUPERVISOR"
+    # })
 
-    if not supervisor:
-        raise HTTPException(404, "Supervisor not found")
+    # if not supervisor:
+    #     raise HTTPException(404, "Supervisor not found")
 
-    await db.sites.update_one(
-    {"id": site_id},
-     {
-        "$addToSet": {
-            "supervisor_ids": body.user_id
-            },          
-        }   
-    )
+    # await db.sites.update_one(
+    # {"id": site_id},
+    #  {
+    #     "$addToSet": {
+    #         "supervisor_ids": body.user_id
+    #         },          
+    #     }   
+    # )
     
-    updated_site = await db.sites.find_one(
-    {"id": site_id}
-    )
+    # updated_site = await db.sites.find_one(
+    # {"id": site_id}
+    # )
 
-    names = []
-    for sid in updated_site.get(
-        "supervisor_ids",
-        []
-    ):
+    # names = []
+    # for sid in updated_site.get(
+    #     "supervisor_ids",
+    #     []
+    # ):
 
-        sup = await db.users.find_one(
-            {"id": sid}
-        )
+    #     sup = await db.users.find_one(
+    #         {"id": sid}
+    #     )
 
-        if sup:
-            names.append(
-                sup["full_name"]
-            )
+    #     if sup:
+    #         names.append(
+    #             sup["full_name"]
+    #         )
 
-    await db.sites.update_one(
-        {"id": site_id},
-        {
-            "$set": {
-                "supervisor_names": names
-            }
-        }
-    )
+    # await db.sites.update_one(
+    #     {"id": site_id},
+    #     {
+    #         "$set": {
+    #             "supervisor_names": names
+    #         }
+    #     }
+    # )
     
 
-    await db.users.update_one(
-        {"id": body.user_id},
-    {
-            "$addToSet": {
-                "site_ids": site_id
-            }
-    }
-    )
+    # await db.users.update_one(
+    #     {"id": body.user_id},
+    # {
+    #         "$addToSet": {
+    #             "site_ids": site_id
+    #         }
+    # }
+    # )
 
-    return {"success": True}
+    # return {"success": True}
 
-@api.post("/sites/{site_id}/assign-client")
-async def assign_client(
-    site_id: str,
-    body: SiteAssignmentIn,
-    user: dict = Depends(require_roles("CONTRACTOR"))
-):
+# @api.post("/sites/{site_id}/assign-client")
+# async def assign_client(
+#     site_id: str,
+#     body: SiteAssignmentIn,
+#     user: dict = Depends(require_roles("CONTRACTOR"))
+# ):
 
-    site = await db.sites.find_one({
-        "id": site_id,
-        "company_id": user["company_id"]
-    })
+#     site = await db.sites.find_one({
+#         "id": site_id,
+#         "company_id": user["company_id"]
+#     })
 
-    if not site:
-        raise HTTPException(404, "Site not found")
+#     if not site:
+#         raise HTTPException(404, "Site not found")
 
-    client = await db.users.find_one({
-        "id": body.user_id,
-        "company_id": user["company_id"],
-        "role": "CLIENT"
-    })
+#     client = await db.users.find_one({
+#         "id": body.user_id,
+#         "company_id": user["company_id"],
+#         "role": "CLIENT"
+#     })
 
-    if not client:
-        raise HTTPException(404, "Client not found")
+#     if not client:
+#         raise HTTPException(404, "Client not found")
 
-    await db.sites.update_one(
-        {"id": site_id},
-        {
-            "$addToSet": {
-                "client_ids": body.user_id
-            },
-            "$set": {
-                "client_name": client.get("full_name"),
-                "client_email": client.get("email")
-            }
-        }
-    )
+#     await db.sites.update_one(
+#         {"id": site_id},
+#         {
+#             "$addToSet": {
+#                 "client_ids": body.user_id
+#             },
+#             "$set": {
+#                 "client_name": client.get("full_name"),
+#                 "client_email": client.get("email")
+#             }
+#         }
+#     )
 
-    await db.users.update_one(
-     {"id": body.user_id},
-        {
-        "$addToSet": {
-            "site_ids": site_id
-                 }
-        }
-    )
+#     await db.users.update_one(
+#      {"id": body.user_id},
+#         {
+#         "$addToSet": {
+#             "site_ids": site_id
+#                  }
+#         }
+#     )
 
-    return {"success": True}
+#     return {"success": True}
 
 # ---------- DASHBOARD STATS ----------
-@api.get("/dashboard/contractor")
-async def contractor_dashboard(user: dict = Depends(require_roles("CONTRACTOR"))):
-    company_id = user["company_id"]
-    sites = await db.sites.find({"company_id": company_id}, {"_id": 0}).to_list(500)
-    active_sites = sum(1 for s in sites if s["status"] == "ACTIVE")
-    total_budget = sum(s.get("budget", 0) for s in sites)
-    payments = await db.payments.find({"company_id": company_id}, {"_id": 0}).to_list(2000)
-    total_received = sum(p["amount"] for p in payments if p["type"] == "CLIENT_RECEIVED")
-    material_cost = sum(p["amount"] for p in payments if p["type"] == "MATERIAL")
-    labour_cost = sum(p["amount"] for p in payments if p["type"] == "LABOUR")
-    expenses = sum(p["amount"] for p in payments if p["type"] == "EXPENSE")
-    pending = max(total_budget - total_received, 0)
-    # Site progress chart
-    progress = [{"name": s["name"][:12], "progress": s.get("progress", 0)} for s in sites[:8]]
-    # Expense breakdown
-    breakdown = [
-        {"name": "Material", "value": material_cost},
-        {"name": "Labour", "value": labour_cost},
-        {"name": "Other", "value": expenses},
-    ]
-    # Recent activity
-    activities = await db.notifications.find({"company_id": company_id}, {"_id": 0}).sort("created_at", -1).limit(8).to_list(8)
-    return {
-        "active_sites": active_sites,
-        "total_sites": len(sites),
-        "total_budget": total_budget,
-        "total_received": total_received,
-        "pending_payments": pending,
-        "material_cost": material_cost,
-        "labour_cost": labour_cost,
-        "expenses": expenses,
-        "net_profit": total_received - material_cost - labour_cost - expenses,
-        "site_progress": progress,
-        "expense_breakdown": breakdown,
-        "recent_activities": activities,
-    }
+# @api.get("/dashboard/contractor")
+# async def contractor_dashboard(user: dict = Depends(require_roles("CONTRACTOR"))):
+#     company_id = user["company_id"]
+#     sites = await db.sites.find({"company_id": company_id}, {"_id": 0}).to_list(500)
+#     active_sites = sum(1 for s in sites if s["status"] == "ACTIVE")
+#     total_budget = sum(s.get("budget", 0) for s in sites)
+#     payments = await db.payments.find({"company_id": company_id}, {"_id": 0}).to_list(2000)
+#     total_received = sum(p["amount"] for p in payments if p["type"] == "CLIENT_RECEIVED")
+#     material_cost = sum(p["amount"] for p in payments if p["type"] == "MATERIAL")
+#     labour_cost = sum(p["amount"] for p in payments if p["type"] == "LABOUR")
+#     expenses = sum(p["amount"] for p in payments if p["type"] == "EXPENSE")
+#     pending = max(total_budget - total_received, 0)
+#     # Site progress chart
+#     progress = [{"name": s["name"][:12], "progress": s.get("progress", 0)} for s in sites[:8]]
+#     # Expense breakdown
+#     breakdown = [
+#         {"name": "Material", "value": material_cost},
+#         {"name": "Labour", "value": labour_cost},
+#         {"name": "Other", "value": expenses},
+#     ]
+#     # Recent activity
+#     activities = await db.notifications.find({"company_id": company_id}, {"_id": 0}).sort("created_at", -1).limit(8).to_list(8)
+#     return {
+#         "active_sites": active_sites,
+#         "total_sites": len(sites),
+#         "total_budget": total_budget,
+#         "total_received": total_received,
+#         "pending_payments": pending,
+#         "material_cost": material_cost,
+#         "labour_cost": labour_cost,
+#         "expenses": expenses,
+#         "net_profit": total_received - material_cost - labour_cost - expenses,
+#         "site_progress": progress,
+#         "expense_breakdown": breakdown,
+#         "recent_activities": activities,
+#     }
 
 # ---------- LABOUR ----------
-@api.get("/labour")
-async def list_labour(site_id: Optional[str] = None, user: dict = Depends(get_current_user)):
-    q: dict = {}
-    if user["role"] == "CONTRACTOR":
-        q["company_id"] = user["company_id"]
-    elif user["role"] == "SUPERVISOR":
-        q["site_id"] = {"$in": user.get("site_ids", [])}
-    else:
-        raise HTTPException(403, "Forbidden")
-    if site_id:
-        q["site_id"] = site_id
-    items = await db.labour.find(q, {"_id": 0}).sort("created_at", -1).to_list(1000)
-    return items
+# @api.get("/labour")
+# async def list_labour(site_id: Optional[str] = None, user: dict = Depends(get_current_user)):
+#     q: dict = {}
+#     if user["role"] == "CONTRACTOR":
+#         q["company_id"] = user["company_id"]
+#     elif user["role"] == "SUPERVISOR":
+#         q["site_id"] = {"$in": user.get("site_ids", [])}
+#     else:
+#         raise HTTPException(403, "Forbidden")
+#     if site_id:
+#         q["site_id"] = site_id
+#     items = await db.labour.find(q, {"_id": 0}).sort("created_at", -1).to_list(1000)
+#     return items
 
-@api.post("/labour")
-async def create_labour(body: LabourIn, user: dict = Depends(require_roles("CONTRACTOR", "SUPERVISOR"))):
-    doc = {
-        "id": new_id(),
-        "company_id": user["company_id"],
-        "created_at": now_iso(),
-        **body.model_dump(),
-    }
-    await db.labour.insert_one(dict(doc))
-    return doc
+# @api.post("/labour")
+# async def create_labour(body: LabourIn, user: dict = Depends(require_roles("CONTRACTOR", "SUPERVISOR"))):
+#     doc = {
+#         "id": new_id(),
+#         "company_id": user["company_id"],
+#         "created_at": now_iso(),
+#         **body.model_dump(),
+#     }
+#     await db.labour.insert_one(dict(doc))
+#     return doc
 
-@api.delete("/labour/{labour_id}")
-async def delete_labour(labour_id: str, user: dict = Depends(require_roles("CONTRACTOR"))):
-    await db.labour.delete_one({"id": labour_id, "company_id": user["company_id"]})
-    return {"ok": True}
+# @api.delete("/labour/{labour_id}")
+# async def delete_labour(labour_id: str, user: dict = Depends(require_roles("CONTRACTOR"))):
+#     await db.labour.delete_one({"id": labour_id, "company_id": user["company_id"]})
+#     return {"ok": True}
 
-@api.post("/attendance")
-async def mark_attendance(body: AttendanceIn, user: dict = Depends(require_roles("CONTRACTOR", "SUPERVISOR"))):
-    # Normalize entries: status takes precedence; fallback legacy `present` bool
-    norm_entries = []
-    for e in body.entries:
-        status = e.get("status")
-        if not status:
-            status = "PRESENT" if e.get("present") else "ABSENT"
-        norm_entries.append({
-            "labour_id": e["labour_id"],
-            "status": status,
-            "overtime_hours": float(e.get("overtime_hours") or 0),
-            "advance": float(e.get("advance") or 0),
-        })
+# @api.post("/attendance")
+# async def mark_attendance(body: AttendanceIn, user: dict = Depends(require_roles("CONTRACTOR", "SUPERVISOR"))):
+#     # Normalize entries: status takes precedence; fallback legacy `present` bool
+#     norm_entries = []
+#     for e in body.entries:
+#         status = e.get("status")
+#         if not status:
+#             status = "PRESENT" if e.get("present") else "ABSENT"
+#         norm_entries.append({
+#             "labour_id": e["labour_id"],
+#             "status": status,
+#             "overtime_hours": float(e.get("overtime_hours") or 0),
+#             "advance": float(e.get("advance") or 0),
+#         })
 
-    doc = {
-        "id": new_id(),
-        "company_id": user["company_id"],
-        "site_id": body.site_id,
-        "date": body.date,
-        "entries": norm_entries,
-        "marked_by": user["id"],
-        "created_at": now_iso(),
-    }
-    await db.attendance.update_one(
-        {"site_id": body.site_id, "date": body.date},
-        {"$set": doc},
-        upsert=True,
-    )
+#     doc = {
+#         "id": new_id(),
+#         "company_id": user["company_id"],
+#         "site_id": body.site_id,
+#         "date": body.date,
+#         "entries": norm_entries,
+#         "marked_by": user["id"],
+#         "created_at": now_iso(),
+#     }
+#     await db.attendance.update_one(
+#         {"site_id": body.site_id, "date": body.date},
+#         {"$set": doc},
+#         upsert=True,
+#     )
 
-    # ---- Auto earnings → labour_ledger ----
-    from v2 import ATTENDANCE_RATE, recompute_wallet, log_audit
+#     # ---- Auto earnings → labour_ledger ----
+#     from v2 import ATTENDANCE_RATE, recompute_wallet, log_audit
 
-    # 1) Wipe previous ledger entries for this date+site so re-saving is idempotent
-    await db.labour_ledger.delete_many({
-        "ref_type": "ATTENDANCE",
-        "ref_date": body.date,
-        "site_id": body.site_id,
-    })
+#     # 1) Wipe previous ledger entries for this date+site so re-saving is idempotent
+#     await db.labour_ledger.delete_many({
+#         "ref_type": "ATTENDANCE",
+#         "ref_date": body.date,
+#         "site_id": body.site_id,
+#     })
 
-    # 2) Build new ledger entries
-    labour_ids = [e["labour_id"] for e in norm_entries]
-    labour_cursor = db.labour.find({"id": {"$in": labour_ids}})
-    labour_docs = {l["id"]: l async for l in labour_cursor}
-    touched = set()
-    for e in norm_entries:
-        labour = labour_docs.get(e["labour_id"])
-        if not labour:
-            continue
-        wage = labour.get("daily_wage", 0)
-        factor = ATTENDANCE_RATE.get(e["status"], 0)
-        wage_earned = round(wage * factor, 2)
-        ot_amount = round((wage / 8) * float(e["overtime_hours"] or 0), 2) if e["overtime_hours"] else 0
-        total_earn = wage_earned + ot_amount
-        if total_earn > 0:
-            await db.labour_ledger.insert_one({
-                "id": new_id(),
-                "company_id": user["company_id"],
-                "labour_id": e["labour_id"],
-                "site_id": body.site_id,
-                "type": "EARNING",
-                "amount": total_earn,
-                "note": f"{e['status']} wage{(' + OT ' + str(e['overtime_hours']) + 'h') if ot_amount else ''}",
-                "date": body.date,
-                "ref_type": "ATTENDANCE",
-                "ref_id": doc["id"],
-                "ref_date": body.date,
-                "created_at": now_iso(),
-            })
-            touched.add(e["labour_id"])
-        if e["advance"] and e["advance"] > 0:
-            await db.labour_ledger.insert_one({
-                "id": new_id(),
-                "company_id": user["company_id"],
-                "labour_id": e["labour_id"],
-                "site_id": body.site_id,
-                "type": "ADVANCE",
-                "amount": float(e["advance"]),
-                "note": "Daily advance",
-                "date": body.date,
-                "ref_type": "ATTENDANCE",
-                "ref_id": doc["id"],
-                "ref_date": body.date,
-                "created_at": now_iso(),
-            })
-            touched.add(e["labour_id"])
+#     # 2) Build new ledger entries
+#     labour_ids = [e["labour_id"] for e in norm_entries]
+#     labour_cursor = db.labour.find({"id": {"$in": labour_ids}})
+#     labour_docs = {l["id"]: l async for l in labour_cursor}
+#     touched = set()
+#     for e in norm_entries:
+#         labour = labour_docs.get(e["labour_id"])
+#         if not labour:
+#             continue
+#         wage = labour.get("daily_wage", 0)
+#         factor = ATTENDANCE_RATE.get(e["status"], 0)
+#         wage_earned = round(wage * factor, 2)
+#         ot_amount = round((wage / 8) * float(e["overtime_hours"] or 0), 2) if e["overtime_hours"] else 0
+#         total_earn = wage_earned + ot_amount
+#         if total_earn > 0:
+#             await db.labour_ledger.insert_one({
+#                 "id": new_id(),
+#                 "company_id": user["company_id"],
+#                 "labour_id": e["labour_id"],
+#                 "site_id": body.site_id,
+#                 "type": "EARNING",
+#                 "amount": total_earn,
+#                 "note": f"{e['status']} wage{(' + OT ' + str(e['overtime_hours']) + 'h') if ot_amount else ''}",
+#                 "date": body.date,
+#                 "ref_type": "ATTENDANCE",
+#                 "ref_id": doc["id"],
+#                 "ref_date": body.date,
+#                 "created_at": now_iso(),
+#             })
+#             touched.add(e["labour_id"])
+#         if e["advance"] and e["advance"] > 0:
+#             await db.labour_ledger.insert_one({
+#                 "id": new_id(),
+#                 "company_id": user["company_id"],
+#                 "labour_id": e["labour_id"],
+#                 "site_id": body.site_id,
+#                 "type": "ADVANCE",
+#                 "amount": float(e["advance"]),
+#                 "note": "Daily advance",
+#                 "date": body.date,
+#                 "ref_type": "ATTENDANCE",
+#                 "ref_id": doc["id"],
+#                 "ref_date": body.date,
+#                 "created_at": now_iso(),
+#             })
+#             touched.add(e["labour_id"])
 
-    # 3) Recompute wallets for affected labour
-    for lid in touched:
-        await recompute_wallet(lid)
+#     # 3) Recompute wallets for affected labour
+#     for lid in touched:
+#         await recompute_wallet(lid)
 
-    await log_audit(user, "UPDATE", "attendance", doc["id"], {"site_id": body.site_id, "date": body.date, "count": len(norm_entries)})
-    return doc
+#     await log_audit(user, "UPDATE", "attendance", doc["id"], {"site_id": body.site_id, "date": body.date, "count": len(norm_entries)})
+#     return doc
 
-@api.get("/attendance")
-async def get_attendance(site_id: str, date: Optional[str] = None, user: dict = Depends(get_current_user)):
-    q = {"site_id": site_id}
-    if date:
-        q["date"] = date
-        rec = await db.attendance.find_one(q, {"_id": 0})
-        return rec or {"site_id": site_id, "date": date, "entries": []}
-    recs = await db.attendance.find(q, {"_id": 0}).sort("date", -1).limit(60).to_list(60)
-    return recs
+# @api.get("/attendance")
+# async def get_attendance(site_id: str, date: Optional[str] = None, user: dict = Depends(get_current_user)):
+#     q = {"site_id": site_id}
+#     if date:
+#         q["date"] = date
+#         rec = await db.attendance.find_one(q, {"_id": 0})
+#         return rec or {"site_id": site_id, "date": date, "entries": []}
+#     recs = await db.attendance.find(q, {"_id": 0}).sort("date", -1).limit(60).to_list(60)
+#     return recs
 
 # ---------- MATERIALS ----------
-@api.get("/materials")
-async def list_materials(site_id: Optional[str] = None, user: dict = Depends(get_current_user)):
-    q: dict = {}
-    if user["role"] == "CONTRACTOR":
-        q["company_id"] = user["company_id"]
-    elif user["role"] == "SUPERVISOR":
-        q["site_id"] = {"$in": user.get("site_ids", [])}
-    else:
-        raise HTTPException(403, "Forbidden")
-    if site_id:
-        q["site_id"] = site_id
-    return await db.materials.find(q, {"_id": 0}).sort("created_at", -1).to_list(1000)
+# @api.get("/materials")
+# async def list_materials(site_id: Optional[str] = None, user: dict = Depends(get_current_user)):
+#     q: dict = {}
+#     if user["role"] == "CONTRACTOR":
+#         q["company_id"] = user["company_id"]
+#     elif user["role"] == "SUPERVISOR":
+#         q["site_id"] = {"$in": user.get("site_ids", [])}
+#     else:
+#         raise HTTPException(403, "Forbidden")
+#     if site_id:
+#         q["site_id"] = site_id
+#     return await db.materials.find(q, {"_id": 0}).sort("created_at", -1).to_list(1000)
 
-@api.post("/materials")
-async def create_material(body: MaterialIn, user: dict = Depends(require_roles("CONTRACTOR", "SUPERVISOR"))):
-    doc = {
-        "id": new_id(),
-        "company_id": user["company_id"],
-        "created_at": now_iso(),
-        **body.model_dump(),
-    }
-    await db.materials.insert_one(dict(doc))
-    return doc
+# @api.post("/materials")
+# async def create_material(body: MaterialIn, user: dict = Depends(require_roles("CONTRACTOR", "SUPERVISOR"))):
+#     doc = {
+#         "id": new_id(),
+#         "company_id": user["company_id"],
+#         "created_at": now_iso(),
+#         **body.model_dump(),
+#     }
+#     await db.materials.insert_one(dict(doc))
+#     return doc
 
-@api.post("/material-txns")
-async def create_material_txn(body: MaterialTxnIn, user: dict = Depends(require_roles("CONTRACTOR", "SUPERVISOR"))):
-    material = await db.materials.find_one({"id": body.material_id}, {"_id": 0})
-    if not material:
-        raise HTTPException(404, "Material not found")
-    delta = body.quantity if body.type == "INWARD" else -body.quantity
-    new_stock = material.get("stock", 0) + delta
-    await db.materials.update_one({"id": body.material_id}, {"$set": {"stock": new_stock}})
-    txn = {
-        "id": new_id(),
-        "company_id": user["company_id"],
-        "created_by": user["id"],
-        "created_at": now_iso(),
-        **body.model_dump(),
-    }
-    await db.material_txns.insert_one(dict(txn))
-    # Low stock notification
-    if new_stock < material.get("low_stock_threshold", 10):
-        await db.notifications.insert_one({
-            "id": new_id(), "company_id": user["company_id"],
-            "title": "Low stock alert", "body": f"{material['name']} is low ({new_stock} {material.get('unit','')})",
-            "type": "STOCK", "read": False, "created_at": now_iso(),
-        })
-    # If inward, log as material payment
-    if body.type == "INWARD" and body.rate:
-        await db.payments.insert_one({
-            "id": new_id(), "company_id": user["company_id"], "site_id": body.site_id,
-            "type": "MATERIAL", "amount": body.quantity * body.rate,
-            "description": f"{material['name']} from {body.vendor or 'vendor'}",
-            "date": now_iso()[:10], "party": body.vendor, "invoice_url": body.invoice_url,
-            "created_at": now_iso(),
-        })
-    return txn
+# @api.post("/material-txns")
+# async def create_material_txn(body: MaterialTxnIn, user: dict = Depends(require_roles("CONTRACTOR", "SUPERVISOR"))):
+#     material = await db.materials.find_one({"id": body.material_id}, {"_id": 0})
+#     if not material:
+#         raise HTTPException(404, "Material not found")
+#     delta = body.quantity if body.type == "INWARD" else -body.quantity
+#     new_stock = material.get("stock", 0) + delta
+#     await db.materials.update_one({"id": body.material_id}, {"$set": {"stock": new_stock}})
+#     txn = {
+#         "id": new_id(),
+#         "company_id": user["company_id"],
+#         "created_by": user["id"],
+#         "created_at": now_iso(),
+#         **body.model_dump(),
+#     }
+#     await db.material_txns.insert_one(dict(txn))
+#     # Low stock notification
+#     if new_stock < material.get("low_stock_threshold", 10):
+#         await db.notifications.insert_one({
+#             "id": new_id(), "company_id": user["company_id"],
+#             "title": "Low stock alert", "body": f"{material['name']} is low ({new_stock} {material.get('unit','')})",
+#             "type": "STOCK", "read": False, "created_at": now_iso(),
+#         })
+#     # If inward, log as material payment
+#     if body.type == "INWARD" and body.rate:
+#         await db.payments.insert_one({
+#             "id": new_id(), "company_id": user["company_id"], "site_id": body.site_id,
+#             "type": "MATERIAL", "amount": body.quantity * body.rate,
+#             "description": f"{material['name']} from {body.vendor or 'vendor'}",
+#             "date": now_iso()[:10], "party": body.vendor, "invoice_url": body.invoice_url,
+#             "created_at": now_iso(),
+#         })
+#     return txn
 
-@api.get("/material-txns")
-async def list_material_txns(site_id: Optional[str] = None, user: dict = Depends(get_current_user)):
-    q: dict = {"company_id": user["company_id"]} if user["role"] != "SUPER_ADMIN" else {}
-    if site_id:
-        q["site_id"] = site_id
-    return await db.material_txns.find(q, {"_id": 0}).sort("created_at", -1).limit(500).to_list(500)
+# @api.get("/material-txns")
+# async def list_material_txns(site_id: Optional[str] = None, user: dict = Depends(get_current_user)):
+#     q: dict = {"company_id": user["company_id"]} if user["role"] != "SUPER_ADMIN" else {}
+#     if site_id:
+#         q["site_id"] = site_id
+#     return await db.material_txns.find(q, {"_id": 0}).sort("created_at", -1).limit(500).to_list(500)
 
 # ---------- PAYMENTS ----------
-@api.get("/payments")
-async def list_payments(site_id: Optional[str] = None, user: dict = Depends(get_current_user)):
-    q: dict = {}
-    if user["role"] == "CONTRACTOR":
-        q["company_id"] = user["company_id"]
-    elif user["role"] == "CLIENT":
-        # Client sees payments only for their sites
-        sites = await db.sites.find({"client_email": user["email"]}, {"_id": 0, "id": 1}).to_list(100)
-        q["site_id"] = {"$in": [s["id"] for s in sites]}
-        q["type"] = "CLIENT_RECEIVED"
-    elif user["role"] == "SUPERVISOR":
-        q["site_id"] = {"$in": user.get("site_ids", [])}
-    if site_id:
-        q["site_id"] = site_id
-    return await db.payments.find(q, {"_id": 0}).sort("date", -1).limit(500).to_list(500)
+# @api.get("/payments")
+# async def list_payments(site_id: Optional[str] = None, user: dict = Depends(get_current_user)):
+#     q: dict = {}
+#     if user["role"] == "CONTRACTOR":
+#         q["company_id"] = user["company_id"]
+#     elif user["role"] == "CLIENT":
+#         # Client sees payments only for their sites
+#         sites = await db.sites.find({"client_email": user["email"]}, {"_id": 0, "id": 1}).to_list(100)
+#         q["site_id"] = {"$in": [s["id"] for s in sites]}
+#         q["type"] = "CLIENT_RECEIVED"
+#     elif user["role"] == "SUPERVISOR":
+#         q["site_id"] = {"$in": user.get("site_ids", [])}
+#     if site_id:
+#         q["site_id"] = site_id
+#     return await db.payments.find(q, {"_id": 0}).sort("date", -1).limit(500).to_list(500)
 
-@api.post("/payments")
-async def create_payment(body: PaymentIn, user: dict = Depends(require_roles("CONTRACTOR"))):
-    doc = {
-        "id": new_id(),
-        "company_id": user["company_id"],
-        "created_by": user["id"],
-        "created_at": now_iso(),
-        **body.model_dump(),
-    }
-    await db.payments.insert_one(dict(doc))
-    return doc
+# @api.post("/payments")
+# async def create_payment(body: PaymentIn, user: dict = Depends(require_roles("CONTRACTOR"))):
+#     doc = {
+#         "id": new_id(),
+#         "company_id": user["company_id"],
+#         "created_by": user["id"],
+#         "created_at": now_iso(),
+#         **body.model_dump(),
+#     }
+#     await db.payments.insert_one(dict(doc))
+#     return doc
 
 # ---------- SITE TASKS ----------
 
@@ -1255,56 +1482,56 @@ async def upload_logo(
     }
 
 # ---------- DAILY REPORTS ----------
-@api.get("/daily-reports")
-async def list_reports(site_id: Optional[str] = None, user: dict = Depends(get_current_user)):
-    q: dict = {}
-    if user["role"] == "CONTRACTOR":
-        q["company_id"] = user["company_id"]
-    elif user["role"] == "SUPERVISOR":
-        q["site_id"] = {"$in": user.get("site_ids", [])}
-    elif user["role"] == "CLIENT":
-        sites = await db.sites.find({"client_email": user["email"]}, {"_id": 0, "id": 1}).to_list(100)
-        q["site_id"] = {"$in": [s["id"] for s in sites]}
-    if site_id:
-        q["site_id"] = site_id
-    return await db.daily_reports.find(q, {"_id": 0}).sort("date", -1).limit(200).to_list(200)
+# @api.get("/daily-reports")
+# async def list_reports(site_id: Optional[str] = None, user: dict = Depends(get_current_user)):
+#     q: dict = {}
+#     if user["role"] == "CONTRACTOR":
+#         q["company_id"] = user["company_id"]
+#     elif user["role"] == "SUPERVISOR":
+#         q["site_id"] = {"$in": user.get("site_ids", [])}
+#     elif user["role"] == "CLIENT":
+#         sites = await db.sites.find({"client_email": user["email"]}, {"_id": 0, "id": 1}).to_list(100)
+#         q["site_id"] = {"$in": [s["id"] for s in sites]}
+#     if site_id:
+#         q["site_id"] = site_id
+#     return await db.daily_reports.find(q, {"_id": 0}).sort("date", -1).limit(200).to_list(200)
 
-@api.post("/daily-reports")
-async def create_report(body: DailyReportIn, user: dict = Depends(require_roles("CONTRACTOR", "SUPERVISOR"))):
-    doc = {
-        "id": new_id(),
-        "company_id": user["company_id"],
-        "created_by": user["id"],
-        "created_by_name": user.get("full_name"),
-        "created_at": now_iso(),
-        **body.model_dump(),
-    }
-    await db.daily_reports.insert_one(dict(doc))
-    for task_title in body.completed_tasks:
+# @api.post("/daily-reports")
+# async def create_report(body: DailyReportIn, user: dict = Depends(require_roles("CONTRACTOR", "SUPERVISOR"))):
+#     doc = {
+#         "id": new_id(),
+#         "company_id": user["company_id"],
+#         "created_by": user["id"],
+#         "created_by_name": user.get("full_name"),
+#         "created_at": now_iso(),
+#         **body.model_dump(),
+#     }
+#     await db.daily_reports.insert_one(dict(doc))
+#     for task_title in body.completed_tasks:
 
-        await db.site_tasks.update_one(
-            {
-                "site_id": body.site_id,
-                "title": task_title
-            },
-            {
-                "$set": {
-                    "completed": True
-                }
-            }
-        )
+#         await db.site_tasks.update_one(
+#             {
+#                 "site_id": body.site_id,
+#                 "title": task_title
+#             },
+#             {
+#                 "$set": {
+#                     "completed": True
+#                 }
+#             }
+#         )
 
-    await recalculate_site_progress(
-        body.site_id
-    )
-    if body.issues:
-        await db.notifications.insert_one({
-            "id": new_id(), "company_id": user["company_id"],
-            "title": "Site issue reported",
-            "body": f"{len(body.issues)} issue(s) reported on site",
-            "type": "SITE", "read": False, "created_at": now_iso(),
-        })
-    return doc
+#     await recalculate_site_progress(
+#         body.site_id
+#     )
+#     if body.issues:
+#         await db.notifications.insert_one({
+#             "id": new_id(), "company_id": user["company_id"],
+#             "title": "Site issue reported",
+#             "body": f"{len(body.issues)} issue(s) reported on site",
+#             "type": "SITE", "read": False, "created_at": now_iso(),
+#         })
+#     return doc
 
 class BrandingIn(BaseModel):
     company_name:str=""
@@ -1769,6 +1996,30 @@ app.add_middleware(
     allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+app.include_router(
+    dashboard_router
+)
+
+app.include_router(
+    attendance_router
+)
+
+app.include_router(
+    dashboard_router
+)
+
+app.include_router(
+    wallet_router
+)
+
+app.include_router(
+    notifications_router
+)
+
+app.include_router(
+admin_router
 )
 
 @app.on_event("startup")

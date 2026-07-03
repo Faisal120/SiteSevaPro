@@ -11,6 +11,29 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell, Legend,
 } from "recharts";
 
+import useDashboard from "@/hooks/useDashboard";
+
+import DashboardHeader from "@/components/dashboard/DashboardHeader";
+
+import StatsCards from "@/components/dashboard/StatsCards";
+
+import QuickActions from "@/components/dashboard/QuickActions";
+
+import SiteCommandCenter from "@/components/dashboard/SiteCommandCenter";
+
+import TodaysExecutionBoard from "@/components/dashboard/TodaysExecutionBoard";
+import OperationsControlCenter from "@/components/dashboard/OperationsControlCenter";
+import CompanyCard from "@/components/dashboard/CompanyCard";
+
+import DashboardGrid, {
+  GridLeft,
+  GridRight
+} from "@/components/dashboard/DashboardGrid";
+
+import AlertsCard from "@/components/dashboard/AlertsCard";
+
+import WeatherCard from "@/components/dashboard/WeatherCard";
+
 export default function Dashboard() {
   const { user } = useAuth();
   const nav = useNavigate();
@@ -18,7 +41,14 @@ export default function Dashboard() {
   const [sites, setSites] = React.useState([]);
   const [latestPhotos, setLatestPhotos] = React.useState([]);
   const [team, setTeam] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
+  const {
+    data,
+    loading,
+    error,
+    refresh
+  } = useDashboard();
+
+
 
   React.useEffect(() => {
     const load = async () => {
@@ -54,10 +84,11 @@ export default function Dashboard() {
           const st = await api.get("/sites");
           setSites(st.data);
         }
-      } finally { setLoading(false); }
-    };
-    load();
-  }, [user, nav]);
+      } catch (err) {
+
+      };
+      load();
+    }, [user, nav]);
 
   if (loading) return <div className="p-10 text-center text-gray-500">Loading…</div>;
 
@@ -70,13 +101,27 @@ export default function Dashboard() {
 
   if (user.role === "CONTRACTOR") return (
     <ContractorDash
+
       user={user}
+
       stats={stats}
+
       sites={sites}
+
       team={team}
+
       latestPhotos={latestPhotos}
+
       greeting={greeting}
+
       nav={nav}
+
+      loading={loading}
+
+      error={error}
+
+      refresh={refresh}
+
     />
   );
   if (user.role === "SUPERVISOR") return <SupervisorDash user={user} sites={sites} greeting={greeting} nav={nav} />;
@@ -85,17 +130,174 @@ export default function Dashboard() {
 }
 
 function ContractorDash({
+
   user,
+
   stats,
+
   sites,
+
   team,
+
   latestPhotos,
+
   greeting,
-  nav
+
+  nav,
+
+  loading,
+
+  error,
+
+  refresh,
+
 }) {
   const COLORS = ["#171717", "#F97316", "#272725"];
+  if (loading) {
+
+    return (
+
+      <div className="flex items-center justify-center h-[70vh]">
+
+        <div className="text-center">
+
+          <div className="h-12 w-12 rounded-full border-4 border-blue-500 border-t-transparent animate-spin mx-auto" />
+
+          <p className="mt-5 text-slate-500">
+
+            Loading Dashboard...
+
+          </p>
+
+        </div>
+
+      </div>
+
+    );
+
+  }
+  if (error) {
+
+    return (
+
+      <div className="rounded-3xl bg-red-50 border border-red-200 p-10">
+
+        <h2 className="text-red-600 text-2xl font-bold">
+
+          Dashboard Failed
+
+        </h2>
+
+        <p className="mt-3 text-slate-600">
+
+          {error.message}
+
+        </p>
+
+        <button
+
+          onClick={refresh}
+
+          className="mt-6 rounded-xl bg-red-600 px-5 py-3 text-white"
+
+        >
+
+          Retry
+
+        </button>
+
+      </div>
+
+    );
+
+  }
+
   return (
+
     <div className="space-y-6 ss-fade-in">
+
+      <DashboardHeader
+
+        user={user}
+
+      />
+
+      <StatCard
+
+        title="Sites"
+
+        value={12}
+
+        icon={Building2}
+
+        color="blue"
+
+      />
+
+      <DashboardGrid>
+
+        <GridLeft>
+
+          <QuickActions />
+
+          <SiteCommandCenter
+
+            sites={data?.recent_sites}
+
+          />
+
+        </GridLeft>
+
+        <GridRight>
+
+          <OperationsControlCenter
+
+            alerts={data?.alerts}
+
+          />
+
+          <WeatherCard
+
+            weather={data?.weather}
+
+          />
+
+          <CompanyCard
+
+            company={{
+
+              company_name: user?.company_name,
+
+              owner_name: user?.full_name,
+
+              plan: "Professional",
+
+              sites: data?.stats?.active_sites,
+
+              labours: data?.stats?.labours,
+
+              completed_projects: 18,
+
+              renewal_date: "12 Dec 2026",
+
+              score: 94
+
+            }}
+
+          />
+
+          <TodaysExecutionBoard
+
+            tasks={data?.today_tasks}
+
+          />
+
+        </GridRight>
+
+      </DashboardGrid>
+
+
+
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm text-gray-500">{greeting},</p>
