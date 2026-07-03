@@ -37,71 +37,41 @@ import WeatherCard from "@/components/dashboard/WeatherCard";
 export default function Dashboard() {
   const { user } = useAuth();
   const nav = useNavigate();
-  const [stats, setStats] = React.useState(null);
-  const [sites, setSites] = React.useState([]);
-  const [latestPhotos, setLatestPhotos] = React.useState([]);
-  const [team, setTeam] = React.useState([]);
   const {
-    data,
+
+    stats,
+
+    sites,
+
+    team,
+
+    latestPhotos,
+
     loading,
+
     error,
-    refresh
+
+    refresh,
+
   } = useDashboard();
 
 
-
-  React.useEffect(() => {
-    const load = async () => {
-      try {
-        if (user.role === "SUPER_ADMIN") { nav("/app/admin"); return; }
-        if (user.role === "CONTRACTOR") {
-          const [s, st, tm, reports] = await Promise.all([
-            api.get("/dashboard/contractor"),
-            api.get("/sites"),
-            api.get("/team"),
-            api.get("/daily-reports")
-          ]);
-
-          setStats(s.data);
-          setSites(st.data);
-          setTeam(tm.data);
-          setStats(s.data);
-          setSites(st.data);
-          const photos = reports.data
-            .flatMap(r =>
-              (r.media_urls || [])
-                .filter(m => m.type === "image")
-                .map(m => ({
-                  ...m,
-                  site_id: r.site_id,
-                  report_date: r.date
-                }))
-            )
-            .slice(0, 8);
-
-          setLatestPhotos(photos);
-        } else {
-          const st = await api.get("/sites");
-          setSites(st.data);
-        }
-      } catch (err) {
-
-      };
-      load();
-    }, [user, nav]);
-
   if (loading) return <div className="p-10 text-center text-gray-500">Loading…</div>;
 
-  const greeting = (() => {
-    const h = new Date().getHours();
-    if (h < 12) return "Good morning";
-    if (h < 17) return "Good afternoon";
-    return "Good evening";
-  })();
+  const greeting = React.useMemo(() => {
+
+    const hour = new Date().getHours();
+
+    if (hour < 12) return "Good Morning";
+
+    if (hour < 17) return "Good Afternoon";
+
+    return "Good Evening";
+
+  }, []);
 
   if (user.role === "CONTRACTOR") return (
     <ContractorDash
-    
 
       user={user}
 
