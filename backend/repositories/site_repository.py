@@ -241,7 +241,7 @@ class SiteRepository:
     async def get_supervisors(
         self,
         company_id: str,
-        supervisor_ids: list[str],
+        supervisor_ids: List[str],
     ):
 
         return await db.users.find(
