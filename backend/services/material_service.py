@@ -287,15 +287,7 @@ class MaterialService:
 
         )
         
-        await notification_service.notify_low_stock(
-
-            company_id=user["company_id"],
-
-            material=material,
-
-            stock=new_stock,
-
-        )
+        
 
         await self._create_material_payment(
 

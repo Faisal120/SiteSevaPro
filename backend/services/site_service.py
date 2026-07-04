@@ -1,8 +1,10 @@
+from fastapi import HTTPException
 from repositories.site_repository import site_repository
 
 from services.notification_service import (
     notification_service,
 )
+from core import new_id, now_iso
 
 
 class SiteService:
@@ -617,16 +619,7 @@ class SiteService:
                 supervisor["id"],
                 site_id,
             )
-            
-            await notification_service.notify_site_assigned(
-
-                company_id=user["company_id"],
-
-                user_id=supervisor["id"],
-
-                site_name=site["name"],
-
-            )
+        
 
         if client:
 
@@ -635,19 +628,10 @@ class SiteService:
                 site_id,
             )
             
-            await notification_service.notify_site_assigned(
-            
-                            company_id=user["company_id"],
-            
-                            user_id=supervisor["id"],
-            
-                            site_name=site["name"],
-            
-                        )
             
     def _generate_default_tasks(
         self,
-        body,
+        body,   
     ):
 
         tasks = [
@@ -728,4 +712,4 @@ class SiteService:
 
         return tasks
 
-    site_service = SiteService()
+site_service = SiteService()

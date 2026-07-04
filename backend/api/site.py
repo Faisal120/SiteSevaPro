@@ -3,7 +3,10 @@ from fastapi import Depends
 
 from services.site_service import site_service
 
-from core import get_current_user
+from core import (
+    get_current_user,
+    require_roles,
+)
 
 from models.site import SiteIn
 
