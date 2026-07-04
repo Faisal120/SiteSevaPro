@@ -1813,20 +1813,20 @@ async def get_all_plans(
     ).to_list(100)
     
 
-# ---------- NOTIFICATIONS ----------
-@api.get("/notifications")
-async def list_notifications(user: dict = Depends(get_current_user)):
-    q: dict = {}
-    if user["role"] == "CONTRACTOR":
-        q["company_id"] = user["company_id"]
-    elif user["role"] == "SUPERVISOR" or user["role"] == "CLIENT":
-        q["$or"] = [{"user_id": user["id"]}, {"company_id": user["company_id"]}]
-    return await db.notifications.find(q, {"_id": 0}).sort("created_at", -1).limit(100).to_list(100)
+# # ---------- NOTIFICATIONS ----------
+# @api.get("/notifications")
+# async def list_notifications(user: dict = Depends(get_current_user)):
+#     q: dict = {}
+#     if user["role"] == "CONTRACTOR":
+#         q["company_id"] = user["company_id"]
+#     elif user["role"] == "SUPERVISOR" or user["role"] == "CLIENT":
+#         q["$or"] = [{"user_id": user["id"]}, {"company_id": user["company_id"]}]
+#     return await db.notifications.find(q, {"_id": 0}).sort("created_at", -1).limit(100).to_list(100)
 
-@api.post("/notifications/{notif_id}/read")
-async def mark_read(notif_id: str, user: dict = Depends(get_current_user)):
-    await db.notifications.update_one({"id": notif_id}, {"$set": {"read": True}})
-    return {"ok": True}
+# @api.post("/notifications/{notif_id}/read")
+# async def mark_read(notif_id: str, user: dict = Depends(get_current_user)):
+#     await db.notifications.update_one({"id": notif_id}, {"$set": {"read": True}})
+#     return {"ok": True}
 
 # ---------- SUBSCRIPTIONS ----------
 @api.get("/subscription")

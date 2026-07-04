@@ -6,7 +6,7 @@ from repositories.user_repository import user_repository
 # (ye tumhari current main.py me already hain)
 
 from core import (
-    create_access_token,
+    create_jwt,
     verify_password,
 )
 
