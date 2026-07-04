@@ -5,7 +5,7 @@ from services.notification_service import (
 )
 from repositories.material_repository import material_repository
 
-from core.utils import new_id, now_iso
+from core import new_id, now_iso
 
 
 class MaterialService:

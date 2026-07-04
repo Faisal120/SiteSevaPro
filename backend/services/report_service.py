@@ -1,6 +1,6 @@
 from repositories.report_repository import report_repository
 
-from core.utils import (
+from core import (
     new_id,
     now_iso,
 )

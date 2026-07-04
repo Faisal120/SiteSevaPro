@@ -5,7 +5,7 @@ from repositories.user_repository import user_repository
 # Existing helper functions ko yahin import karo
 # (ye tumhari current main.py me already hain)
 
-from core.auth import (
+from core import (
     create_access_token,
     verify_password,
 )

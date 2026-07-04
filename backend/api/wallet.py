@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from core.auth import (
+from core import (
     get_current_user,
     require_roles,
 )

@@ -1,6 +1,6 @@
 from repositories.attendance_repository import attendance_repository
 
-from core.utils import new_id, now_iso
+from core import new_id, now_iso
 
 from fastapi import HTTPException
 

@@ -2,7 +2,7 @@ from fastapi import HTTPException
 
 from repositories.labour_repository import labour_repository
 
-from core.utils import new_id, now_iso
+from core import new_id, now_iso
 
 
 class LabourService:

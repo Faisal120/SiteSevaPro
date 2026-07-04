@@ -2,8 +2,8 @@ from fastapi import APIRouter
 
 from fastapi import Depends
 
-from core.auth import get_current_user
-from core.auth import require_roles
+from core import get_current_user
+from core import require_roles
 
 from services.labour_service import labour_service
 

@@ -2,7 +2,7 @@ from fastapi import HTTPException
 
 from repositories.payment_repository import payment_repository
 
-from core.utils import (
+from core import (
     new_id,
     now_iso,
 )

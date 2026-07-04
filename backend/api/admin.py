@@ -1,6 +1,6 @@
 from fastapi import APIRouter,Depends
 
-from core.auth import require_roles
+from core import require_roles
 
 from services.admin_service import admin_service
 from models.subscription import (

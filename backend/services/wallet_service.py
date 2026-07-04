@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 
-from core.utils import new_id, now_iso
+from core import new_id, now_iso
 
 from repositories.wallet_repository import wallet_repository
 

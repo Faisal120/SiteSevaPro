@@ -1,5 +1,5 @@
-from core.database import db
-from core.utils import now_iso
+from core import db
+from core import now_iso
 
 class DashboardRepository:
 

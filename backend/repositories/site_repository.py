@@ -8,7 +8,7 @@ NO Business Logic.
 SiteSeva Pro
 """
 
-from core.database import db
+from core import db
 from services.notification_service import (
     notification_service,
 )

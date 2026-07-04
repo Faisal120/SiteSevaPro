@@ -1,4 +1,4 @@
-from core.database import db
+from core import db
 
 
 class NotificationRepository:

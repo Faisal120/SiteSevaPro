@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from fastapi import Depends
 
-from core.auth import get_current_user
+from core import get_current_user
 
 from services.dashboard_service import dashboard_service
 

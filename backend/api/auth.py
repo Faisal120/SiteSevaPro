@@ -10,7 +10,7 @@ from models.auth import (
 
 from services.auth_service import auth_service
 
-from core.auth import get_current_user
+from core import get_current_user
 
 router = APIRouter(
     prefix="/api/auth",
