@@ -8,6 +8,7 @@ AttendanceStatus = Literal[
     "HALF_DAY",
     "ABSENT",
     "LEAVE",
+    
 ]
 
 
