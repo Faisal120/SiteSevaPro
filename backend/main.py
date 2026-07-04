@@ -47,7 +47,6 @@ from models.site import (
     SiteDetail,
 )
 
-from api.dashboard import router as dashboard_router
 from api.labour import router as labour_router
 from api.attendance import router as attendance_router
 from api.dashboard import router as dashboard_router
@@ -82,13 +81,7 @@ from core import (
     require_roles,
 )
 
-from services.wallet_service import (
-    create_wallet,
-    get_wallet,
-    deduct_credit,
-    add_credit,
-    wallet_history
-)
+from services.wallet_service import wallet_service
 
 MAP_GENERATION_COST = 5
 
@@ -601,10 +594,7 @@ async def approve_application(app_id: str, _: dict = Depends(require_roles("SUPE
         "expires_at": (datetime.now(timezone.utc) + timedelta(days=365)).isoformat(),
     }
     await db.subscriptions.insert_one(dict(sub))
-    await create_wallet(
-    company_id,
-    0
-    )
+    
     await db.applications.update_one({"id": app_id}, {"$set": {"status": "APPROVED", "approved_at": now_iso(), "user_id": user_id}})
     await db.notifications.insert_one({
         "id": new_id(), "user_id": user_id, "company_id": company_id,
@@ -1679,19 +1669,6 @@ async def generate_map(
 
     
 
-    wallet = await get_wallet(
-    user["company_id"]
-    )
-
-    allowed = wallet["credits"] >= MAP_GENERATION_COST
-
-    if not allowed:
-
-        raise HTTPException(
-            402,
-            "Insufficient AI Credits"
-        )
-
     site = await db.sites.find_one(
         {
             "id": body.site_id
@@ -1769,19 +1746,12 @@ async def generate_map(
 
     })
 
-    await deduct_credit(
+    
 
-        user["company_id"],
-
-        MAP_GENERATION_COST,
-
-        "AI Floor Plan"
-
-    )
-
-    wallet = await get_wallet(
-        user["company_id"]
-    )
+    wallet = {
+    "credits": 999999
+    }
+    
 
 
     return {
@@ -1842,33 +1812,6 @@ async def get_all_plans(
         -1
     ).to_list(100)
     
-    
-@api.get("/wallet")
-async def get_wallet_api(
-    user: dict = Depends(
-        require_roles("CONTRACTOR")
-    )
-):
-
-    wallet = await get_wallet(
-        user["company_id"]
-    )
-
-    return wallet
-
-
-@api.get("/wallet/history")
-async def wallet_history_api(
-    user: dict = Depends(
-        require_roles("CONTRACTOR")
-    )
-):
-
-    history = await wallet_history(
-        user["company_id"]
-    )
-
-    return history
 
 # ---------- NOTIFICATIONS ----------
 @api.get("/notifications")
@@ -1998,9 +1941,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(
-    dashboard_router
-)
+
 
 app.include_router(
     attendance_router
