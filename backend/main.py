@@ -1917,7 +1917,7 @@ async def ai_insight(body: AIInsightIn, user: dict = Depends(require_roles("CONT
 app.include_router(api)
 
 from api.auth import router as auth_router
-from api.sites import router as sites_router
+from api.site import router as sites_router
 from api.tasks import router as tasks_router
 from api.reports import router as reports_router
 from api.materials import router as materials_router
