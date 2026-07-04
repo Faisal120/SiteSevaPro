@@ -12,6 +12,7 @@ from core import db
 from services.notification_service import (
     notification_service,
 )
+from typing import List
 
 
 class SiteRepository:
@@ -189,8 +190,8 @@ class SiteRepository:
     async def update_supervisors(
         self,
         site_id: str,
-        supervisor_ids: list[str],
-        supervisor_names: list[str],
+        supervisor_ids: List[str],
+        supervisor_names: List[str],
     ):
 
         return await db.sites.update_one(
