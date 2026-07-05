@@ -56,7 +56,7 @@ from api.wallet import (
 from api.notifications import (
     router as notifications_router,
 )
-
+from api.reports import router as reports_router
 from api.admin import (
 router as admin_router
 )
@@ -1961,6 +1961,10 @@ app.include_router(
 
 app.include_router(
 admin_router
+)
+
+app.include_router(
+    reports_router
 )
 
 @app.on_event("startup")
