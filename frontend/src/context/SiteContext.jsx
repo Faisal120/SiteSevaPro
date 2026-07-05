@@ -10,7 +10,7 @@ import {
 
     getSiteDetails
 
-} from "@/services/siteDetailsService";
+} from "@/services/siteDetailsServices";
 
 const SiteContext = createContext();
 

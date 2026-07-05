@@ -5,7 +5,7 @@ import React, {
     useState
 } from "react";
 
-import { getBootstrapData } from "@/services/bootstrapService";
+import { getBootstrapData } from "@/services/bootstrapServices";
 
 const BootstrapContext = createContext();
 

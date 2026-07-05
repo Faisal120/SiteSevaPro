@@ -23,7 +23,6 @@ export default function DashboardLayout() {
                 user={user}
                 role={user?.role}
                 logout={logout}
-                nav={nav}
                 mobileOpen={mobileOpen}
                 setMobileOpen={setMobileOpen}
             />

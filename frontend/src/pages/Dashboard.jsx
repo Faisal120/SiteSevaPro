@@ -56,8 +56,6 @@ export default function Dashboard() {
   } = useDashboard();
 
 
-  if (loading) return <div className="p-10 text-center text-gray-500">Loading…</div>;
-
   const greeting = React.useMemo(() => {
 
     const hour = new Date().getHours();
@@ -69,6 +67,14 @@ export default function Dashboard() {
     return "Good Evening";
 
   }, []);
+
+  if (loading) {
+    return (
+      <div className="p-10 text-center text-gray-500">
+        Loading...
+      </div>
+    );
+  }
 
   if (user.role === "CONTRACTOR") return (
     <ContractorDash

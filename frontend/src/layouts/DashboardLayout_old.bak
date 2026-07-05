@@ -2,10 +2,8 @@ import React from "react";
 import { Outlet, NavLink, Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
-import Header from "@/components/layouts/Header/Header";
-import Sidebar from "@/components/layouts/Sidebar/Sidebar"
-
-
+import Header from "@/layouts/Header/Header";
+import Sidebar from "@/layouts/Sidebar/Sidebar"
 
 export default function DashboardLayout() {
   const { user, logout } = useAuth();

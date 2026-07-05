@@ -12,7 +12,7 @@ import Contact from "@/pages/Contact";
 import Login from "@/pages/Login";
 import ContractorRegister from "@/pages/ContractorRegister";
 
-import DashboardLayout from "@/layouts/DashboardLayout_old";
+import DashboardLayout from "@/layouts/DashboardLayout";
 import Dashboard from "@/pages/Dashboard";
 import ExecutiveDashboard from "@/pages/ExecutiveDashboard";
 import Sites from "@/pages/Sites";
@@ -56,85 +56,85 @@ function App() {
   return (
     <ThemeProvider>
       <QueryProvider>
-      <AuthProvider>
-        <BootstrapProvider>
-          <BrowserRouter>
-            <Toaster position="top-right" richColors closeButton />
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/pricing" element={<Pricing />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<ContractorRegister />} />
+        <AuthProvider>
+          <BootstrapProvider>
+            <BrowserRouter>
+              <Toaster position="top-right" richColors closeButton />
+              <Routes>
+                <Route path="/" element={<Landing />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<ContractorRegister />} />
 
-              <Route
-                path="/app"
-                element={
-                  <Protected>
-                    <DashboardLayout />
-                  </Protected>
-                }
-              >
                 <Route
-                  path="maps"
+                  path="/app"
                   element={
-                    <Protected roles={["CONTRACTOR"]}>
-                      <DesignStudio />
+                    <Protected>
+                      <DashboardLayout />
                     </Protected>
                   }
-                />
-                <Route index element={<Navigate to="dashboard" replace />} />
-                <Route path="dashboard" element={<Dashboard />} />
-                <Route path="executive" element={<Protected roles={["CONTRACTOR"]}><ExecutiveDashboard /></Protected>} />
-                <Route path="sites" element={<Sites />} />
-                <Route path="sites/:siteId" element={<SiteDetail />} />
-                <Route
-                  path="team"
-                  element={
-                    <Protected roles={["CONTRACTOR"]}>
-                      <TeamManagement />
-                    </Protected>
-                  }
-                />
-                <Route path="labour" element={<Labour />} />
-                <Route path="labour/wallet" element={<Protected roles={["CONTRACTOR", "SUPERVISOR"]}><LabourWallet /></Protected>} />
-                <Route path="labour/wallet/:labourId" element={<Protected roles={["CONTRACTOR", "SUPERVISOR"]}><LabourWalletDetail /></Protected>} />
-                <Route path="materials" element={<Materials />} />
-                <Route path="vendors" element={<Protected roles={["CONTRACTOR"]}><Vendors /></Protected>} />
-                <Route path="payments" element={<Payments />} />
-                <Route path="expenses" element={<Expenses />} />
-                <Route path="estimates" element={<Protected roles={["CONTRACTOR"]}><Estimates /></Protected>} />
-                <Route path="boq" element={<Protected roles={["CONTRACTOR"]}><BOQ /></Protected>} />
-                <Route path="boq/:boqId" element={<Protected roles={["CONTRACTOR", "CLIENT"]}><BOQ /></Protected>} />
-                <Route path="reports" element={<DailyReports />} />
-                <Route path="notifications" element={<Notifications />} />
-                <Route path="subscription" element={<Subscription />} />
-                <Route
-                  path="branding"
-                  element={
-                    <Protected roles={["CONTRACTOR"]}>
-                      <Branding />
-                    </Protected>
-                  }
-                />
-                <Route path="settings" element={<Settings />} />
+                >
+                  <Route
+                    path="maps"
+                    element={
+                      <Protected roles={["CONTRACTOR"]}>
+                        <DesignStudio />
+                      </Protected>
+                    }
+                  />
+                  <Route index element={<Navigate to="dashboard" replace />} />
+                  <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="executive" element={<Protected roles={["CONTRACTOR"]}><ExecutiveDashboard /></Protected>} />
+                  <Route path="sites" element={<Sites />} />
+                  <Route path="sites/:siteId" element={<SiteDetail />} />
+                  <Route
+                    path="team"
+                    element={
+                      <Protected roles={["CONTRACTOR"]}>
+                        <TeamManagement />
+                      </Protected>
+                    }
+                  />
+                  <Route path="labour" element={<Labour />} />
+                  <Route path="labour/wallet" element={<Protected roles={["CONTRACTOR", "SUPERVISOR"]}><LabourWallet /></Protected>} />
+                  <Route path="labour/wallet/:labourId" element={<Protected roles={["CONTRACTOR", "SUPERVISOR"]}><LabourWalletDetail /></Protected>} />
+                  <Route path="materials" element={<Materials />} />
+                  <Route path="vendors" element={<Protected roles={["CONTRACTOR"]}><Vendors /></Protected>} />
+                  <Route path="payments" element={<Payments />} />
+                  <Route path="expenses" element={<Expenses />} />
+                  <Route path="estimates" element={<Protected roles={["CONTRACTOR"]}><Estimates /></Protected>} />
+                  <Route path="boq" element={<Protected roles={["CONTRACTOR"]}><BOQ /></Protected>} />
+                  <Route path="boq/:boqId" element={<Protected roles={["CONTRACTOR", "CLIENT"]}><BOQ /></Protected>} />
+                  <Route path="reports" element={<DailyReports />} />
+                  <Route path="notifications" element={<Notifications />} />
+                  <Route path="subscription" element={<Subscription />} />
+                  <Route
+                    path="branding"
+                    element={
+                      <Protected roles={["CONTRACTOR"]}>
+                        <Branding />
+                      </Protected>
+                    }
+                  />
+                  <Route path="settings" element={<Settings />} />
 
-                <Route path="admin" element={<Protected roles={["SUPER_ADMIN"]}><AdminDashboard /></Protected>} />
-                <Route path="admin/applications" element={<Protected roles={["SUPER_ADMIN"]}><Applications /></Protected>} />
-                <Route path="admin/contractors" element={<Protected roles={["SUPER_ADMIN"]}><Contractors /></Protected>} />
-                <Route path="admin/supervisors" element={<Protected roles={["SUPER_ADMIN"]}><Supervisors /></Protected>} />
-                <Route path="admin/subscriptions" element={<Protected roles={["SUPER_ADMIN"]}><Subscriptions /></Protected>} />
-                <Route path="admin/revenue" element={<Protected roles={["SUPER_ADMIN"]}><Revenue /></Protected>} />
-                <Route path="admin/payments" element={<Protected roles={["SUPER_ADMIN"]}><AdminPayments /></Protected>} />
-                <Route path="admin/audit" element={<Protected roles={["SUPER_ADMIN"]}><AuditLogs /></Protected>} />
-              </Route>
+                  <Route path="admin" element={<Protected roles={["SUPER_ADMIN"]}><AdminDashboard /></Protected>} />
+                  <Route path="admin/applications" element={<Protected roles={["SUPER_ADMIN"]}><Applications /></Protected>} />
+                  <Route path="admin/contractors" element={<Protected roles={["SUPER_ADMIN"]}><Contractors /></Protected>} />
+                  <Route path="admin/supervisors" element={<Protected roles={["SUPER_ADMIN"]}><Supervisors /></Protected>} />
+                  <Route path="admin/subscriptions" element={<Protected roles={["SUPER_ADMIN"]}><Subscriptions /></Protected>} />
+                  <Route path="admin/revenue" element={<Protected roles={["SUPER_ADMIN"]}><Revenue /></Protected>} />
+                  <Route path="admin/payments" element={<Protected roles={["SUPER_ADMIN"]}><AdminPayments /></Protected>} />
+                  <Route path="admin/audit" element={<Protected roles={["SUPER_ADMIN"]}><AuditLogs /></Protected>} />
+                </Route>
 
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </BrowserRouter>
-        </BootstrapProvider>
-      </AuthProvider>
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </BrowserRouter>
+          </BootstrapProvider>
+        </AuthProvider>
       </QueryProvider>
     </ThemeProvider>
   );
