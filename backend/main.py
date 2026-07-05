@@ -1466,7 +1466,7 @@ async def upload_logo(
             }
         }
     )
-
+    
     return {
         "logo_url": logo_url
     }
