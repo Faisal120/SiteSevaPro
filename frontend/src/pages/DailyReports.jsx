@@ -17,7 +17,7 @@ export default function DailyReports() {
 
 
   const load = async () => {
-    const [r, s] = await Promise.all([api.get("/daily-reports"), api.get("/sites")]);
+    const [r, s] = await Promise.all([api.get("/reports"), api.get("/sites")]);
     setList(r.data); setSites(s.data);
   };
   React.useEffect(() => { load(); }, []);
@@ -190,7 +190,7 @@ function ReportForm({ sites, onDone }) {
   const submit = async (e) => {
     e.preventDefault();
     try {
-      await api.post("/daily-reports", {
+      await api.post("/reports", {
         site_id: f.site_id, date: f.date, notes: f.notes,
         completed_tasks: f.completed_tasks_raw.split("\n").map(s => s.trim()).filter(Boolean),
         issues: f.issues_raw.split("\n").map(s => s.trim()).filter(Boolean),

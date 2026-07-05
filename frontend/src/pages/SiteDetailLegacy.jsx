@@ -74,7 +74,7 @@ export default function SiteDetail() {
         const teamRes = await api.get("/team");
         setTeam(teamRes.data);
       }
-      const calls = [api.get(`/daily-reports?site_id=${siteId}`)];
+      const calls = [api.get(`/reports?site_id=${siteId}`)];
       if (user.role !== "CLIENT") {
         calls.push(api.get(`/labour?site_id=${siteId}`));
         calls.push(api.get(`/materials?site_id=${siteId}`));

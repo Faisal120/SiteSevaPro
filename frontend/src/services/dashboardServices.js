@@ -24,7 +24,7 @@ const dashboardService = {
 
             apiClient.get("/team"),
 
-            apiClient.get("/daily-reports"),
+            apiClient.get("/reports"),
 
         ]);
 
