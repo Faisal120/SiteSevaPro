@@ -37,18 +37,24 @@ class SiteRepository:
         )
 
     async def get(
-    self,
-    site_id: str,
-    projection: dict | None = None,
-):
+        self,
+        site_id: str,
+        company_id: str | None = None,
+        projection: dict | None = None,
+    ):
 
         if projection is None:
             projection = {"_id": 0}
 
+        query = {
+            "id": site_id,
+        }
+
+        if company_id:
+            query["company_id"] = company_id
+
         return await db.sites.find_one(
-            {
-                "id": site_id
-            },
+            query,
             projection,
         )
 
@@ -122,12 +128,21 @@ class SiteRepository:
     # Users
     # =====================================================
 
-    async def get_user(
+    async def get_user_by_id(
         self,
-        query: dict,
+        company_id: str,
+        user_id: str,
     ):
 
-        return await db.users.find_one(query)
+        return await db.users.find_one(
+            {
+                "company_id": company_id,
+                "id": user_id,
+            },
+            {
+                "_id": 0,
+            },
+        )
 
     async def update_user(
         self,
@@ -160,6 +175,24 @@ class SiteRepository:
                 }
             }
         )
+        
+    async def count(
+        self,
+        query: dict,
+    ):
+
+        return await db.sites.count_documents(
+            query
+        )
+        
+    async def aggregate(
+        self,
+        pipeline: list,
+    ):
+
+        return await db.sites.aggregate(
+            pipeline
+        ).to_list(None)
 
     # =====================================================
     # Tasks
@@ -190,13 +223,15 @@ class SiteRepository:
     async def update_supervisors(
         self,
         site_id: str,
+        company_id: str,    
         supervisor_ids: List[str],
         supervisor_names: List[str],
     ):
 
         return await db.sites.update_one(
             {
-                "id": site_id
+                "id": site_id,
+                "company_id": company_id,
             },
             {
                 "$set": {
@@ -216,18 +251,22 @@ class SiteRepository:
     async def update_client(
         self,
         site_id: str,
+        company_id: str,
         client_id: str,
+        client_ids: List[str],
         client_name: str,
         client_email: str,
     ):
 
         return await db.sites.update_one(
             {
-                "id": site_id
+                "id": site_id,
+                "company_id": company_id,
             },
             {
                 "$set": {
                     "client_id": client_id,
+                    "client_ids": client_ids,
                     "client_name": client_name,
                     "client_email": client_email,
                 }
@@ -292,5 +331,120 @@ class SiteRepository:
         await db.site_tasks.insert_many(
             documents
         )
+        
+    
+        # =====================================================
+    # Site Queries
+    # =====================================================
+
+    async def get_by_company(
+        self,
+        company_id: str,
+    ):
+
+        return await db.sites.find(
+            {
+                "company_id": company_id,
+            },
+            {
+                "_id": 0,
+            },
+        ).sort(
+            "created_at",
+            -1,
+        ).to_list(1000)
+
+
+    async def get_by_company_and_id(
+        self,
+        company_id: str,
+        site_id: str,
+    ):
+
+        return await db.sites.find_one(
+            {
+                "company_id": company_id,
+                "id": site_id,
+            },
+            {
+                "_id": 0,
+            },
+        )
+
+
+    async def get_for_supervisor(
+        self,
+        company_id: str,
+        supervisor_id: str,
+    ):
+
+        return await db.sites.find(
+            {
+                "company_id": company_id,
+                "supervisor_ids": supervisor_id,
+            },
+            {
+                "_id": 0,
+            },
+        ).sort(
+            "created_at",
+            -1,
+        ).to_list(1000)
+
+
+    async def get_for_client(
+        self,
+        company_id: str,
+        client_id: str,
+    ):
+
+        return await db.sites.find(
+            {
+                "company_id": company_id,
+                "client_ids": client_id,
+            },
+            {
+                "_id": 0,
+            },
+        ).sort(
+            "created_at",
+            -1,
+        ).to_list(1000)
+
+
+    async def exists(
+        self,
+        company_id: str,
+        site_id: str,
+    ):
+
+        return await db.sites.find_one(
+            {
+                "company_id": company_id,
+                "id": site_id,
+            },
+            {
+                "_id": 1,
+            },
+        )
+
+
+    async def bulk_get(
+        self,
+        company_id: str,
+        site_ids: List[str],
+    ):
+
+        return await db.sites.find(
+            {
+                "company_id": company_id,
+                "id": {
+                    "$in": site_ids,
+                },
+            },
+            {
+                "_id": 0,
+            },
+        ).to_list(1000)
     
 site_repository = SiteRepository()

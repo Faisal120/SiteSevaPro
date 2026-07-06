@@ -1,66 +1,70 @@
 from fastapi import HTTPException
+
+from core import new_id, now_iso
+
 from repositories.site_repository import site_repository
 
-from services.notification_service import (
-    notification_service,
-)
-from core import new_id, now_iso
+from services.notification_service import notification_service
 
 
 class SiteService:
+
+    # ============================================================
+    # LIST SITES
+    # ============================================================
 
     async def list_sites(
         self,
         user: dict,
     ):
 
-        query = {}
+        role = user["role"]
 
-        if user["role"] == "CONTRACTOR":
+        if role == "CONTRACTOR":
 
-            query["company_id"] = user["company_id"]
-
-        elif user["role"] == "SUPERVISOR":
-
-            query["id"] = {
-                "$in": user.get(
-                    "site_ids",
-                    [],
-                )
-            }
-
-        elif user["role"] == "CLIENT":
-
-            query["id"] = {
-                "$in": user.get(
-                    "site_ids",
-                    [],
-                )
-            }
-
-        else:
-
-            raise HTTPException(
-                403,
-                "Forbidden",
+            return await site_repository.get_by_company(
+                user["company_id"]
             )
 
-        return await site_repository.list(query)
+        elif role == "SUPERVISOR":
+
+            return await site_repository.get_for_supervisor(
+                company_id=user["company_id"],
+                supervisor_id=user["id"],
+            )
+
+        elif role == "CLIENT":
+
+            return await site_repository.get_for_client(
+                company_id=user["company_id"],
+                client_id=user["id"],
+            )
+
+        raise HTTPException(
+            status_code=403,
+            detail="Forbidden",
+        )
+
+    # ============================================================
+    # CREATE SITE
+    # ============================================================
 
     async def create_site(
-    self,
-    body,
-    user,
-):
+        self,
+        body,
+        user,
+    ):
 
         # --------------------------------------------------
-        # 1. Validate Subscription
+        # Subscription Validation
         # --------------------------------------------------
 
-        await self._validate_subscription(user)
+        await self._validate_subscription(
+            user
+        )
 
         # --------------------------------------------------
-        # 2. Load Users
+        # Load Team
         # --------------------------------------------------
 
         supervisors = await self._load_supervisors(
@@ -74,18 +78,18 @@ class SiteService:
         )
 
         # --------------------------------------------------
-        # 3. Build Site Document
+        # Build Site
         # --------------------------------------------------
 
         document = self._build_document(
-            body,
-            user,
-            supervisors,
-            client,
+            body=body,
+            user=user,
+            supervisors=supervisors,
+            client=client,
         )
 
         # --------------------------------------------------
-        # 4. Save Site
+        # Save Site
         # --------------------------------------------------
 
         await site_repository.create(
@@ -93,22 +97,20 @@ class SiteService:
         )
 
         # --------------------------------------------------
-        # 5. Generate Construction Tasks
+        # Create Default Tasks
         # --------------------------------------------------
-
-        task_templates = self._generate_default_tasks(
-            body
-        )
 
         task_documents = []
 
-        for title, weight in task_templates:
+        for title, weight in self._generate_default_tasks(
+            body
+        ):
 
             task_documents.append(
                 {
                     "id": new_id(),
-                    "site_id": document["id"],
                     "company_id": user["company_id"],
+                    "site_id": document["id"],
                     "title": title,
                     "weight": weight,
                     "completed": False,
@@ -121,7 +123,7 @@ class SiteService:
         )
 
         # --------------------------------------------------
-        # 6. Assign Users
+        # Temporary Backward Compatibility
         # --------------------------------------------------
 
         await self._assign_users(
@@ -130,132 +132,132 @@ class SiteService:
             client,
         )
 
+        # --------------------------------------------------
+        # Notifications
+        # --------------------------------------------------
+
+        try:
+
+            if supervisors:
+
+                await notification_service.notify_supervisors_site_assigned(
+                    document,
+                    supervisors,
+                )
+
+            if client:
+
+                await notification_service.notify_client_site_assigned(
+                    document,
+                    client,
+                )
+
+        except Exception:
+
+            pass
+
         return document
 
     # ============================================================
-# GET SITE
-# ============================================================
+    # GET SITE
+    # ============================================================
 
     async def get_site(
-
         self,
-
         site_id: str,
-
         user: dict,
-
     ):
 
-        site = await site_repository.get(site_id)
+        site = await site_repository.get(
+            site_id=site_id,
+            company_id=user["company_id"],
+        )
 
         if not site:
 
             raise HTTPException(
-                404,
-                "Site not found",
+                status_code=404,
+                detail="Site not found",
             )
 
-        # Contractor
+        role = user["role"]
 
-        if (
+        if role == "CONTRACTOR":
 
-            user["role"] == "CONTRACTOR"
+            return site
 
-            and
+        if role == "SUPERVISOR":
 
-            site["company_id"] != user["company_id"]
-
-        ):
-
-            raise HTTPException(
-                403,
-                "Forbidden",
-            )
-
-        # Supervisor
-
-        if (
-
-            user["role"] == "SUPERVISOR"
-
-            and
-
-            site_id not in user.get(
-                "site_ids",
+            if user["id"] not in site.get(
+                "supervisor_ids",
                 [],
-            )
+            ):
 
-        ):
+                raise HTTPException(
+                    status_code=403,
+                    detail="You are not assigned to this site.",
+                )
 
-            raise HTTPException(
-                403,
-                "Not assigned",
-            )
+            return site
 
-        # Client
+        if role == "CLIENT":
 
-        if (
+            if user["id"] not in site.get(
+                "client_ids",
+                [],
+            ):
 
-            user["role"] == "CLIENT"
+                raise HTTPException(
+                    status_code=403,
+                    detail="You are not assigned to this site.",
+                )
 
-            and
+            return site
 
-            site.get(
-                "client_email"
-            ) != user["email"]
-
-        ):
-
-            raise HTTPException(
-                403,
-                "Forbidden",
-            )
-
-        return site
+        raise HTTPException(
+            status_code=403,
+            detail="Forbidden",
+        )
 
     # ============================================================
     # UPDATE SITE
     # ============================================================
 
     async def update_site(
-
         self,
-
         site_id: str,
-
         body,
-
         user,
-
     ):
 
-        site = await site_repository.get(site_id)
+        site = await site_repository.get(
+            site_id=site_id,
+            company_id=user["company_id"],
+        )
 
         if not site:
 
             raise HTTPException(
-                404,
-                "Site not found",
+                status_code=404,
+                detail="Site not found",
             )
 
-        if site["company_id"] != user["company_id"]:
-
-            raise HTTPException(
-                403,
-                "Forbidden",
-            )
-
-        await site_repository.update(
-
-            site_id,
-
-            user["company_id"],
-
-            body.model_dump(),
-
+        payload = body.model_dump(
+            exclude_unset=True
         )
 
-        return await site_repository.get(site_id)
+        payload["updated_at"] = now_iso()
+
+        await site_repository.update(
+            site_id=site_id,
+            company_id=user["company_id"],
+            payload=payload,
+        )
+
+        return await site_repository.get(
+            site_id=site_id,
+            company_id=user["company_id"],
+        )
 
     # ============================================================
     # DELETE SITE
@@ -267,60 +269,49 @@ class SiteService:
         user: dict,
     ):
 
-        site = await site_repository.get(site_id)
+        site = await site_repository.get(
+            site_id=site_id,
+            company_id=user["company_id"],
+        )
 
         if not site:
-            raise HTTPException(
-                404,
-                "Site not found",
-            )
 
-        if site["company_id"] != user["company_id"]:
             raise HTTPException(
-                403,
-                "Forbidden",
+                status_code=404,
+                detail="Site not found",
             )
 
         await site_repository.delete(
-            site_id,
-            user["company_id"],
+            site_id=site_id,
+            company_id=user["company_id"],
         )
 
         return {
             "success": True,
             "message": "Site deleted successfully",
         }
-
+        
     # ============================================================
     # ASSIGN SUPERVISOR
     # ============================================================
 
     async def assign_supervisor(
-
         self,
-
         site_id: str,
-
         body,
-
         user,
-
     ):
 
-        site = await site_repository.get(site_id)
+        site = await site_repository.get(
+            site_id=site_id,
+            company_id=user["company_id"],
+        )
 
         if not site:
 
             raise HTTPException(
-                404,
-                "Site not found",
-            )
-
-        if site["company_id"] != user["company_id"]:
-
-            raise HTTPException(
-                403,
-                "Forbidden",
+                status_code=404,
+                detail="Site not found",
             )
 
         supervisor = await site_repository.get_user(
@@ -334,8 +325,8 @@ class SiteService:
         if not supervisor:
 
             raise HTTPException(
-                404,
-                "Supervisor not found",
+                status_code=404,
+                detail="Supervisor not found",
             )
 
         supervisor_ids = list(
@@ -345,52 +336,50 @@ class SiteService:
             )
         )
 
-        if body.user_id not in supervisor_ids:
+        supervisor_names = list(
+            site.get(
+                "supervisor_names",
+                [],
+            )
+        )
+
+        if supervisor["id"] not in supervisor_ids:
 
             supervisor_ids.append(
-                body.user_id
+                supervisor["id"]
             )
 
-        names = []
-
-        for supervisor_id in supervisor_ids:
-
-            sup = await site_repository.get_user(
-                {
-                    "id": supervisor_id
-                }
+            supervisor_names.append(
+                supervisor["full_name"]
             )
-
-            if sup:
-
-                names.append(
-                    sup["full_name"]
-                )
 
         await site_repository.update_supervisors(
-
-            site_id,
-
-            supervisor_ids,
-
-            names,
-
+            site_id=site_id,
+            company_id=user["company_id"],
+            supervisor_ids=supervisor_ids,
+            supervisor_names=supervisor_names,
         )
 
+        # Backward compatibility
         await site_repository.add_site_to_user(
-
-            body.user_id,
-
+            supervisor["id"],
             site_id,
-
         )
+
+        try:
+
+            await notification_service.notify_supervisors_site_assigned(
+                site,
+                [supervisor],
+            )
+
+        except Exception:
+
+            pass
 
         return {
-
             "success": True,
-
             "message": "Supervisor assigned successfully",
-
         }
 
     # ============================================================
@@ -398,33 +387,22 @@ class SiteService:
     # ============================================================
 
     async def assign_client(
-
         self,
-
         site_id: str,
-
         body,
-
         user,
-
     ):
 
         site = await site_repository.get(
-            site_id
+            site_id=site_id,
+            company_id=user["company_id"],
         )
 
         if not site:
 
             raise HTTPException(
-                404,
-                "Site not found",
-            )
-
-        if site["company_id"] != user["company_id"]:
-
-            raise HTTPException(
-                403,
-                "Forbidden",
+                status_code=404,
+                detail="Site not found",
             )
 
         client = await site_repository.get_user(
@@ -438,53 +416,69 @@ class SiteService:
         if not client:
 
             raise HTTPException(
-                404,
-                "Client not found",
+                status_code=404,
+                detail="Client not found",
+            )
+
+        client_ids = list(
+            site.get(
+                "client_ids",
+                [],
+            )
+        )
+
+        if client["id"] not in client_ids:
+
+            client_ids.append(
+                client["id"]
             )
 
         await site_repository.update_client(
-
-            site_id,
-
-            body.user_id,
-
-            client["full_name"],
-
-            client["email"],
-
+            site_id=site_id,
+            company_id=user["company_id"],
+            client_id=client["id"],
+            client_ids=client_ids,
+            client_name=client["full_name"],
+            client_email=client["email"],
         )
 
+        # Backward compatibility
         await site_repository.add_site_to_user(
-
-            body.user_id,
-
+            client["id"],
             site_id,
-
         )
+
+        try:
+
+            await notification_service.notify_client_site_assigned(
+                site,
+                client,
+            )
+
+        except Exception:
+
+            pass
 
         return {
-
             "success": True,
-
             "message": "Client assigned successfully",
-
         }
 
     # ============================================================
-    # SUBSCRIPTION
+    # VALIDATE SUBSCRIPTION
     # ============================================================
 
     async def _validate_subscription(
         self,
-        user,
+        user: dict,
     ):
 
-        sub = await site_repository.active_subscription(
+        subscription = await site_repository.active_subscription(
             user["company_id"]
         )
 
         plan = (
-            sub or {}
+            subscription or {}
         ).get(
             "plan",
             "FREE",
@@ -492,20 +486,19 @@ class SiteService:
 
         if plan == "FREE":
 
-            count = await site_repository.company_site_count(
+            total_sites = await site_repository.company_site_count(
                 user["company_id"]
             )
 
-            if count >= 1:
+            if total_sites >= 1:
 
                 raise HTTPException(
-                    402,
-                    "Free plan allows only 1 site. Upgrade to Premium.",
+                    status_code=402,
+                    detail="Free plan allows only one site. Upgrade your subscription.",
                 )
 
         return plan
-    
-    
+
     # ============================================================
     # LOAD SUPERVISORS
     # ============================================================
@@ -516,19 +509,23 @@ class SiteService:
         user,
     ):
 
-        if not body.supervisor_ids:
+        supervisor_ids = getattr(
+            body,
+            "supervisor_ids",
+            [],
+        )
+
+        if not supervisor_ids:
 
             return []
 
-        return await site_repository.get_supervisors(
-
+        supervisors = await site_repository.get_supervisors(
             user["company_id"],
-
-            body.supervisor_ids,
-
+            supervisor_ids,
         )
-        
-        
+
+        return supervisors
+
     # ============================================================
     # LOAD CLIENT
     # ============================================================
@@ -539,79 +536,168 @@ class SiteService:
         user,
     ):
 
-        if not body.client_id:
+        client_id = getattr(
+            body,
+            "client_id",
+            None,
+        )
+
+        if not client_id:
 
             return None
 
         return await site_repository.get_client(
-
             user["company_id"],
-
-            body.client_id,
-
+            client_id,
         )
-
-
-    # ============================================================
-    # BUILD DOCUMENT
+        
+        
+            # ============================================================
+    # BUILD SITE DOCUMENT
     # ============================================================
 
     def _build_document(
-
         self,
-
         body,
-
         user,
-
         supervisors,
-
         client,
-
     ):
 
-        data = body.model_dump()
+        data = body.model_dump(
+            exclude_unset=True
+        )
 
-        return {
+        supervisor_ids = [
+            supervisor["id"]
+            for supervisor in supervisors
+        ]
+
+        supervisor_names = [
+            supervisor["full_name"]
+            for supervisor in supervisors
+        ]
+
+        client_ids = []
+
+        if client:
+            client_ids.append(
+                client["id"]
+            )
+
+        document = {
+
+            # ----------------------------------------------------
+            # Identity
+            # ----------------------------------------------------
 
             "id": new_id(),
 
+            # ----------------------------------------------------
+            # Ownership
+            # ----------------------------------------------------
+
             "company_id": user["company_id"],
+
+            "contractor_id": user["id"],
 
             "created_by": user["id"],
 
+            "owner_id": user["id"],
+
+            # ----------------------------------------------------
+            # Audit
+            # ----------------------------------------------------
+
             "created_at": now_iso(),
+
+            "updated_at": now_iso(),
+
+            # ----------------------------------------------------
+            # Site Details
+            # ----------------------------------------------------
 
             **data,
 
-            "supervisor_names":[
+            # ----------------------------------------------------
+            # Supervisor
+            # ----------------------------------------------------
 
-                s["full_name"]
+            "supervisor_ids": supervisor_ids,
 
-                for s in supervisors
+            "supervisor_names": supervisor_names,
 
-            ],
+            # ----------------------------------------------------
+            # Client
+            # ----------------------------------------------------
 
-            "client_name":
+            "client_id": client["id"] if client else None,
 
-                client.get("full_name")
+            "client_ids": client_ids,
 
-                if client else None,
+            "client_name": (
+                client["full_name"]
+                if client
+                else None
+            ),
 
-            "client_email":
+            "client_email": (
+                client["email"]
+                if client
+                else None
+            ),
 
-                client.get("email")
+            # ----------------------------------------------------
+            # Defaults
+            # ----------------------------------------------------
 
-                if client else None,
+            "status": "ACTIVE",
+
+            "progress": 0,
+
+            "completed_tasks": 0,
+
+            "pending_tasks": 0,
+
+            "labour_count": 0,
+
+            "today_attendance": 0,
+
+            "expense": 0,
+
+            "material_cost": 0,
+
+            "labour_cost": 0,
+
+            "other_cost": 0,
+
+            "total_cost": 0,
+
+            "last_activity": now_iso(),
 
         }
-        
+
+        return document
+
+    # ============================================================
+    # ASSIGN USERS (Backward Compatibility)
+    # ============================================================
+
     async def _assign_users(
         self,
-        site_id,
-        supervisors,
+        site_id: str,
+        supervisors: list,
         client,
     ):
+
+        # ----------------------------------------------------
+        # NOTE:
+        # users.site_ids is retained only for backward
+        # compatibility. The source of truth is:
+        #
+        # sites.supervisor_ids
+        # sites.client_ids
+        # ----------------------------------------------------
 
         for supervisor in supervisors:
 
@@ -619,7 +705,6 @@ class SiteService:
                 supervisor["id"],
                 site_id,
             )
-        
 
         if client:
 
@@ -627,89 +712,147 @@ class SiteService:
                 client["id"],
                 site_id,
             )
-            
-            
+
+    # ============================================================
+    # DEFAULT CONSTRUCTION TASKS
+    # ============================================================
+
     def _generate_default_tasks(
         self,
-        body,   
+        body,
     ):
 
         tasks = [
 
-            ("Site Layout",1),
+            ("Site Layout", 1),
 
-            ("Excavation",2),
+            ("Excavation", 2),
 
-            ("Mitti Filling",2),
+            ("Earth Filling", 2),
 
         ]
 
-        if body.has_boring:
+        if getattr(
+            body,
+            "has_boring",
+            False,
+        ):
 
             tasks.append(
-                ("Boring",2)
+                ("Boring", 2)
             )
 
-        if body.has_septic_tank:
+        if getattr(
+            body,
+            "has_septic_tank",
+            False,
+        ):
 
             tasks.append(
-                ("Septic Tank",2)
+                ("Septic Tank", 2)
             )
 
-        if body.has_soak_pit:
+        if getattr(
+            body,
+            "has_soak_pit",
+            False,
+        ):
 
             tasks.append(
-                ("Soak Pit",2)
+                ("Soak Pit", 2)
             )
 
         tasks.extend([
-            ("PCC",3),
-            ("Footing",4),
-            ("Plinth Beam",4),
-            ("GF Column",4),
-            ("GF Brickwork",5),
-            ("GF Slab",6),
+
+            ("PCC", 3),
+
+            ("Footing", 4),
+
+            ("Plinth Beam", 4),
+
+            ("Ground Floor Column", 4),
+
+            ("Ground Floor Brickwork", 5),
+
+            ("Ground Floor Slab", 6),
+
         ])
 
-        if body.floors >= 2:
+        floors = getattr(
+            body,
+            "floors",
+            1,
+        )
+
+        if floors >= 2:
 
             tasks.extend([
-                ("FF Column",4),
-                ("FF Brickwork",5),
-                ("FF Slab",6),
+
+                ("First Floor Column", 4),
+
+                ("First Floor Brickwork", 5),
+
+                ("First Floor Slab", 6),
+
             ])
 
-        if body.floors >= 3:
+        if floors >= 3:
 
             tasks.extend([
-                ("SF Column",4),
-                ("SF Brickwork",5),
-                ("SF Slab",6),
+
+                ("Second Floor Column", 4),
+
+                ("Second Floor Brickwork", 5),
+
+                ("Second Floor Slab", 6),
+
             ])
 
-        if body.floors >= 4:
+        if floors >= 4:
 
             tasks.extend([
-                ("TF Column",4),
-                ("TF Brickwork",5),
-                ("TF Slab",6),
+
+                ("Third Floor Column", 4),
+
+                ("Third Floor Brickwork", 5),
+
+                ("Third Floor Slab", 6),
+
             ])
 
-        if body.has_mumty:
+        if getattr(
+            body,
+            "has_mumty",
+            False,
+        ):
 
             tasks.extend([
-                ("Mumty Brickwork",2),
-                ("Mumty Slab",2),
+
+                ("Mumty Brickwork", 2),
+
+                ("Mumty Slab", 2),
+
             ])
 
         tasks.extend([
-            ("Electrical",3),
-            ("Plumbing",3),
-            ("Flooring",3),
-            ("Painting",3),
-            ("Handover",1),
+
+            ("Electrical", 3),
+
+            ("Plumbing", 3),
+
+            ("Flooring", 3),
+
+            ("Painting", 3),
+
+            ("Final Cleaning", 2),
+
+            ("Quality Inspection", 2),
+
+            ("Project Handover", 1),
+
         ])
 
         return tasks
+
 
 site_service = SiteService()
