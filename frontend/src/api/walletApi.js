@@ -16,7 +16,7 @@ const walletApi = {
 
         return apiClient.get(
 
-            `/wallet/${id}/ledger`
+            `/api/wallet/${id}/ledger`
 
         );
 

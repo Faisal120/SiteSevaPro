@@ -16,7 +16,7 @@ const siteApi = {
 
         return apiClient.get(
 
-            `/sites/${id}`
+            `/api/sites/${id}`
 
         );
 

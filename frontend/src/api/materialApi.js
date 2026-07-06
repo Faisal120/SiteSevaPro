@@ -16,7 +16,7 @@ const materialApi = {
 
         return apiClient.post(
 
-            "/materials",
+            "/api/materials",
 
             data
 

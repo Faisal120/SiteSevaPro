@@ -1,90 +1,3 @@
-"""
-Site Models
-
-SiteSeva Pro
-Production Ready
-"""
-
-from typing import Literal, Optional
-
-from pydantic import BaseModel, Field
-
-
-# ==========================================================
-# Site Create / Update
-# ==========================================================
-
-class SiteIn(BaseModel):
-
-    # Basic Details
-    name: str
-    location: str
-    budget: float
-    start_date: str
-    end_date: str
-
-    description: Optional[str] = None
-    cover_image: Optional[str] = None
-
-    # Construction
-    floors: int = 1
-
-    has_boring: bool = False
-    has_septic_tank: bool = True
-    has_soak_pit: bool = True
-    has_mumty: bool = True
-
-    # Team
-    supervisor_ids: list[str] = Field(default_factory=list)
-
-    client_id: Optional[str] = None
-
-    # Status
-
-    status: Literal[
-        "PLANNING",
-        "ACTIVE",
-        "ON_HOLD",
-        "COMPLETED",
-    ] = "ACTIVE"
-
-    progress: int = 0
-
-
-# ==========================================================
-# Assignment
-# ==========================================================
-
-class SiteAssignmentIn(BaseModel):
-
-    user_id: str
-
-
-# ==========================================================
-# Site Card
-# ==========================================================
-
-class SiteSummary(BaseModel):
-
-    id: str
-
-    name: str
-
-    location: str
-
-    status: str
-
-    progress: int
-
-    cover_image: Optional[str] = None
-
-    supervisor_names: list[str] = Field(default_factory=list)
-
-    client_name: Optional[str] = None
-
-    last_activity: Optional[str] = None
-
-
 # ==========================================================
 # Site Detail
 # ==========================================================
@@ -103,11 +16,11 @@ class SiteDetail(BaseModel):
 
     company_id: str
 
-    contractor_id: str
+    contractor_id: Optional[str] = None
 
     created_by: str
 
-    owner_id: str
+    owner_id: Optional[str] = None
 
     # -----------------------------------------------------
     # Audit
@@ -115,7 +28,7 @@ class SiteDetail(BaseModel):
 
     created_at: str
 
-    updated_at: str
+    updated_at: Optional[str] = None
 
     # -----------------------------------------------------
     # Basic Details
@@ -149,15 +62,15 @@ class SiteDetail(BaseModel):
     # Construction
     # -----------------------------------------------------
 
-    floors: int
+    floors: int = 1
 
-    has_boring: bool
+    has_boring: bool = False
 
-    has_septic_tank: bool
+    has_septic_tank: bool = True
 
-    has_soak_pit: bool
+    has_soak_pit: bool = True
 
-    has_mumty: bool
+    has_mumty: bool = True
 
     # -----------------------------------------------------
     # Team
@@ -174,6 +87,12 @@ class SiteDetail(BaseModel):
     client_name: Optional[str] = None
 
     client_email: Optional[str] = None
+
+    # Legacy fields (old database compatibility)
+
+    supervisor_id: Optional[str] = None
+
+    supervisor_name: Optional[str] = None
 
     # -----------------------------------------------------
     # Dashboard Metrics

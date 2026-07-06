@@ -952,11 +952,15 @@ app.include_router(
 )
 
 app.include_router(
-admin_router
+    admin_router
 )
 
 app.include_router(
     reports_router
+)
+
+app.include_router(
+    labour_router
 )
 
 @app.on_event("startup")

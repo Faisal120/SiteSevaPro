@@ -22,9 +22,9 @@ const dashboardService = {
 
             siteApi.list(),
 
-            apiClient.get("/team"),
+            apiClient.get("/api/team"),
 
-            apiClient.get("/reports"),
+            apiClient.get("/api/reports"),
 
         ]);
 
@@ -54,13 +54,13 @@ const dashboardService = {
 
         return {
 
-            stats: dashboard.data,
+            stats: dashboard.data.stats,
 
-            sites: sites.data,
+            sites: dashboard.data.sites,
 
-            team: team.data,
+            team: dashboard.data.team,
 
-            latestPhotos,
+            latestPhotos: dashboard.data.latestPhotos || latestPhotos,
 
         };
 

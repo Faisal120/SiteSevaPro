@@ -16,7 +16,7 @@ const paymentApi = {
 
         return apiClient.post(
 
-            "/payments",
+            "/api/payments",
 
             data
 
