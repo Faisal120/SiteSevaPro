@@ -6,7 +6,7 @@ const siteApi = {
 
         return apiClient.get(
 
-            "/sites"
+            "/api/sites"
 
         );
 
@@ -26,7 +26,7 @@ const siteApi = {
 
         return apiClient.post(
 
-            "/sites",
+            "/api/sites",
 
             data
 
@@ -38,7 +38,7 @@ const siteApi = {
 
         return apiClient.put(
 
-            `/sites/${id}`,
+            `/api/sites/${id}`,
 
             data
 
@@ -50,7 +50,7 @@ const siteApi = {
 
         return apiClient.delete(
 
-            `/sites/${id}`
+            `/api/sites/${id}`
 
         );
 

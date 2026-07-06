@@ -6,7 +6,7 @@ const walletApi = {
 
         return apiClient.get(
 
-            `/wallet/${id}`
+            `/api/wallet/${id}`
 
         );
 
@@ -26,7 +26,7 @@ const walletApi = {
 
         return apiClient.get(
 
-            `/wallet/payroll/${month}`
+            `/api/wallet/payroll/${month}`
 
         );
 

@@ -6,7 +6,7 @@ const authApi = {
 
         return apiClient.post(
 
-            "/auth/login",
+            "/api/auth/login",
 
             data
 
@@ -18,7 +18,7 @@ const authApi = {
 
         return apiClient.post(
 
-            "/auth/register",
+            "/api/auth/register",
 
             data
 
@@ -30,7 +30,7 @@ const authApi = {
 
         return apiClient.get(
 
-            "/auth/me"
+            "/api/auth/me"
 
         );
 

@@ -1,6 +1,4 @@
 import asyncio
-
-from backend.api import dashboard
 from repositories.dashboard_repository import (
     dashboard_repository,
 )

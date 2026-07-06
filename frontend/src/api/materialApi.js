@@ -6,7 +6,7 @@ const materialApi = {
 
         return apiClient.get(
 
-            `/materials?site_id=${siteId}`
+            `/api/materials?site_id=${siteId}`
 
         );
 
@@ -28,7 +28,7 @@ const materialApi = {
 
         return apiClient.post(
 
-            "/material-txns",
+            "/api/material-txns",
 
             data
 

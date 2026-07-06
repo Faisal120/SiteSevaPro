@@ -6,7 +6,7 @@ const paymentApi = {
 
         return apiClient.get(
 
-            `/payments?site_id=${siteId}`
+            `/api/payments?site_id=${siteId}`
 
         );
 
