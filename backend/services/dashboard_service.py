@@ -1,304 +1,658 @@
-from datetime import datetime, timezone
-
-from core import db
+import asyncio
+from datetime import datetime
 
 from repositories.dashboard_repository import dashboard_repository
 
 
 class DashboardService:
 
-    async def bootstrap(self, user: dict):
-
-        contractor_id = user["id"]
-
-        alerts = []
-
-        active_sites = await db.sites.count_documents(
-            {
-                "contractor_id": contractor_id
-            }
-        )
-
-        total_labours = await db.labours.count_documents(
-            {
-                "contractor_id": contractor_id
-            }
-        )
-
-        pending_tasks = await db.site_tasks.count_documents(
-            {
-                "contractor_id": contractor_id,
-                "completed": False,
-            }
-        )
-
-        if pending_tasks:
-
-            alerts.append(
-                {
-                    "type": "task",
-                    "title": f"{pending_tasks} Pending Tasks",
-                    "description": "Complete today's assigned work.",
-                    "route": "/app/tasks",
-                }
-            )
-
-        low_progress = await db.sites.count_documents(
-            {
-                "contractor_id": contractor_id,
-                "progress": {
-                    "$lt": 30
-                },
-            }
-        )
-
-        if low_progress:
-
-            alerts.append(
-                {
-                    "type": "site",
-                    "title": f"{low_progress} Sites Need Attention",
-                    "description": "Progress is below expected.",
-                    "route": "/app/sites",
-                }
-            )
-
-        pipeline = [
-            {
-                "$match": {
-                    "contractor_id": contractor_id
-                }
-            },
-            {
-                "$group": {
-                    "_id": None,
-                    "total": {
-                        "$sum": "$amount"
-                    },
-                }
-            },
-        ]
-
-        payment = await db.payments.aggregate(
-            pipeline
-        ).to_list(1)
-
-        cash_flow = payment[0]["total"] if payment else 0
-
-        recent_sites = await db.sites.find(
-            {
-                "contractor_id": contractor_id
-            }
-        ).sort(
-            "created_at",
-            -1,
-        ).limit(5).to_list(5)
-
-        today_tasks = await db.site_tasks.find(
-            {
-                "contractor_id": contractor_id,
-                "completed": False,
-            }
-        ).limit(5).to_list(5)
-
-        return {
-            "profile": {
-                "id": user["id"],
-                "name": user["full_name"],
-                "email": user["email"],
-                "role": user["role"],
-                "company": user.get("company_name"),
-            },
-            "stats": {
-                "active_sites": active_sites,
-                "labours": total_labours,
-                "pending_tasks": pending_tasks,
-                "cash_flow": cash_flow,
-            },
-            "recent_sites": recent_sites,
-            "today_tasks": today_tasks,
-            "notifications": [],
-            "alerts": alerts,
-            "weather": {
-                "city": "Lucknow",
-                "temp": 34,
-                "condition": "Sunny",
-            },
-        }
-
-    async def contractor_dashboard(
-        self,
-        user,
-    ):
+    async def get_dashboard(self, user):
 
         company_id = user["company_id"]
 
-        total_sites = await db.sites.count_documents(
-            {
-                "company_id": company_id
-            }
+        (
+            sites,
+            team,
+            reports,
+            payments,
+            materials,
+            attendance,
+            company,
+            total_sites,
+            active_sites,
+            completed_sites,
+            total_labours,
+            today_labours,
+            pending_tasks,
+            completed_tasks,
+            today_reports,
+        ) = await asyncio.gather(
+
+            dashboard_repository.get_sites(company_id),
+
+            dashboard_repository.get_team(company_id),
+
+            dashboard_repository.latest_reports(company_id),
+
+            dashboard_repository.payments(company_id),
+
+            dashboard_repository.materials(company_id),
+
+            dashboard_repository.attendance(company_id),
+
+            dashboard_repository.company(company_id),
+
+            dashboard_repository.total_sites(company_id),
+
+            dashboard_repository.active_sites(company_id),
+
+            dashboard_repository.completed_sites(company_id),
+
+            dashboard_repository.total_labours(company_id),
+
+            dashboard_repository.todays_labours(company_id),
+
+            dashboard_repository.pending_tasks(company_id),
+
+            dashboard_repository.completed_tasks(company_id),
+
+            dashboard_repository.todays_reports(company_id),
+
         )
 
-        completed_sites = await db.sites.count_documents(
-            {
-                "company_id": company_id,
-                "status": "COMPLETED",
-            }
+        stats = self.build_stats(
+            sites,
+            payments,
+            materials,
+            attendance,
+            total_sites,
+            active_sites,
+            completed_sites,
+            total_labours,
+            today_labours,
+            pending_tasks,
+            completed_tasks,
+            today_reports,
         )
 
-        active_sites = await db.sites.count_documents(
-            {
-                "company_id": company_id,
-                "status": "ACTIVE",
-            }
+        charts = self.build_charts(
+            sites,
+            materials,
+            payments,
+            attendance,
         )
 
-        total_budget = 0
+        latest_photos = self.extract_latest_photos(
+            reports
+        )
 
-        async for site in db.sites.find(
-            {
-                "company_id": company_id
-            }
-        ):
+        alerts = self.generate_alerts(
+            stats,
+            materials,
+            attendance,
+        )
 
-            total_budget += site.get(
-                "budget",
-                0,
-            )
+        activities = self.build_recent_activities(
+            payments,
+            reports,
+            attendance,
+        )
 
-        payments = 0
+        return {
 
-        async for payment in db.payments.find(
-            {
-                "company_id": company_id
-            }
-        ):
+            "company": company,
 
-            payments += payment.get(
+            "stats": stats,
+
+            "sites": sites,
+
+            "team": team,
+
+            "latestPhotos": latest_photos,
+
+            "alerts": alerts,
+
+            "activities": activities,
+
+            "charts": charts,
+
+        }
+        
+    def build_stats(
+
+        self,
+
+        sites,
+
+        payments,
+
+        materials,
+
+        attendance,
+
+        total_sites,
+
+        active_sites,
+
+        completed_sites,
+
+        total_labours,
+
+        today_labours,
+
+        pending_tasks,
+
+        completed_tasks,
+
+        today_reports,
+
+    ):
+
+        total_budget = sum(
+            s.get("budget", 0)
+            for s in sites
+        )
+
+        income = 0
+        expense = 0
+
+        pending_payment = 0
+
+        for payment in payments:
+
+            amount = payment.get(
                 "amount",
                 0,
             )
 
-        return {
+            payment_type = payment.get(
+                "payment_type"
+            )
 
-            "overview": {
-
-                "sites": total_sites,
-
-                "completed_sites": completed_sites,
-
-                "active_sites": active_sites,
-
-                "total_budget": total_budget,
-
-                "payments": payments,
-
-            }
-
-        }
-        
-    async def get_dashboard(
-        self,
-        user,
-    ):
-
-        company_id = user["company_id"]
-
-        total_sites = await dashboard_repository.total_sites(
-            company_id
-        )
-
-        active_sites = await dashboard_repository.active_sites(
-            company_id
-        )
-
-        completed_sites = await dashboard_repository.completed_sites(
-            company_id
-        )
-
-        total_labour = await dashboard_repository.total_labour(
-            company_id
-        )
-
-        pending_tasks = await dashboard_repository.pending_tasks(
-            company_id
-        )
-
-        completed_tasks = await dashboard_repository.completed_tasks(
-            company_id
-        )
-
-        payments = await dashboard_repository.payment_summary(
-            company_id
-        )
-
-        materials = await dashboard_repository.material_summary(
-            company_id
-        )
-
-        attendance = await dashboard_repository.attendance_summary(
-            company_id
-        )
-
-        financial = {
-
-            "income": 0,
-
-            "expense": 0,
-
-            "profit": 0,
-
-        }
-
-        for item in payments:
-
-            payment_type = item["_id"]
-
-            amount = item["total"]
+            status = payment.get(
+                "status"
+            )
 
             if payment_type == "CLIENT_RECEIVED":
 
-                financial["income"] += amount
+                income += amount
 
             else:
 
-                financial["expense"] += amount
+                expense += amount
 
-        financial["profit"] = (
+            if status == "PENDING":
 
-            financial["income"]
+                pending_payment += amount
 
-            - financial["expense"]
+        net_profit = income - expense
+
+        productivity = 0
+
+        if total_sites:
+
+            productivity = round(
+                (
+                    completed_sites
+                    /
+                    total_sites
+                ) * 100,
+                1,
+            )
+
+        return {
+
+            "total_sites": total_sites,
+
+            "active_sites": active_sites,
+
+            "completed_sites": completed_sites,
+
+            "labours": total_labours,
+
+            "today_labours": today_labours,
+
+            "pending_tasks": pending_tasks,
+
+            "completed_tasks": completed_tasks,
+
+            "today_reports": today_reports,
+
+            "cashflow": income,
+
+            "pending_payments": pending_payment,
+
+            "total_budget": total_budget,
+
+            "net_profit": net_profit,
+
+            "productivity": productivity,
+
+        }
+        
+    def build_charts(
+
+        self,
+
+        sites,
+
+        materials,
+
+        payments,
+
+        attendance,
+
+    ):
+
+        site_progress = []
+
+        expense_breakdown = {}
+
+        attendance_chart = []
+
+        monthly_cashflow = {}
+
+        for site in sites:
+
+            site_progress.append({
+
+                "name": site.get("name"),
+
+                "progress": site.get(
+
+                    "progress",
+
+                    0,
+
+                )
+
+            })
+
+        for material in materials:
+
+            category = material.get(
+
+                "category",
+
+                "Others"
+
+            )
+
+            expense_breakdown.setdefault(
+
+                category,
+
+                0,
+
+            )
+
+            expense_breakdown[category] += material.get(
+
+                "total_cost",
+
+                material.get(
+
+                    "amount",
+
+                    0,
+
+                )
+
+            )
+
+        for payment in payments:
+
+            created = payment.get(
+
+                "created_at"
+
+            )
+
+            if created:
+
+                month = created.strftime("%b")
+
+            else:
+
+                month = "Unknown"
+
+            monthly_cashflow.setdefault(
+
+                month,
+
+                {
+
+                    "income": 0,
+
+                    "expense": 0,
+
+                }
+
+            )
+
+            amount = payment.get(
+
+                "amount",
+
+                0,
+
+            )
+
+            if payment.get(
+
+                "payment_type"
+
+            ) == "CLIENT_RECEIVED":
+
+                monthly_cashflow[month]["income"] += amount
+
+            else:
+
+                monthly_cashflow[month]["expense"] += amount
+
+        for item in attendance:
+
+            attendance_chart.append({
+
+                "date": item.get("date"),
+
+                "present": item.get(
+
+                    "present",
+
+                    0,
+
+                ),
+
+                "absent": item.get(
+
+                    "absent",
+
+                    0,
+
+                )
+
+            })
+
+        return {
+
+            "site_progress": site_progress,
+
+            "expense_breakdown": [
+
+                {
+
+                    "name": k,
+
+                    "value": v,
+
+                }
+
+                for k, v in expense_breakdown.items()
+
+            ],
+
+            "attendance": attendance_chart,
+
+            "cashflow": [
+
+                {
+
+                    "month": month,
+
+                    **value,
+
+                }
+
+                for month, value in monthly_cashflow.items()
+
+            ]
+
+        }
+        
+    def extract_latest_photos(
+
+        self,
+
+        reports,
+
+    ):
+
+        photos = []
+
+        for report in reports:
+
+            media = report.get(
+
+                "media_urls",
+
+                []
+
+            )
+
+            for file in media:
+
+                if file.get("type") == "image":
+
+                    photos.append({
+
+                        "url": file.get("url"),
+
+                        "site_id": report.get("site_id"),
+
+                        "site_name": report.get("site_name"),
+
+                        "report_date": report.get("date"),
+
+                    })
+
+        photos.sort(
+
+            key=lambda x: x["report_date"],
+
+            reverse=True,
 
         )
 
-        dashboard = {
+        return photos[:8]
+    
+    
+    def generate_alerts(
 
-            "overview": {
+        self,
 
-                "total_sites": total_sites,
+        stats,
 
-                "active_sites": active_sites,
+        materials,
 
-                "completed_sites": completed_sites,
+        attendance,
 
-                "total_labour": total_labour,
+    ):
 
-                "pending_tasks": pending_tasks,
+        alerts = []
 
-                "completed_tasks": completed_tasks,
+        if stats["pending_tasks"]:
 
-            },
+            alerts.append({
 
-            "financial": financial,
+                "type": "task",
 
-            "inventory": materials,
+                "title": f"{stats['pending_tasks']} Pending Tasks",
 
-            "attendance": attendance,
+                "severity": "high",
 
-        }
+            })
 
-        return dashboard
+        if stats["pending_payments"]:
 
+            alerts.append({
 
-dashboard_service = DashboardService()
+                "type": "payment",
+
+                "title": "Pending Client Payments",
+
+                "severity": "medium",
+
+            })
+
+        low_stock = 0
+
+        for item in materials:
+
+            if item.get(
+
+                "quantity",
+
+                0,
+
+            ) <= item.get(
+
+                "minimum_quantity",
+
+                0,
+
+            ):
+
+                low_stock += 1
+
+        if low_stock:
+
+            alerts.append({
+
+                "type": "material",
+
+                "title": f"{low_stock} Materials Running Low",
+
+                "severity": "high",
+
+            })
+
+        absent = 0
+
+        present = 0
+
+        for item in attendance:
+
+            absent += item.get(
+
+                "absent",
+
+                0,
+
+            )
+
+            present += item.get(
+
+                "present",
+
+                0,
+
+            )
+
+        if present and absent:
+
+            ratio = absent / (present + absent)
+
+            if ratio > 0.25:
+
+                alerts.append({
+
+                    "type": "attendance",
+
+                    "title": "High Labour Absenteeism",
+
+                    "severity": "medium",
+
+                })
+
+        return alerts
+    
+    
+    def build_recent_activities(
+
+        self,
+
+        payments,
+
+        reports,
+
+        attendance,
+
+    ):
+
+        activities = []
+
+        for payment in payments:
+
+            activities.append({
+
+                "id": str(payment["_id"]),
+
+                "type": "PAYMENT",
+
+                "title": payment.get(
+
+                    "payment_type",
+
+                    "Payment",
+
+                ),
+
+                "body": f"₹ {payment.get('amount',0):,.0f}",
+
+                "created_at": payment.get(
+
+                    "created_at"
+
+                )
+
+            })
+
+        for report in reports:
+
+            activities.append({
+
+                "id": str(report["_id"]),
+
+                "type": "SITE",
+
+                "title": report.get(
+
+                    "site_name",
+
+                    "Daily Report",
+
+                ),
+
+                "body": report.get(
+
+                    "description",
+
+                    "",
+
+                ),
+
+                "created_at": report.get(
+
+                    "created_at"
+
+                )
+
+            })
+
+        activities.sort(
+
+            key=lambda x: x.get(
+
+                "created_at"
+
+            ) or datetime.min,
+
+            reverse=True,
+
+        )
+
+        return activities[:20]
+    
+    
+    

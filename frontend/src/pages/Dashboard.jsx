@@ -55,6 +55,8 @@ export default function Dashboard() {
 
   } = useDashboard();
 
+  console.log("Dashboard Stats:", stats);
+
 
   const greeting = React.useMemo(() => {
 
@@ -107,90 +109,18 @@ export default function Dashboard() {
 }
 
 function ContractorDash({
-
   user,
-
   stats,
-
   sites,
-
   team,
-
   latestPhotos,
-
   greeting,
-
   nav,
-
   loading,
-
   error,
-
   refresh,
-
 }) {
-  const COLORS = ["#171717", "#F97316", "#272725"];
-  if (loading) {
-
-    return (
-
-      <div className="flex items-center justify-center h-[70vh]">
-
-        <div className="text-center">
-
-          <div className="h-12 w-12 rounded-full border-4 border-blue-500 border-t-transparent animate-spin mx-auto" />
-
-          <p className="mt-5 text-slate-500">
-
-            Loading Dashboard...
-
-          </p>
-
-        </div>
-
-      </div>
-
-    );
-
-  }
-  if (error) {
-
-    return (
-
-      <div className="rounded-3xl bg-red-50 border border-red-200 p-10">
-
-        <h2 className="text-red-600 text-2xl font-bold">
-
-          Dashboard Failed
-
-        </h2>
-
-        <p className="mt-3 text-slate-600">
-
-          {error.message}
-
-        </p>
-
-        <button
-
-          onClick={refresh}
-
-          className="mt-6 rounded-xl bg-red-600 px-5 py-3 text-white"
-
-        >
-
-          Retry
-
-        </button>
-
-      </div>
-
-    );
-
-  }
-
   return (
-
     <div className="space-y-6 ss-fade-in">
 
       <DashboardHeader
@@ -198,122 +128,11 @@ function ContractorDash({
         user={user}
 
       />
-
-      <StatCard
-
-        title="Sites"
-
-        value={12}
-
-        icon={Building2}
-
-        color="blue"
-
-      />
-
-      <DashboardGrid>
-
-        <GridLeft>
-
-          <QuickActions />
-
-          <SiteCommandCenter
-
-            sites={data?.recent_sites}
-
-          />
-
-        </GridLeft>
-
-        <GridRight>
-
-          <OperationsControlCenter
-
-            alerts={data?.alerts}
-
-          />
-
-          <WeatherCard
-
-            weather={data?.weather}
-
-          />
-
-          <CompanyCard
-
-            company={{
-
-              company_name: user?.company_name,
-
-              owner_name: user?.full_name,
-
-              plan: "Professional",
-
-              sites: data?.stats?.active_sites,
-
-              labours: data?.stats?.labours,
-
-              completed_projects: 18,
-
-              renewal_date: "12 Dec 2026",
-
-              score: 94
-
-            }}
-
-          />
-
-          <TodaysExecutionBoard
-
-            tasks={data?.today_tasks}
-
-          />
-
-        </GridRight>
-
-      </DashboardGrid>
-
-
-
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-sm text-gray-500">{greeting},</p>
-          <h1 className="font-display text-3xl font-extrabold tracking-tight">{user.full_name} 👋</h1>
-          <p className="text-sm text-gray-500 mt-1">Here's how {user.company_name} is doing today.</p>
-        </div>
         <button onClick={() => nav("/app/sites")} className="ss-btn-accent" data-testid="dash-new-site">
           <Building2 className="h-4 w-4" /> Manage Sites
         </button>
       </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
-        <StatCard label="Active Sites" value={`${stats.active_sites}/${stats.total_sites}`} icon={Building2} accent="ink" testId="stat-active-sites" />
-        <StatCard label="Total Budget" value={inr(stats.total_budget)} icon={Wallet} accent="orange" testId="stat-total-budget" />
-        <StatCard label="Total Received" value={inr(stats.total_received)} icon={TrendingUp} accent="yellow" trend={`Pending ${inr(stats.pending_payments)}`} testId="stat-received" />
-        <StatCard label="Net Profit" value={inr(stats.net_profit)} icon={Activity} accent="soft" testId="stat-profit" />
-        <StatCard
-          label="Supervisors"
-          value={
-            team.filter(
-              t => t.role === "SUPERVISOR"
-            ).length
-          }
-          icon={Users}
-          accent="orange"
-        />
-
-        <StatCard
-          label="Clients"
-          value={
-            team.filter(
-              t => t.role === "CLIENT"
-            ).length
-          }
-          icon={Users}
-          accent="yellow"
-        />
-      </div>
-
       <div className="grid md:grid-cols-4 gap-4">
 
         <button
@@ -345,71 +164,83 @@ function ContractorDash({
         </button>
 
       </div>
-      <div className="ss-card p-5">
+      <StatsCards stats={stats} />
+      <QuickActions />
 
-        <SectionTitle
-          title="Latest Site Updates"
-          subtitle="Recent photos uploaded by supervisors"
-        />
+      <DashboardGrid>
 
-        {latestPhotos.length === 0 ? (
+        <GridLeft>
 
-          <div className="text-center py-10 text-gray-500">
-            No site photos uploaded yet
-          </div>
+          <SiteCommandCenter
+            sites={sites}
+          />
 
-        ) : (
+          <div className="ss-card p-5">
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <SectionTitle
+              title="Latest Site Updates"
+              subtitle="Recent photos uploaded by supervisors"
+            />
 
-            {latestPhotos.map((photo, index) => (
+            {latestPhotos.length === 0 ? (
 
-              <div
-                key={index}
-                className="overflow-hidden rounded-xl border"
-              >
+              <div className="text-center py-10 text-gray-500">
+                No site photos uploaded yet
+              </div>
 
-                <img
-                  src={photo.url}
-                  alt=""
-                  className="
+            ) : (
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+                {latestPhotos.map((photo, index) => (
+
+                  <div
+                    key={index}
+                    className="overflow-hidden rounded-xl border"
+                  >
+
+                    <img
+                      src={photo.url}
+                      alt=""
+                      className="
               h-40
               w-full
               object-cover
               hover:scale-105
               transition
             "
-                />
+                    />
+
+                  </div>
+
+                ))}
 
               </div>
 
-            ))}
+            )}
 
           </div>
 
-        )}
+          <div className="grid lg:grid-cols-3 gap-5">
+            <div className="ss-card p-5 lg:col-span-2">
+              <SectionTitle title="Site Progress" subtitle="Real-time completion %" />
+              <div className="h-72">
+                <ResponsiveContainer>
+                  <BarChart data={stats?.site_progress ?? []} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#525252" }} />
+                    <YAxis tick={{ fontSize: 11, fill: "#525252" }} />
+                    <Tooltip
+                      contentStyle={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, boxShadow: "0 4px 12px rgba(0,0,0,0.06)" }}
+                      formatter={(v) => `${v}%`}
+                    />
+                    <Bar dataKey="progress" fill="#F97316" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
 
-      </div>
-      <div className="grid lg:grid-cols-3 gap-5">
-        <div className="ss-card p-5 lg:col-span-2">
-          <SectionTitle title="Site Progress" subtitle="Real-time completion %" />
-          <div className="h-72">
-            <ResponsiveContainer>
-              <BarChart data={stats.site_progress} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#525252" }} />
-                <YAxis tick={{ fontSize: 11, fill: "#525252" }} />
-                <Tooltip
-                  contentStyle={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, boxShadow: "0 4px 12px rgba(0,0,0,0.06)" }}
-                  formatter={(v) => `${v}%`}
-                />
-                <Bar dataKey="progress" fill="#F97316" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="ss-card p-5">
+            {/* <div className="ss-card p-5">
           <SectionTitle title="Expense Mix" />
           <div className="h-72">
             <ResponsiveContainer>
@@ -422,37 +253,37 @@ function ContractorDash({
               </PieChart>
             </ResponsiveContainer>
           </div>
-        </div>
-      </div>
-
-      <div className="grid lg:grid-cols-3 gap-5">
-        <div className="ss-card p-5 lg:col-span-2">
-          <SectionTitle
-            title="Your Sites"
-            action={<button onClick={() => nav("/app/sites")} className="text-sm font-semibold text-[#F97316] flex items-center gap-1">All sites <ArrowRight className="h-3.5 w-3.5" /></button>}
-          />
-          <div className="space-y-3">
-            {sites.slice(0, 4).map((s) => (
-              <button key={s.id} onClick={() => nav(`/app/sites/${s.id}`)} className="w-full text-left flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 border border-gray-100" data-testid={`dash-site-${s.id}`}>
-                <div className="h-12 w-12 rounded-lg bg-[#171717] text-[#F97316] flex items-center justify-center"><Building2 className="h-5 w-5" /></div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2"><span className="font-semibold truncate">{s.name}</span><Chip className={SITE_STATUS_COLOR[s.status]}>{s.status}</Chip></div>
-                  <div className="text-xs text-gray-500">{s.location} · {inr(s.budget)}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-bold">{s.progress}%</div>
-                  <div className="w-24 h-1.5 bg-gray-200 rounded-full mt-1 overflow-hidden">
-                    <div className="h-full bg-[#F97316]" style={{ width: `${s.progress}%` }} />
-                  </div>
-                </div>
-              </button>
-            ))}
-            {sites.length === 0 && <p className="text-sm text-gray-500 p-4 text-center">No sites yet. Create your first site.</p>}
+        </div> */}
           </div>
-        </div>
-        <div className="ss-card p-5">
-          <SectionTitle title="Recent Activity" />
-          <div className="space-y-3">
+
+          <div className="grid lg:grid-cols-3 gap-5">
+            <div className="ss-card p-5 lg:col-span-2">
+              <SectionTitle
+                title="Your Sites"
+                action={<button onClick={() => nav("/app/sites")} className="text-sm font-semibold text-[#F97316] flex items-center gap-1">All sites <ArrowRight className="h-3.5 w-3.5" /></button>}
+              />
+              <div className="space-y-3">
+                {sites.slice(0, 4).map((s) => (
+                  <button key={s.id} onClick={() => nav(`/app/sites/${s.id}`)} className="w-full text-left flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 border border-gray-100" data-testid={`dash-site-${s.id}`}>
+                    <div className="h-12 w-12 rounded-lg bg-[#171717] text-[#F97316] flex items-center justify-center"><Building2 className="h-5 w-5" /></div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2"><span className="font-semibold truncate">{s.name}</span><Chip className={SITE_STATUS_COLOR[s.status]}>{s.status}</Chip></div>
+                      <div className="text-xs text-gray-500">{s.location} · {inr(s.budget)}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-bold">{s.progress}%</div>
+                      <div className="w-24 h-1.5 bg-gray-200 rounded-full mt-1 overflow-hidden">
+                        <div className="h-full bg-[#F97316]" style={{ width: `${s.progress}%` }} />
+                      </div>
+                    </div>
+                  </button>
+                ))}
+                {sites.length === 0 && <p className="text-sm text-gray-500 p-4 text-center">No sites yet. Create your first site.</p>}
+              </div>
+            </div>
+            <div className="ss-card p-5">
+              <SectionTitle title="Recent Activity" />
+              {/* <div className="space-y-3">
             {stats.recent_activities.slice(0, 6).map((n) => (
               <div key={n.id} className="flex items-start gap-3 text-sm">
                 <div className="h-8 w-8 rounded-lg bg-orange-100 text-[#F97316] flex items-center justify-center shrink-0">
@@ -468,9 +299,78 @@ function ContractorDash({
               </div>
             ))}
             {stats.recent_activities.length === 0 && <p className="text-sm text-gray-500 text-center py-6">No activity yet.</p>}
+          </div> */}
+            </div>
           </div>
-        </div>
-      </div>
+
+        </GridLeft>
+
+        <GridRight>
+
+          <WeatherCard
+            weather={null}
+          />
+
+          <OperationsControlCenter
+            alerts={
+              stats?.alerts ?? []
+            }
+          />
+
+
+
+          <CompanyCard
+            company={{
+              company_name: user?.company_name,
+              owner_name: user?.full_name,
+              plan: "Professional",
+              sites: stats?.active_sites ?? 0,
+              labours: stats?.labours ?? 0,
+              completed_projects: 18,
+              renewal_date: "12 Dec 2026",
+              score: 94,
+            }}
+          />
+
+          <TodaysExecutionBoard
+            tasks={
+              stats?.today_tasks ?? []
+            }
+          />
+
+        </GridRight>
+
+      </DashboardGrid>
+
+      {/* <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
+        <StatCard label="Active Sites" value={`${stats.active_sites}/${stats.total_sites}`} icon={Building2} accent="ink" testId="stat-active-sites" />
+        <StatCard label="Total Budget" value={inr(stats.total_budget)} icon={Wallet} accent="orange" testId="stat-total-budget" />
+        <StatCard label="Total Received" value={inr(stats.total_received)} icon={TrendingUp} accent="yellow" trend={`Pending ${inr(stats.pending_payments)}`} testId="stat-received" />
+        <StatCard label="Net Profit" value={inr(stats.net_profit)} icon={Activity} accent="soft" testId="stat-profit" />
+        <StatCard
+          label="Supervisors"
+          value={
+            team.filter(
+              t => t.role === "SUPERVISOR"
+            ).length
+          }
+          icon={Users}
+          accent="orange"
+        />
+
+        <StatCard
+          label="Clients"
+          value={
+            team.filter(
+              t => t.role === "CLIENT"
+            ).length
+          }
+          icon={Users}
+          accent="yellow"
+        />
+      </div> */}
+
+
     </div>
   );
 }

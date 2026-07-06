@@ -1,101 +1,67 @@
 import React from "react";
+import CountUp from "react-countup";
 import {
   Building2,
   Users,
-  ClipboardList,
   IndianRupee,
+  Wallet,
+  ClipboardList,
+  Clock3,
   TrendingUp,
+  Activity,
 } from "lucide-react";
-import { formatCurrency } from "@/utils/currency";
 
 const cards = [
-
   {
-
+    key: "active_sites",
     title: "Active Sites",
-
-    value: stats?.active_sites ?? 0,
-
     icon: Building2,
-
-    color: "bg-blue-50 text-blue-600",
-
-    change: "Live"
-
+    color: "bg-blue-100 text-blue-700",
   },
-
   {
-
+    key: "labours",
     title: "Today's Labour",
-
-    value: stats?.labours ?? 0,
-
     icon: Users,
-
-    color: "bg-emerald-50 text-emerald-600",
-
-    change: "Live"
-
+    color: "bg-indigo-100 text-indigo-700",
   },
-
   {
-
-    title: "Pending Tasks",
-
-    value: stats?.pending_tasks ?? 0,
-
-    icon: ClipboardList,
-
-    color: "bg-orange-50 text-orange-600",
-
-    change: "Live"
-
-  },
-
-  {
-
+    key: "cashflow",
     title: "Cash Flow",
-
-    value: formatCurrency(
-
-      stats?.cash_flow
-
-    ),
-
     icon: IndianRupee,
-
-    color: "bg-violet-50 text-violet-600",
-
-    change: "Live"
-
-  }
-
+    color: "bg-emerald-100 text-emerald-700",
+    currency: true,
+  },
+  
+  {
+    key: "productivity",
+    title: "Productivity",
+    icon: Activity,
+    color: "bg-slate-200 text-slate-800",
+    suffix: "%",
+  },
 ];
 
-export default function StatsCards({
-
-  stats
-
-}) {
+export default function StatsCards({ stats = {} }) {
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
 
-      {cards.map((card) => {
+      {cards.map((item) => {
 
-        const Icon = card.icon;
+        const Icon = item.icon;
+
+        const value = stats?.[item.key] ?? 0;
 
         return (
 
           <div
-            key={card.title}
+            key={item.key}
             className="
               group
               rounded-3xl
               border
               border-slate-200
               bg-white
-              p-6
-              shadow-sm
+              p-5
               transition-all
               duration-300
               hover:-translate-y-1
@@ -107,23 +73,35 @@ export default function StatsCards({
 
               <div>
 
-                <p className="text-sm text-slate-500">
-
-                  {card.title}
-
+                <p
+                  className="
+                    text-xs
+                    uppercase
+                    tracking-wider
+                    text-slate-500
+                  "
+                >
+                  {item.title}
                 </p>
 
-                <h2 className="mt-3 text-3xl font-bold text-slate-900">
+                <h2
+                  className="
+                    mt-3
+                    text-3xl
+                    font-bold
+                    text-slate-800
+                  "
+                >
 
-                  <div className="mt-3">
+                  {item.currency && "₹"}
 
-                    <h2 className="text-3xl font-bold">
+                  <CountUp
+                    end={Number(value)}
+                    duration={1}
+                    separator=","
+                  />
 
-                      {card.value}
-
-                    </h2>
-
-                  </div>
+                  {item.suffix}
 
                 </h2>
 
@@ -131,34 +109,48 @@ export default function StatsCards({
 
               <div
                 className={`
-                  ${card.color}
-                  flex
                   h-14
                   w-14
+                  rounded-2xl
+                  flex
                   items-center
                   justify-center
-                  rounded-2xl
+                  ${item.color}
                 `}
               >
-
-                <Icon size={28} />
-
+                <Icon size={24} />
               </div>
 
             </div>
 
-            <div className="mt-6 flex items-center gap-2">
+            <div
+              className="
+                mt-5
+                flex
+                items-center
+                justify-between
+              "
+            >
 
-              <TrendingUp
-                size={16}
-                className="text-emerald-600"
-              />
-
-              <span className="text-sm font-medium text-emerald-600">
-
-                {card.change}
-
+              <span
+                className="
+                  text-xs
+                  text-green-600
+                  font-semibold
+                "
+              >
+                Live Data
               </span>
+
+              <span
+                className="
+                  h-2
+                  w-2
+                  rounded-full
+                  bg-green-500
+                  animate-pulse
+                "
+              />
 
             </div>
 

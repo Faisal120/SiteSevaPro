@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { ThemeProvider } from "@/lib/theme";
+import QueryProvider from "@/provider/QueryProvider";
 
 import Landing from "@/pages/Landing";
 import Pricing from "@/pages/Pricing";

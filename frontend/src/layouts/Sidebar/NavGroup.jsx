@@ -5,37 +5,36 @@ export default function NavGroup({
   children,
 }) {
   return (
-    <div className="mb-7">
+    <section className="space-y-2">
 
-      {/* Group Title */}
+      {/* Section Title */}
 
       <div
         className="
-          px-4
-          mb-3
+          px-3
+
           text-[11px]
-          font-bold
+
+          font-semibold
+
           uppercase
+
           tracking-[0.18em]
+
           text-slate-500
+
           select-none
         "
       >
         {title}
       </div>
 
-      {/* Group Items */}
+      {/* Menu */}
 
-      <div
-        className="
-          flex
-          flex-col
-          gap-1
-        "
-      >
+      <div className="space-y-1">
         {children}
       </div>
 
-    </div>
+    </section>
   );
 }

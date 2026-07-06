@@ -1,5 +1,6 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
+import { ChevronRight } from "lucide-react";
 
 export default function NavItem({
   to,
@@ -10,78 +11,134 @@ export default function NavItem({
   onClick,
 }) {
   return (
-    <NavLink
-      to={to}
-      end={end}
-      onClick={onClick}
-      className={({ isActive }) =>
-        `
-        group
-        relative
-        flex
-        items-center
-        gap-3
-        h-12
-        px-4
-        rounded-2xl
-        transition-all
-        duration-300
-        ${
-          isActive
-            ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg"
-            : "text-slate-300 hover:bg-slate-800 hover:text-white"
-        }
-      `
-      }
-    >
-      {/* Active Indicator */}
-      <span
-        className={({ isActive }) =>
-          isActive
-            ? "absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-white"
-            : ""
-        }
-      />
+    <NavLink to={to} end={end} onClick={onClick}>
+      {({ isActive }) => (
+        <div
+          className={`
+            group
+            relative
 
-      {/* Icon */}
-      <Icon
-        size={20}
-        className="
-          transition-transform
-          duration-300
-          group-hover:scale-110
-          shrink-0
-        "
-      />
+            flex
+            items-center
 
-      {/* Label */}
-      <span
-        className="
-          flex-1
-          text-sm
-          font-medium
-          truncate
-        "
-      >
-        {label}
-      </span>
+            h-11
 
-      {/* Badge */}
-      {badge && (
-        <span
-          className="
-            text-[10px]
-            font-semibold
-            uppercase
-            rounded-full
-            bg-orange-500
-            text-white
-            px-2
-            py-0.5
-          "
+            rounded-xl
+
+            px-3
+
+            transition-all
+            duration-200
+
+            ${isActive
+              ? `
+                    bg-blue-600
+                    text-white
+                    shadow-lg
+                    shadow-blue-900/20
+                  `
+              : `
+                    text-slate-400
+                    hover:bg-slate-900
+                    hover:text-white
+                  `
+            }
+          `}
         >
-          {badge}
-        </span>
+          {/* Active Indicator */}
+
+          {isActive && (
+            <span
+              className="
+                absolute
+                left-0
+                top-2
+                bottom-2
+
+                w-1
+
+                rounded-r-full
+
+                bg-white
+              "
+            />
+          )}
+
+          {/* Icon */}
+
+          <Icon
+            size={18}
+            strokeWidth={2}
+            className={`
+                shrink-0
+                transition-all
+                duration-200
+
+                ${isActive
+                ? "text-white"
+                : "text-slate-500 group-hover:text-white"
+              }
+            `}
+          />
+
+          {/* Label */}
+
+          <span
+            className="
+              ml-3
+
+              flex-1
+
+              truncate
+
+              text-[14px]
+
+              font-medium
+            "
+          >
+            {label}
+          </span>
+
+          {/* Badge */}
+
+          {badge && (
+            <span
+              className={`
+                rounded-full
+
+                px-2
+                py-0.5
+
+                text-[10px]
+
+                font-semibold
+
+                ${isActive
+                  ? "bg-white/20 text-white"
+                  : "bg-blue-100 text-blue-700"
+                }
+              `}
+            >
+              {badge}
+            </span>
+          )}
+
+          {/* Arrow */}
+
+          {!badge && (
+            <ChevronRight
+              size={15}
+              className={`
+                transition-all
+
+                ${isActive
+                  ? "opacity-100"
+                  : "opacity-0 group-hover:opacity-40"
+                }
+              `}
+            />
+          )}
+        </div>
       )}
     </NavLink>
   );

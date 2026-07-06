@@ -3,182 +3,192 @@ import { useNavigate } from "react-router-dom";
 
 import {
     Building2,
-    Camera,
     Users,
+    ClipboardCheck,
     Package,
-    ArrowRight
+    IndianRupee,
+    FileText,
+    Calculator,
+    Camera,
+    Plus,
+    ArrowRight,
 } from "lucide-react";
 
 const actions = [
-
     {
         title: "Create Site",
-        subtitle: "Start a new project",
+        subtitle: "Start a new construction project",
+        icon: Plus,
+        color: "bg-blue-600",
+        to: "/app/sites/new",
+    },
+    {
+        title: "Manage Sites",
+        subtitle: "View all active projects",
         icon: Building2,
-        color: "from-blue-600 to-blue-700",
-        route: "/app/sites"
+        color: "bg-indigo-600",
+        to: "/app/sites",
     },
 
     {
-        title: "Daily Report",
-        subtitle: "Submit today's DPR",
-        icon: Camera,
-        color: "from-emerald-600 to-green-700",
-        route: "/app/reports"
+        title: "Daily Reports",
+        subtitle: "Site progress updates",
+        icon: ClipboardCheck,
+        color: "bg-cyan-600",
+        to: "/app/reports",
     },
 
     {
-        title: "Labour Attendance",
-        subtitle: "Mark today's attendance",
-        icon: Users,
-        color: "from-orange-500 to-orange-600",
-        route: "/app/labour"
+        title: "Estimates",
+        subtitle: "BOQ & Quotations",
+        icon: Calculator,
+        color: "bg-slate-700",
+        to: "/app/estimates",
     },
-
-    {
-        title: "Material Entry",
-        subtitle: "Add stock or consumption",
-        icon: Package,
-        color: "from-violet-600 to-purple-700",
-        route: "/app/materials"
-    }
 
 ];
 
 export default function QuickActions() {
-
-    const nav = useNavigate();
+    const navigate = useNavigate();
 
     return (
+        <section className="space-y-5">
 
-        <div className="mt-8">
-
-            <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center justify-between">
 
                 <div>
 
-                    <h2 className="text-xl font-bold text-slate-900">
-
+                    <h2 className="text-xl font-bold text-slate-800">
                         Quick Actions
-
                     </h2>
 
-                    <p className="text-sm text-slate-500 mt-1">
-
-                        Frequently used actions
-
+                    <p className="text-sm text-slate-500">
+                        Frequently used modules
                     </p>
 
                 </div>
 
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
 
-                {
+                {actions.map((item) => {
 
-                    actions.map((item)=>{
+                    const Icon = item.icon;
 
-                        const Icon=item.icon;
+                    return (
 
-                        return(
+                        <button
+                            key={item.title}
+                            onClick={() => navigate(item.to)}
+                            className="
+                group
+                relative
+                overflow-hidden
 
-                            <button
+                rounded-3xl
 
-                                key={item.title}
+                border
+                border-slate-200
 
-                                onClick={()=>nav(item.route)}
+                bg-white
 
-                                className="
+                p-5
 
-                                group
+                text-left
 
-                                rounded-3xl
+                transition-all
+                duration-300
 
-                                overflow-hidden
-
-                                shadow-lg
-
-                                text-left
-
-                                transition-all
-
-                                duration-300
-
-                                hover:-translate-y-1
-
-                                hover:shadow-2xl
-
-                                "
-
+                hover:-translate-y-1
+                hover:shadow-xl
+              "
+                        >
+                            <div
+                                className={`
+                  h-14
+                  w-14
+                  rounded-2xl
+                  flex
+                  items-center
+                  justify-center
+                  text-white
+                  ${item.color}
+                `}
                             >
+                                <Icon size={26} />
+                            </div>
 
-                                <div
+                            <h3
+                                className="
+                  mt-5
+                  text-lg
+                  font-semibold
+                  text-slate-800
+                "
+                            >
+                                {item.title}
+                            </h3>
 
-                                    className={`
+                            <p
+                                className="
+                  mt-1
+                  text-sm
+                  text-slate-500
+                "
+                            >
+                                {item.subtitle}
+                            </p>
 
-                                    bg-gradient-to-r
-
-                                    ${item.color}
-
-                                    p-6
-
-                                    text-white
-
-                                    `}
-
+                            <div
+                                className="
+                  mt-6
+                  flex
+                  items-center
+                  justify-between
+                "
+                            >
+                                <span
+                                    className="
+                    text-sm
+                    font-medium
+                    text-blue-600
+                  "
                                 >
+                                    Open Module
+                                </span>
 
-                                    <div className="flex items-center justify-between">
+                                <ArrowRight
+                                    size={18}
+                                    className="
+                    text-blue-600
+                    transition-transform
+                    duration-300
+                    group-hover:translate-x-1
+                  "
+                                />
+                            </div>
 
-                                        <div>
+                            <div
+                                className="
+                  absolute
+                  inset-0
+                  rounded-3xl
+                  ring-2
+                  ring-blue-500/0
+                  transition-all
+                  group-hover:ring-blue-500/20
+                "
+                            />
 
-                                            <Icon size={34}/>
+                        </button>
 
-                                        </div>
+                    );
 
-                                        <ArrowRight
-
-                                            size={22}
-
-                                            className="
-
-                                            transition-transform
-
-                                            group-hover:translate-x-1
-
-                                            "
-
-                                        />
-
-                                    </div>
-
-                                    <h3 className="mt-8 text-lg font-bold">
-
-                                        {item.title}
-
-                                    </h3>
-
-                                    <p className="text-sm text-white/80 mt-1">
-
-                                        {item.subtitle}
-
-                                    </p>
-
-                                </div>
-
-                            </button>
-
-                        )
-
-                    })
-
-                }
+                })}
 
             </div>
 
-        </div>
-
-    )
-
+        </section>
+    );
 }

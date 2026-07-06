@@ -1,11 +1,21 @@
+from datetime import datetime, timedelta
+
+from bson import ObjectId
+
 from core import db
-from core import now_iso
+
 
 class DashboardRepository:
 
-    # --------------------------------------------------
-    # Sites
-    # --------------------------------------------------
+    async def get_sites(self, company_id):
+
+        cursor = db.sites.find(
+            {
+                "company_id": company_id
+            }
+        )
+
+        return await cursor.to_list(None)
 
     async def total_sites(self, company_id):
 
@@ -15,16 +25,20 @@ class DashboardRepository:
             }
         )
 
-
     async def active_sites(self, company_id):
 
         return await db.sites.count_documents(
             {
                 "company_id": company_id,
-                "status": "ACTIVE"
+                "status": {
+                    "$in": [
+                        "ACTIVE",
+                        "IN_PROGRESS",
+                        "RUNNING"
+                    ]
+                }
             }
         )
-
 
     async def completed_sites(self, company_id):
 
@@ -35,23 +49,13 @@ class DashboardRepository:
             }
         )
 
-
-    # --------------------------------------------------
-    # Labour
-    # --------------------------------------------------
-
     async def total_labour(self, company_id):
 
-        return await db.labour.count_documents(
+        return await db.labours.count_documents(
             {
                 "company_id": company_id
             }
         )
-
-
-    # --------------------------------------------------
-    # Tasks
-    # --------------------------------------------------
 
     async def pending_tasks(self, company_id):
 
@@ -62,7 +66,6 @@ class DashboardRepository:
             }
         )
 
-
     async def completed_tasks(self, company_id):
 
         return await db.site_tasks.count_documents(
@@ -72,98 +75,204 @@ class DashboardRepository:
             }
         )
 
-    # =========================================================
-    # PAYMENTS
-    # =========================================================
-
-    async def payment_summary(
-        self,
-        company_id: str,
-    ):
+    async def payment_summary(self, company_id):
 
         pipeline = [
+
             {
                 "$match": {
                     "company_id": company_id
                 }
             },
+
             {
                 "$group": {
-                    "_id": "$type",
+
+                    "_id": "$payment_type",
+
                     "total": {
                         "$sum": "$amount"
                     }
+
                 }
             }
+
         ]
 
         return await db.payments.aggregate(
             pipeline
         ).to_list(None)
-        
-        
-    async def material_summary(
-        self,
-        company_id: str,
-    ):
 
-        total = await db.materials.count_documents(
+    async def material_summary(self, company_id):
+
+        return await db.materials.find(
             {
                 "company_id": company_id
             }
-        )
-
-        low_stock = await db.materials.count_documents(
-            {
-                "company_id": company_id,
-                "$expr": {
-                    "$lte": [
-                        "$stock",
-                        "$low_stock_threshold"
-                    ]
-                }
-            }
-        )
-
-        return {
-            "total": total,
-            "low_stock": low_stock,
-        }
-        
-    async def attendance_summary(
-        self,
-        company_id: str,
-    ):
-
-        today = now_iso()[:10]
-
-        records = await db.attendance.find(
-            {
-                "company_id": company_id,
-                "date": today,
-            },
-            {
-                "_id": 0
-            }
         ).to_list(None)
 
-        summary = {
-            "PRESENT": 0,
-            "HALF_DAY": 0,
-            "ABSENT": 0,
-            "LEAVE": 0,
-        }
+    async def attendance_summary(self, company_id):
 
-        for report in records:
+        today = datetime.utcnow() - timedelta(days=30)
 
-            for entry in report["entries"]:
+        pipeline = [
 
-                summary[
-                    entry["status"]
-                ] += 1
+            {
+                "$match": {
 
-        return summary
-    
+                    "company_id": company_id,
+
+                    "date": {
+                        "$gte": today
+                    }
+
+                }
+            },
+
+            {
+                "$group": {
+
+                    "_id": "$date",
+
+                    "present": {
+
+                        "$sum": {
+
+                            "$cond": [
+
+                                {
+                                    "$eq": [
+                                        "$status",
+                                        "PRESENT"
+                                    ]
+                                },
+
+                                1,
+
+                                0
+
+                            ]
+
+                        }
+
+                    },
+
+                    "absent": {
+
+                        "$sum": {
+
+                            "$cond": [
+
+                                {
+                                    "$eq": [
+                                        "$status",
+                                        "ABSENT"
+                                    ]
+                                },
+
+                                1,
+
+                                0
+
+                            ]
+
+                        }
+
+                    }
+
+                }
+
+            },
+
+            {
+                "$sort": {
+
+                    "_id": 1
+
+                }
+
+            }
+
+        ]
+
+        return await db.attendance.aggregate(
+            pipeline
+        ).to_list(None)
+
+    async def latest_reports(self, company_id):
+
+        return await db.daily_reports.find(
+
+            {
+                "company_id": company_id
+            }
+
+        ).sort(
+
+            "created_at",
+
+            -1
+
+        ).limit(
+
+            20
+
+        ).to_list(
+
+            None
+
+        )
+
+    async def latest_payments(self, company_id):
+
+        return await db.payments.find(
+
+            {
+                "company_id": company_id
+            }
+
+        ).sort(
+
+            "created_at",
+
+            -1
+
+        ).limit(
+
+            20
+
+        ).to_list(
+
+            None
+
+        )
+
+    async def team(self, company_id):
+
+        return await db.users.find(
+
+            {
+                "company_id": company_id,
+
+                "role": {
+
+                    "$in": [
+
+                        "SUPERVISOR",
+
+                        "CLIENT"
+
+                    ]
+
+                }
+
+            }
+
+        ).to_list(
+
+            None
+
+        )
 
 
 dashboard_repository = DashboardRepository()

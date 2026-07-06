@@ -1,132 +1,145 @@
 import React from "react";
-import { LogOut, HelpCircle, ShieldCheck } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import {
+  LifeBuoy,
+  ShieldCheck,
+  LogOut,
+  ChevronRight,
+} from "lucide-react";
 
-export default function SidebarFooter({
-    logout,
-    nav
-}) {
+export default function SidebarFooter({ logout }) {
+  const navigate = useNavigate();
 
-    return (
+  const Item = ({ icon: Icon, label, onClick, danger = false }) => (
+    <button
+      onClick={onClick}
+      className={`
+        w-full
+        flex
+        items-center
+        gap-3
 
-        <div
-            className="
-                border-t
-                border-slate-800
-                p-4
-                mt-auto
-            "
-        >
+        px-3
+        h-11
 
-            {/* Version */}
+        rounded-xl
 
-            <div
-                className="
-                    rounded-2xl
-                    bg-slate-900
-                    border
-                    border-slate-700
-                    p-4
-                    mb-4
-                "
-            >
+        transition-all
+        duration-200
 
-                <div className="flex justify-between">
+        ${
+          danger
+            ? "text-red-400 hover:bg-red-500/10 hover:text-red-300"
+            : "text-slate-400 hover:bg-slate-900 hover:text-white"
+        }
+      `}
+    >
+      <Icon
+        size={18}
+        className="shrink-0"
+      />
 
-                    <span className="text-xs text-slate-400">
+      <span
+        className="
+          flex-1
+          text-left
+          text-sm
+          font-medium
+        "
+      >
+        {label}
+      </span>
 
-                        SiteSeva Pro
+      {!danger && (
+        <ChevronRight
+          size={15}
+          className="opacity-40"
+        />
+      )}
+    </button>
+  );
 
-                    </span>
+  return (
+    <div
+      className="
+        pt-6
 
-                    <span
-                        className="
-                            text-xs
-                            text-blue-400
-                            font-semibold
-                        "
-                    >
+        border-t
+        border-slate-800
 
-                        v2.0
+        space-y-1
+      "
+    >
+      <Item
+        icon={LifeBuoy}
+        label="Help Center"
+        onClick={() => navigate("/app/help")}
+      />
 
-                    </span>
+      <Item
+        icon={ShieldCheck}
+        label="Security"
+        onClick={() => navigate("/app/security")}
+      />
 
-                </div>
+      <Item
+        icon={LogOut}
+        label="Logout"
+        danger
+        onClick={logout}
+      />
 
-                <p
-                    className="
-                        text-xs
-                        text-slate-500
-                        mt-2
-                    "
-                >
+      <div
+        className="
+          mt-5
 
-                    Construction Operating System
+          rounded-xl
 
-                </p>
+          bg-slate-900
 
-            </div>
+          p-3
+        "
+      >
+        <div className="text-xs text-slate-500">
 
-            {/* Help */}
-
-            <button
-                className="
-                    ss-sidebar-link
-                    w-full
-                    mb-2
-                "
-            >
-
-                <HelpCircle size={18} />
-
-                Help Center
-
-            </button>
-
-            {/* Security */}
-
-            <button
-                className="
-                    ss-sidebar-link
-                    w-full
-                    mb-3
-                "
-            >
-
-                <ShieldCheck size={18} />
-
-                Security
-
-            </button>
-
-            {/* Logout */}
-
-            <button
-
-                onClick={() => {
-
-                    logout();
-
-                    nav("/login");
-
-                }}
-
-                className="
-                    ss-sidebar-link
-                    w-full
-                    hover:bg-red-600/10
-                    hover:text-red-400
-                "
-
-            >
-
-                <LogOut size={18} />
-
-                Logout
-
-            </button>
+          SiteSeva Pro
 
         </div>
 
-    );
+        <div className="mt-1 flex items-center justify-between">
 
+          <span
+            className="
+              text-sm
+              font-semibold
+              text-white
+            "
+          >
+            v2.0.0
+          </span>
+
+          <span
+            className="
+              rounded-full
+
+              bg-green-500/15
+
+              px-2
+
+              py-1
+
+              text-[10px]
+
+              font-semibold
+
+              text-green-400
+            "
+          >
+            Stable
+          </span>
+
+        </div>
+      </div>
+    </div>
+  );
 }

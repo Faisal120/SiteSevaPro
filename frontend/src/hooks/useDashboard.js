@@ -1,38 +1,44 @@
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import dashboardService from "../services/dashboardServices";
 
 export default function useDashboard() {
+    const [stats, setStats] = useState(null);
+    const [sites, setSites] = useState([]);
+    const [team, setTeam] = useState([]);
+    const [latestPhotos, setLatestPhotos] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-    const query = useQuery({
+    const loadDashboard = async () => {
+        try {
+            setLoading(true);
 
-        queryKey: ["dashboard"],
+            const data = await dashboardService.getDashboard();
 
-        queryFn: dashboardService.getDashboard,
-
-        staleTime: 1000 * 60 * 5,
-
-        refetchOnWindowFocus: false,
-
-    });
-
-    return {
-
-        stats: query.data?.stats ?? null,
-
-        sites: query.data?.sites ?? [],
-
-        team: query.data?.team ?? [],
-
-        latestPhotos: query.data?.latestPhotos ?? [],
-
-        loading: query.isLoading,
-
-        error: query.error,
-
-        refresh: query.refetch,
-
-        isFetching: query.isFetching,
-
+            setStats(data.stats ?? {});
+            setSites(data.sites ?? []);
+            setTeam(data.team ?? []);
+            setLatestPhotos(data.latestPhotos ?? []);
+            setError(null);
+        } catch (err) {
+            setError(err);
+        } finally {
+            setLoading(false);
+        }
     };
 
+    useEffect(() => {
+        loadDashboard();
+    }, []);
+
+    return {
+        stats,
+        sites,
+        team,
+        latestPhotos,
+        loading,
+        error,
+        refresh: loadDashboard,
+        isFetching: loading,
+    };
 }
