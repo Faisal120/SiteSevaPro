@@ -1,5 +1,6 @@
 import asyncio
 
+from backend.api import dashboard
 from repositories.dashboard_repository import (
     dashboard_repository,
 )
@@ -69,10 +70,20 @@ class DashboardService:
         dashboard = await self._load_dashboard_data(
             user
         )
+       
+        print("=" * 80)
+        print("DASHBOARD DATA")
+        print(dashboard)
+        print("=" * 80)
 
         stats = self._build_stats(
             dashboard
         )
+        
+        print("=" * 80)
+        print("STATS")
+        print(stats)
+        print("=" * 80)
 
         charts = self._build_charts(
             dashboard
