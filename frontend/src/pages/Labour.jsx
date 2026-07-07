@@ -93,8 +93,8 @@ export default function Labour() {
                 <tbody>
                   {labour.map((l) => (
                     <tr key={l.id} data-testid={`labour-row-${l.id}`}>
-                      <td className="font-semibold">{l.name}</td>
-                      <td><Chip className="bg-gray-100 text-gray-700">{l.role}</Chip></td>
+                      <td className="font-semibold">{l.full_name}</td>
+                      <td><Chip className="bg-gray-100 text-gray-700">{l.trade}</Chip></td>
                       <td>{inr(l.daily_wage)}</td>
                       <td>{l.mobile || "—"}</td>
                       <td className="text-gray-500">{fmtDate(l.created_at)}</td>
@@ -127,7 +127,7 @@ export default function Labour() {
                     const earn = l.daily_wage * factor + ot;
                     return (
                       <tr key={l.id}>
-                        <td><div className="font-semibold">{l.name}</div><div className="text-xs text-gray-500">{l.role} · ₹{l.daily_wage}/day</div></td>
+                        <td><div className="font-semibold">{l.full_name}</div><div className="text-xs text-gray-500">{l.trade} · ₹{l.daily_wage}/day</div></td>
                         <td>
                           <div className="flex gap-1">
                             {["PRESENT", "HALF", "ABSENT"].map((s) => (
@@ -135,13 +135,12 @@ export default function Labour() {
                                 key={s}
                                 type="button"
                                 onClick={() => setAttendance({ ...attendance, [l.id]: { ...a, status: s } })}
-                                className={`px-2.5 py-1 rounded text-xs font-semibold border-2 transition ${
-                                  status === s
-                                    ? (s === "PRESENT" ? "bg-emerald-100 text-emerald-700 border-emerald-300" :
-                                       s === "HALF" ? "bg-yellow-100 text-yellow-800 border-yellow-300" :
-                                       "bg-red-100 text-red-700 border-red-300")
-                                    : "bg-gray-50 text-gray-500 border-transparent hover:border-gray-200"
-                                }`}
+                                className={`px-2.5 py-1 rounded text-xs font-semibold border-2 transition ${status === s
+                                  ? (s === "PRESENT" ? "bg-emerald-100 text-emerald-700 border-emerald-300" :
+                                    s === "HALF" ? "bg-yellow-100 text-yellow-800 border-yellow-300" :
+                                      "bg-red-100 text-red-700 border-red-300")
+                                  : "bg-gray-50 text-gray-500 border-transparent hover:border-gray-200"
+                                  }`}
                                 data-testid={`att-${s.toLowerCase()}-${l.id}`}
                               >
                                 {s === "PRESENT" ? "P" : s === "HALF" ? "½" : "A"}
@@ -172,20 +171,47 @@ function LabourForm({ siteId, onDone }) {
   const [f, setF] = React.useState({ name: "", role: "Mason", daily_wage: 800, mobile: "", aadhaar: "" });
   const submit = async (e) => {
     e.preventDefault();
+
     try {
-      await api.post("/labour", { ...f, site_id: siteId, daily_wage: Number(f.daily_wage) });
+
+      await api.post("/labour", {
+
+        full_name: f.name,
+
+        trade: f.role,
+
+        daily_wage: Number(f.daily_wage),
+
+        mobile: f.mobile || null,
+
+        aadhaar: f.aadhaar || null,
+
+        address: null,
+
+        site_id: siteId,
+
+      });
+
       toast.success("Labour added");
+
       onDone();
-    } catch { toast.error("Failed"); }
+
+    } catch (err) {
+
+      console.log(err.response?.data);
+
+      toast.error("Failed");
+
+    }
   };
   return (
     <DialogContent>
       <DialogHeader><DialogTitle>Add Labour</DialogTitle></DialogHeader>
       <form onSubmit={submit} className="grid gap-4">
-        <div><label className="text-xs font-bold uppercase text-gray-500">Name</label><input className="ss-input mt-1" required value={f.name} onChange={(e)=>setF({...f, name:e.target.value})} data-testid="labour-form-name" /></div>
-        <div><label className="text-xs font-bold uppercase text-gray-500">Role</label><input className="ss-input mt-1" required value={f.role} onChange={(e)=>setF({...f, role:e.target.value})} data-testid="labour-form-role" /></div>
-        <div><label className="text-xs font-bold uppercase text-gray-500">Daily Wage</label><input className="ss-input mt-1" type="number" required value={f.daily_wage} onChange={(e)=>setF({...f, daily_wage:e.target.value})} data-testid="labour-form-wage" /></div>
-        <div><label className="text-xs font-bold uppercase text-gray-500">Mobile</label><input className="ss-input mt-1" value={f.mobile} onChange={(e)=>setF({...f, mobile:e.target.value})} /></div>
+        <div><label className="text-xs font-bold uppercase text-gray-500">Name</label><input className="ss-input mt-1" required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} data-testid="labour-form-name" /></div>
+        <div><label className="text-xs font-bold uppercase text-gray-500">Role</label><input className="ss-input mt-1" required value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })} data-testid="labour-form-role" /></div>
+        <div><label className="text-xs font-bold uppercase text-gray-500">Daily Wage</label><input className="ss-input mt-1" type="number" required value={f.daily_wage} onChange={(e) => setF({ ...f, daily_wage: e.target.value })} data-testid="labour-form-wage" /></div>
+        <div><label className="text-xs font-bold uppercase text-gray-500">Mobile</label><input className="ss-input mt-1" value={f.mobile} onChange={(e) => setF({ ...f, mobile: e.target.value })} /></div>
         <button type="submit" className="ss-btn-accent" data-testid="labour-form-submit">Save</button>
       </form>
     </DialogContent>

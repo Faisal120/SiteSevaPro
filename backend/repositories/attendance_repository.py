@@ -23,19 +23,7 @@ class AttendanceRepository:
 
             upsert=True,
 
-        )
-        
-        await notification_service.notify_attendance(
-
-            company_id=user["company_id"],
-
-            site_id=body.site_id,
-
-            marked_by=user["id"],
-
-            total_labours=len(norm_entries),
-
-        )
+        )   
 
         return document
 

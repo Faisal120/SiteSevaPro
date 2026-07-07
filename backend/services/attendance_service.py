@@ -149,6 +149,18 @@ class AttendanceService:
         attendance = await attendance_repository.save(
             doc
         )
+        
+        await notification_service.notify_attendance(
+
+            company_id=user["company_id"],
+
+            site_id=body.site_id,
+
+            marked_by=user["id"],
+
+            total_labours=len(norm_entries),
+
+        )
 
         await self._create_ledger(
             attendance,
