@@ -1,6 +1,11 @@
 from typing import List, Optional
+from pydantic import BaseModel, Field
 
-from pydantic import BaseModel
+
+class ReportMedia(BaseModel):
+    url: str
+    public_id: Optional[str] = None
+    type: str = "image"
 
 
 class DailyReportIn(BaseModel):
@@ -9,16 +14,16 @@ class DailyReportIn(BaseModel):
 
     date: str
 
-    progress: int
+    progress: int = 0
 
     weather: Optional[str] = None
 
     notes: Optional[str] = None
 
-    issues: List[str] = []
+    issues: List[str] = Field(default_factory=list)
 
-    completed_tasks: List[str] = []
+    completed_tasks: List[str] = Field(default_factory=list)
 
     next_day_plan: Optional[str] = None
 
-    images: List[str] = []
+    media_urls: List[ReportMedia] = Field(default_factory=list)
