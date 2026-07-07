@@ -38,19 +38,9 @@ class PaymentRepository:
         document: dict,
     ):
 
-        await db.payments.insert_one(
-            document
-        )
-        
-        await notification_service.notify_payment(
+        db_document = document.copy()
 
-            company_id=user["company_id"],
-
-            site_id=body.site_id,
-
-            amount=body.amount,
-
-        )
+        await db.payments.insert_one(db_document)
 
         return document
 

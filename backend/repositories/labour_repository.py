@@ -43,7 +43,10 @@ class LabourRepository:
         self,
         document: dict,
     ):
-        await db.labour.insert_one(document)
+        db_document = document.copy()
+
+        await db.labour.insert_one(db_document)
+
         return document
 
     async def get(

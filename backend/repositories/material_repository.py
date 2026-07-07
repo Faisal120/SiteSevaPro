@@ -33,9 +33,9 @@ class MaterialRepository:
         document: dict,
     ):
 
-        await db.materials.insert_one(
-            document
-        )
+        db_document = document.copy()
+
+        await db.materials.insert_one(db_document)
 
         return document
 

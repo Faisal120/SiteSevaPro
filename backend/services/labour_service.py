@@ -79,11 +79,7 @@ class LabourService:
             document
         )
         
-        print("======================")
-        print(type(document))
-        print(document)
-        print("======================")
-
+        
 
         return document
     

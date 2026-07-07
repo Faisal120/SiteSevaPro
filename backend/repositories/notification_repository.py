@@ -12,9 +12,9 @@ class NotificationRepository:
         document: dict,
     ):
 
-        await db.notifications.insert_one(
-            document
-        )
+        db_document = document.copy()
+
+        await db.notifications.insert_one(db_document)
 
         return document
 

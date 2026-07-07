@@ -28,9 +28,9 @@ class ReportRepository:
         document: dict,
     ):
 
-        await db.daily_reports.insert_one(
-            document
-        )
+        db_document = document.copy()
+
+        await db.daily_reports.insert_one(db_document)
 
         return document
 
