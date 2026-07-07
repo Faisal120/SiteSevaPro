@@ -78,6 +78,12 @@ class LabourService:
         await labour_repository.create(
             document
         )
+        
+        print("======================")
+        print(type(document))
+        print(document)
+        print("======================")
+
 
         return document
     
