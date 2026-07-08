@@ -19,7 +19,7 @@ export default function ContractorRegister() {
     e.preventDefault();
     setBusy(true);
     try {
-      await api.post("/auth/register", {
+      await api.post("/auth/applications", {
         ...form,
         active_projects: Number(form.active_projects || 0),
         employee_count: Number(form.employee_count || 0),

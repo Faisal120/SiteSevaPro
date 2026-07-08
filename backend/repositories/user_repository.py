@@ -36,6 +36,27 @@ class UserRepository:
                 "_id": 0
             }
         )
+        
+    
+    # -----------------------------------------
+
+    async def register_application(
+        self,
+        application: dict,
+    ):
+
+        document = {
+            "id": str(uuid.uuid4()),
+            **application,
+            "status": "PENDING",
+            "created_at": datetime.utcnow().isoformat(),
+        }
+
+        await db.applications.insert_one(document)
+
+        document.pop("_id", None)
+
+        return document
 
     # -----------------------------------------
 
