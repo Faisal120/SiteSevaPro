@@ -10,7 +10,7 @@ import { useAuth } from "@/lib/auth";
 export default function DashboardLayout() {
     const { user, logout } = useAuth();
     const { theme, toggle } = useTheme();
-
+    const [stats, setStats] = React.useState(null);
     const [mobileOpen, setMobileOpen] = React.useState(false);
 
     return (
@@ -18,8 +18,9 @@ export default function DashboardLayout() {
             className={`
         h-screen
         overflow-hidden
+        relative
         flex
-        bg-slate-50
+        bg-[#EEF3FA]
         ${theme === "dark" ? "ss-dark" : ""}
       `}
         >
@@ -43,6 +44,7 @@ export default function DashboardLayout() {
 
             <Sidebar
                 user={user}
+                stats={stats}
                 role={user?.role}
                 logout={logout}
                 mobileOpen={mobileOpen}
@@ -57,8 +59,9 @@ export default function DashboardLayout() {
           flex
           flex-col
           overflow-hidden
+          relative
 
-          lg:ml-[260px]
+          lg:ml-[280px]
         "
             >
                 <Header
@@ -71,17 +74,41 @@ export default function DashboardLayout() {
 
                 <main
                     className="
-            flex-1
-            overflow-y-auto
+        flex-1
+        overflow-y-auto
 
-            bg-slate-50
+        bg-[#F6F8FC]
 
-            p-5
-            md:p-6
-            xl:p-8
-          "
+        p-6
+        lg:p-8
+
+        transition-all
+        duration-300
+    "
                 >
-                    <Outlet />
+                    <div
+                        className="
+            mx-auto
+
+            w-full
+
+            rounded-[28px]
+
+            bg-white
+
+            border
+
+            border-slate-200/70
+
+            shadow-[0_20px_60px_rgba(15,23,42,.06)]
+
+            min-h-full
+
+            p-8
+        "
+                    >
+                        <Outlet />
+                    </div>
                 </main>
             </div>
         </div>

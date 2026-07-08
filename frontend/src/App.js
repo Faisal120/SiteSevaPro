@@ -44,6 +44,7 @@ import AuditLogs from "@/pages/admin/AuditLogs";
 import Branding from "@/pages/Branding";
 import DesignStudio from "@/pages/DesignStudio";
 import { BootstrapProvider } from "@/context/BootstrapContext";
+import PublicRoute from "@/components/PublicRoute";
 
 function Protected({ children, roles }) {
   const { user, loading } = useAuth();
@@ -62,7 +63,14 @@ function App() {
             <BrowserRouter>
               <Toaster position="top-right" richColors closeButton />
               <Routes>
-                <Route path="/" element={<Landing />} />
+                <Route
+                  path="/"
+                  element={
+                    <PublicRoute>
+                      <Landing />
+                    </PublicRoute>
+                  }
+                />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/about" element={<About />} />
                 <Route path="/contact" element={<Contact />} />

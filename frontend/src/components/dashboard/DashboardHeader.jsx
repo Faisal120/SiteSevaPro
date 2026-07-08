@@ -8,7 +8,11 @@ import {
     ArrowUpRight,
 } from "lucide-react";
 
-export default function DashboardHeader({ user }) {
+export default function DashboardHeader({
+    user,
+    stats,
+    company,
+}) {
     const [time, setTime] = React.useState(new Date());
 
     React.useEffect(() => {
@@ -33,17 +37,18 @@ export default function DashboardHeader({ user }) {
         relative
         overflow-hidden
 
-        rounded-3xl
+        rounded-[32px]
 
         border
         border-slate-200
 
         bg-gradient-to-r
-        from-blue-700
-        via-blue-600
-        to-blue-500
+        from-[#0F3DDE]
+        via-[#2563EB]
+        to-[#3B82F6]
 
-        p-8
+        px-10
+        py-10
 
         text-white
       "
@@ -52,6 +57,16 @@ export default function DashboardHeader({ user }) {
 
             <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
             <div className="absolute left-1/2 bottom-0 h-40 w-40 rounded-full bg-blue-300/20 blur-3xl" />
+
+            <div
+                className="
+                    absolute
+                    inset-0
+                    opacity-[0.04]
+                    bg-[radial-gradient(circle_at_1px_1px,white_1px,transparent_0)]
+                    bg-[length:22px_22px]
+                "
+            />
 
             <div className="relative flex flex-col lg:flex-row justify-between gap-8">
 
@@ -67,7 +82,9 @@ export default function DashboardHeader({ user }) {
 
               rounded-full
 
-              bg-white/15
+              bg-white/10
+              border
+              border-white/20
 
               px-4
               py-2
@@ -78,17 +95,19 @@ export default function DashboardHeader({ user }) {
                     >
                         <Sparkles size={16} />
 
-                        Construction Operating System
+                        SiteSeva Pro Enterprise
                     </span>
 
                     <div>
 
                         <h1
                             className="
-                text-4xl
-                font-bold
-                tracking-tight
-              "
+                            font-display
+                            text-5xl
+                            font-bold
+                            leading-tight
+                            tracking-tight
+                            "
                         >
                             {greeting()},
                             <br />
@@ -102,7 +121,9 @@ export default function DashboardHeader({ user }) {
 
                 text-blue-100
 
-                max-w-xl
+                max-w-2xl
+                leading-7
+                text-[15px]
               "
                         >
                             Welcome back to SiteSeva Pro.
@@ -131,9 +152,11 @@ export default function DashboardHeader({ user }) {
                 >
                     <div
                         className="
-              rounded-2xl
+              rounded-[24px]
 
               bg-white/10
+                border
+                border-white/15
 
               backdrop-blur
 
@@ -151,7 +174,7 @@ export default function DashboardHeader({ user }) {
                                 </p>
 
                                 <h3 className="font-semibold text-lg">
-                                    {user?.company_name || "SiteSeva Pro"}
+                                    {company?.branding?.company_name}
                                 </h3>
 
                             </div>
@@ -245,19 +268,19 @@ export default function DashboardHeader({ user }) {
                   text-slate-500
                 "
                             >
-                                Productivity
+                                Company Health
                             </p>
 
                             <h2
                                 className="
                   mt-1
 
-                  text-3xl
+                  text-4xl
 
                   font-bold
                 "
                             >
-                                98%
+                                {Math.round(stats?.productivity ?? 0)}%
                             </h2>
 
                         </div>
@@ -269,7 +292,9 @@ export default function DashboardHeader({ user }) {
 
                 rounded-2xl
 
-                bg-blue-100
+                bg-gradient-to-br
+from-blue-100
+to-blue-200
 
                 flex
                 items-center
@@ -282,16 +307,29 @@ export default function DashboardHeader({ user }) {
                             />
                         </div>
 
-                        <ArrowUpRight
-                            className="text-green-500"
-                            size={28}
-                        />
+                        <div
+                            className="
+rounded-full
+bg-green-100
+px-3
+py-1
+text-xs
+font-semibold
+text-green-700
+"
+                        >
+
+                            Excellent
+
+                        </div>
 
                     </div>
 
                 </div>
 
             </div>
+
+
 
         </section>
     );

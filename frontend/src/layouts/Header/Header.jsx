@@ -7,7 +7,10 @@ import {
     Moon,
     Plus,
     ChevronDown,
+    Sparkles,
 } from "lucide-react";
+
+import { Button } from "@/components/ui";
 
 export default function Header({
     user,
@@ -24,20 +27,25 @@ export default function Header({
         top-0
         z-40
 
-        h-16
-
-        bg-white/90
-        backdrop-blur-xl
-
-        border-b
-        border-slate-200
+        h-20
 
         flex
         items-center
         justify-between
 
-        px-6
-      "
+        px-8
+
+        bg-white/80
+        backdrop-blur-2xl
+
+        border-b
+        border-slate-200/70
+
+        shadow-sm
+
+        transition-all
+        duration-300
+    "
         >
             {/* Left */}
 
@@ -65,6 +73,7 @@ export default function Header({
 
                 {/* Search */}
 
+
                 <div
                     className="
             hidden
@@ -72,17 +81,17 @@ export default function Header({
 
             items-center
 
-            gap-3
+            gap-4
 
             h-11
-            w-[360px]
+            w-[520px]
 
-            rounded-2xl
+            rounded-[18px]
 
             border
-            border-slate-200
+            border-slate-300/70
 
-            bg-slate-50
+            bg-white
 
             px-4
           "
@@ -94,7 +103,7 @@ export default function Header({
 
                     <input
                         type="text"
-                        placeholder="Search sites, team, materials..."
+                        placeholder="Search sites, labour, materials, payments..."
                         className="
               flex-1
 
@@ -108,21 +117,18 @@ export default function Header({
 
                     <kbd
                         className="
-              rounded-md
-
-              border
-
-              bg-white
-
-              px-2
-              py-1
-
-              text-[10px]
-
-              text-slate-400
-            "
+                        rounded-lg
+                        border
+                        border-slate-200
+                        bg-slate-50
+                        px-2.5
+                        py-1
+                        text-[11px]
+                        font-medium
+                        text-slate-500
+                    "
                     >
-                        ⌘K
+                        Ctrl K
                     </kbd>
                 </div>
 
@@ -130,38 +136,16 @@ export default function Header({
 
             {/* Right */}
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
 
                 {/* Create */}
 
-                <button
-                    className="
-            hidden
-            md:flex
-
-            items-center
-
-            gap-2
-
-            h-11
-
-            rounded-xl
-
-            bg-blue-600
-
-            px-4
-
-            text-sm
-            font-medium
-
-            text-white
-
-            hover:bg-blue-700
-          "
+                <Button
+                    icon={Plus}
+                    className="hidden md:flex"
                 >
-                    <Plus size={18} />
                     Create
-                </button>
+                </Button>
 
                 {/* Notifications */}
 
@@ -172,16 +156,19 @@ export default function Header({
             h-11
             w-11
 
-            rounded-xl
+            rounded-2xl
 
             border
-            border-slate-200
+            border-slate-300/60
 
             flex
             items-center
             justify-center
 
             hover:bg-slate-100
+            hover:scale-105
+            transition-all
+            duration-200
           "
                 >
                     <Bell size={19} />
@@ -193,8 +180,8 @@ export default function Header({
               top-2
               right-2
 
-              h-2
-              w-2
+              h-2.5
+              w-2.5
 
               rounded-full
 
@@ -208,19 +195,27 @@ export default function Header({
                 <button
                     onClick={toggle}
                     className="
+            relative
+
             h-11
             w-11
 
-            rounded-xl
+            rounded-2xl
 
             border
-            border-slate-200
+            border-slate-300/60
 
             flex
             items-center
             justify-center
 
             hover:bg-slate-100
+
+            hover:scale-105
+
+            transition-all
+
+            duration-200
           "
                 >
                     {theme === "dark" ? (
@@ -238,12 +233,12 @@ export default function Header({
             flex
             items-center
 
-            gap-3
+            gap-4
 
-            rounded-xl
+            rounded-2xl
 
             border
-            border-slate-200
+            border-slate-300/70
 
             bg-white
 
@@ -251,16 +246,24 @@ export default function Header({
             py-2
 
             hover:bg-slate-50
+
+            hover:border-blue-200
+
+            transition-all
+
+            duration-200
           "
                 >
                     <div
                         className="
-              h-10
-              w-10
+              h-12
+              w-12
 
-              rounded-full
+              rounded-2xl
 
-              bg-blue-600
+              bg-gradient-to-br
+             from-blue-600
+             to-indigo-600
 
               flex
               items-center
@@ -277,7 +280,8 @@ export default function Header({
 
                         <p
                             className="
-                text-sm
+                text-[15px]
+                font-semibold
                 font-semibold
 
                 text-slate-800
@@ -293,7 +297,40 @@ export default function Header({
                 text-slate-500
               "
                         >
-                            {user?.role}
+                            {user?.role
+                                ?.toLowerCase()
+                                .replace("_", " ")
+                                .replace(/\b\w/g, l => l.toUpperCase())}
+
+                            <p
+                                className="
+        mt-1
+
+        inline-flex
+
+        items-center
+
+        gap-1
+
+        rounded-full
+
+        bg-orange-100
+
+        px-2
+
+        py-0.5
+
+        text-[10px]
+
+        font-semibold
+
+        text-orange-700
+    "
+                            >
+                                <Sparkles size={11} />
+
+                                AI Enabled
+                            </p>
                         </p>
 
                     </div>

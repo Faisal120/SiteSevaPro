@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Plus, Building2 } from "lucide-react";
+import { Building2 } from "lucide-react";
 
 import CompanyCard from "./CompanyCard";
 import NavGroup from "./NavGroup";
@@ -19,6 +19,7 @@ export default function Sidebar({
   user,
   logout,
   mobileOpen,
+  stats,
   setMobileOpen,
 }) {
   const nav = useNavigate();
@@ -41,11 +42,11 @@ export default function Sidebar({
         bottom-0
         z-50
 
-        w-[260px]
+        w-[280px]
 
-        bg-slate-950
+        bg-[#0B1120]
         border-r
-        border-slate-800
+        border-slate-700/70
 
         flex
         flex-col
@@ -64,12 +65,12 @@ export default function Sidebar({
       <div
         className="
           shrink-0
-          h-20
+          h-24
 
           border-b
           border-slate-800
 
-          px-6
+          px-7
 
           flex
           items-center
@@ -83,12 +84,14 @@ export default function Sidebar({
         >
           <div
             className="
-              h-11
-              w-11
-
-              rounded-xl
-
-              bg-blue-600
+              h-14
+              w-14
+              rounded-2xl
+              bg-gradient-to-br
+              from-blue-600
+              to-indigo-700
+              shadow-lg
+              shadow-blue-900/30
 
               flex
               items-center
@@ -103,7 +106,13 @@ export default function Sidebar({
 
           <div>
 
-            <h2 className="font-bold text-white text-lg">
+            <h2 className="
+                font-display
+                text-[20px]
+                font-bold
+                tracking-tight
+                text-white
+                ">
 
               SiteSeva Pro
 
@@ -111,7 +120,7 @@ export default function Sidebar({
 
             <p className="text-xs text-slate-400">
 
-              Construction OS
+              Enterprise Edition
 
             </p>
 
@@ -131,19 +140,19 @@ export default function Sidebar({
           ss-sidebar-scroll
         "
       >
-        <div className="px-3 py-2">
+        <div className="px-4 py-4">
 
           {/* Company */}
 
           {role === "CONTRACTOR" && (
             <div className="mt-5">
-              <CompanyCard user={user} />
+              <CompanyCard user={user} stats={stats} />
             </div>
           )}
 
           {/* Navigation */}
 
-          <div className="mt-6 space-y-8">
+          <div className="mt-6 space-y-10">
 
             {menu.map((group) => (
               <NavGroup
@@ -168,7 +177,7 @@ export default function Sidebar({
 
           {/* Footer */}
 
-          <div className="mt-8">
+          <div className="mt-10">
 
             <SidebarFooter
               logout={logout}
@@ -181,16 +190,16 @@ export default function Sidebar({
 
           <div
             className="
-              mt-8
-
-              text-center
-
-              text-xs
-
-              text-slate-500
+            mt-8
+            pb-6
+            text-center
+            text-[11px]
+            font-medium
+            tracking-wide
+            text-slate-500
             "
           >
-            Version 2.0.0
+            SiteSeva Pro v3 Preview
 
           </div>
 

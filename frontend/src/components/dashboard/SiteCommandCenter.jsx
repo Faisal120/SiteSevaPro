@@ -31,7 +31,7 @@ export default function SiteCommandCenter({ sites = [] }) {
         <div>
 
           <h2 className="text-xl font-bold text-slate-800">
-            Site Command Center
+            Construction Projects
           </h2>
 
           <p className="text-sm text-slate-500">
@@ -181,10 +181,9 @@ export default function SiteCommandCenter({ sites = [] }) {
                   text-xs
                   font-semibold
 
-                  ${
-                    site.status === "ACTIVE"
-                      ? "bg-green-100 text-green-700"
-                      : site.status === "COMPLETED"
+                  ${site.status === "ACTIVE"
+                    ? "bg-green-100 text-green-700"
+                    : site.status === "COMPLETED"
                       ? "bg-blue-100 text-blue-700"
                       : "bg-yellow-100 text-yellow-700"
                   }
@@ -208,7 +207,7 @@ export default function SiteCommandCenter({ sites = [] }) {
                   mb-2
                 "
               >
-                <span>Progress</span>
+                <span>Overall Progress</span>
 
                 <span className="font-semibold">
                   {site.progress || 0}%
@@ -346,7 +345,7 @@ export default function SiteCommandCenter({ sites = [] }) {
                   text-blue-600
                 "
               >
-                Open →
+                Open Project →
               </button>
 
             </div>

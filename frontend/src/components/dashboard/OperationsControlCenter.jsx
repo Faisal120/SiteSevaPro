@@ -12,13 +12,13 @@ import { useNavigate } from "react-router-dom";
 
 export default function OperationsControlCenter({
 
-    alerts=[]
+    alerts = []
 
-}){
+}) {
 
-    const nav=useNavigate();
+    const nav = useNavigate();
 
-    return(
+    return (
 
         <div className="rounded-3xl bg-white border border-slate-200 shadow-sm overflow-hidden">
 
@@ -28,11 +28,21 @@ export default function OperationsControlCenter({
 
                     <div>
 
-                        <h2 className="text-xl font-bold">
+                        <div>
 
-                            Operations Control Center
+                            <h2 className="text-xl font-bold">
 
-                        </h2>
+                                Operations Control Center
+
+                            </h2>
+
+                            <p className="mt-1 text-sm text-slate-500">
+
+                                {alerts.length} Active Alert{alerts.length !== 1 && "s"}
+
+                            </p>
+
+                        </div>
 
                         <p className="text-sm text-slate-500 mt-1">
 
@@ -42,10 +52,8 @@ export default function OperationsControlCenter({
 
                     </div>
 
-                    <div className="h-12 w-12 rounded-2xl bg-red-50 flex items-center justify-center">
-
-                        <AlertTriangle className="text-red-600"/>
-
+                    <div className="h-12 w-12 rounded-xl bg-red-50 flex items-center justify-center">
+                        <AlertTriangle className="text-red-600" />
                     </div>
 
                 </div>
@@ -56,63 +64,81 @@ export default function OperationsControlCenter({
 
                 {
 
-                    alerts.length===0 ?
+                    alerts.length === 0 ?
 
-                    (
+                        (
 
-                        <div className="p-10 text-center">
+                            <div className="p-10 text-center">
 
-                            <AlertTriangle
+                                <AlertTriangle
 
-                                size={48}
+                                    size={48}
 
-                                className="mx-auto text-green-500"
+                                    className="mx-auto text-green-500"
 
-                            />
+                                />
 
-                            <h3 className="mt-5 font-semibold text-lg">
+                                <h3 className="mt-5 font-semibold text-lg">
 
-                                Everything Looks Good
+                                    Everything Looks Good
 
-                            </h3>
+                                </h3>
 
-                            <p className="text-slate-500 mt-2">
+                                <p className="text-slate-500 mt-2">
 
-                                No critical alerts at the moment.
+                                    All operations are running normally.
 
-                            </p>
+                                    No high-priority alerts require your attention.
 
-                        </div>
+                                </p>
 
-                    )
+                            </div>
 
-                    :
+                        )
 
-                    alerts.map((item,index)=>{
+                        :
 
-                        const icons={
+                        alerts.map((item, index) => {
 
-                            site:AlertTriangle,
+                            const icons = {
+                                TASK: Clock3,
+                                PAYMENT: IndianRupee,
+                                MATERIAL: Package,
+                                LABOUR: Users,
+                                SITE: AlertTriangle,
+                            };
 
-                            dpr:Clock3,
+                            const severityColors = {
+                                HIGH: {
+                                    bg: "bg-red-50",
+                                    text: "text-red-600",
+                                    chip: "bg-red-100 text-red-700",
+                                },
+                                MEDIUM: {
+                                    bg: "bg-amber-50",
+                                    text: "text-amber-600",
+                                    chip: "bg-amber-100 text-amber-700",
+                                },
+                                LOW: {
+                                    bg: "bg-blue-50",
+                                    text: "text-blue-600",
+                                    chip: "bg-blue-100 text-blue-700",
+                                },
+                            };
 
-                            payment:IndianRupee,
+                            const Icon = icons[item.type] || AlertTriangle;
 
-                            material:Package,
+                            const style =
+                                severityColors[item.severity] ||
+                                severityColors.HIGH;
 
-                            labour:Users
+                            return (
 
-                        };
+                                <div
 
-                        const Icon=icons[item.type]||AlertTriangle;
+                                    key={index}
 
-                        return(
-
-                            <div
-
-                                key={index}
-
-                                className="
+                                    className="
 
                                 flex
 
@@ -134,53 +160,81 @@ export default function OperationsControlCenter({
 
                                 "
 
-                            >
+                                >
 
-                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-4">
 
-                                    <div className="h-12 w-12 rounded-xl bg-red-50 flex items-center justify-center">
+                                        <div className="h-12 w-12 rounded-xl bg-red-50 flex items-center justify-center">
 
-                                        <Icon className="text-red-600"/>
+                                            <Icon className={style.text} />
+
+                                        </div>
+
+                                        <div>
+
+                                            <h3 className="font-semibold">
+
+                                                {item.title}
+
+                                            </h3>
+
+                                            <div className="mt-2">
+
+                                                <span
+                                                    className={`
+            inline-flex
+            items-center
+            rounded-full
+            px-2.5
+            py-1
+            text-xs
+            font-semibold
+            ${style.chip}
+        `}
+                                                >
+                                                    {item.severity}
+                                                </span>
+
+                                            </div>
+
+                                            <p className="text-sm text-slate-500">
+
+                                                {item.description ||
+                                                    "Requires immediate attention."}
+
+                                            </p>
+
+                                        </div>
 
                                     </div>
 
-                                    <div>
+                                    <button
 
-                                        <h3 className="font-semibold">
+                                        onClick={() => {
 
-                                            {item.title}
+                                            if (item.route) {
 
-                                        </h3>
+                                                nav(item.route);
 
-                                        <p className="text-sm text-slate-500">
+                                            }
 
-                                            {item.description}
+                                        }}
 
-                                        </p>
+                                        className="text-blue-600 flex items-center gap-2 font-medium"
 
-                                    </div>
+                                    >
+
+                                        Open
+
+                                        <ArrowRight size={18} />
+
+                                    </button>
 
                                 </div>
 
-                                <button
+                            )
 
-                                    onClick={()=>nav(item.route)}
-
-                                    className="text-blue-600 flex items-center gap-2 font-medium"
-
-                                >
-
-                                    Open
-
-                                    <ArrowRight size={18}/>
-
-                                </button>
-
-                            </div>
-
-                        )
-
-                    })
+                        })
 
                 }
 

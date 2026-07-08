@@ -60,41 +60,53 @@ h6,
 
   font-family: "Sora", sans-serif;
 
-  letter-spacing: -0.03em;
+  letter-spacing: -.04em;
 
   font-weight: 700;
-
-  color: #0F172A;
-
 }
 
 @layer base {
   :root {
-    --background: 0 0% 98%;
-    --foreground: 0 0% 9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 32%;
-    --accent: 24 95% 53%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 24 95% 53%;
-    --radius: 0.625rem;
-    --chart-1: 0 0% 9%;
-    --chart-2: 24 95% 53%;
-    --chart-3: 43 96% 50%;
-    --chart-4: 142 71% 45%;
-    --chart-5: 0 0% 80%;
+    /* Brand */
+    --ss-primary: #2563EB;
+    --ss-primary-hover: #1D4ED8;
+    --ss-accent: #F97316;
+
+    /* Surfaces */
+    --ss-bg: #F8FAFC;
+    --ss-surface: #FFFFFF;
+    --ss-surface-2: #F1F5F9;
+
+    /* Sidebar */
+    --ss-sidebar: #0F172A;
+    --ss-sidebar-hover: #1E293B;
+
+    /* Text */
+    --ss-text: #0F172A;
+    --ss-text-light: #64748B;
+
+    /* Border */
+    --ss-border: #E2E8F0;
+
+    /* States */
+    --ss-success: #22C55E;
+    --ss-warning: #F59E0B;
+    --ss-danger: #EF4444;
+
+    /* Radius */
+    --ss-radius-sm: 12px;
+    --ss-radius: 16px;
+    --ss-radius-lg: 24px;
+
+    /* Shadows */
+    --ss-shadow-sm:
+      0 1px 3px rgba(15, 23, 42, .05);
+
+    --ss-shadow:
+      0 10px 30px rgba(15, 23, 42, .08);
+
+    --ss-shadow-lg:
+      0 25px 60px rgba(15, 23, 42, .12);
   }
 }
 
@@ -223,20 +235,86 @@ h6,
   @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold;
 }
 
-.ss-btn-accent {
-  @apply inline-flex items-center justify-center gap-2 rounded-lg bg-[#F97316] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#EA580C] active:scale-[0.98];
+.ss-btn-primary {
+
+  height: 48px;
+
+  padding: 0 22px;
+
+  border-radius: 16px;
+
+  background: var(--ss-primary);
+
+  color: white;
+
+  font-weight: 600;
+
+  display: inline-flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 10px;
+
+  transition: .25s;
 }
 
-.ss-btn-ink {
-  @apply inline-flex items-center justify-center gap-2 rounded-lg bg-[#171717] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#262626] active:scale-[0.98];
+.ss-btn-primary:hover {
+
+  background: var(--ss-primary-hover);
+
+  transform: translateY(-1px);
 }
 
-.ss-btn-outline {
-  @apply inline-flex items-center justify-center gap-2 rounded-lg border-2 border-[#171717] bg-transparent px-5 py-2.5 text-sm font-semibold text-[#171717] transition-all hover:bg-gray-50 active:scale-[0.98];
+.ss-btn-secondary {
+
+  height: 48px;
+
+  padding: 0 22px;
+
+  border-radius: 16px;
+
+  background: white;
+
+  border: 1px solid var(--ss-border);
+
+  transition: .25s;
+}
+
+.ss-btn-secondary:hover {
+
+  background: #F8FAFC;
 }
 
 .ss-input {
-  @apply w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-[#171717] placeholder-gray-400 transition-all focus:border-[#F97316] focus:outline-none focus:ring-2 focus:ring-[#F97316]/30;
+
+  width: 100%;
+
+  height: 50px;
+
+  border-radius: 16px;
+
+  border: 1px solid var(--ss-border);
+
+  background: white;
+
+  padding: 0 18px;
+
+  font-size: 15px;
+
+  transition: .25s;
+}
+
+.ss-input:focus {
+
+  outline: none;
+
+  border-color: var(--ss-primary);
+
+  box-shadow:
+
+    0 0 0 4px rgba(37, 99, 235, .12);
 }
 
 .ss-table {
@@ -257,6 +335,16 @@ h6,
 
 .ss-fade-in {
   animation: ssFade 0.6s ease-out both;
+}
+
+.ss-section {
+
+  margin-top: 32px;
+}
+
+.ss-gap {
+
+  gap: 24px;
 }
 
 @keyframes ssFade {
@@ -372,98 +460,4 @@ h6,
 
 .ss-dark .bg-white {
   background: #161618 !important;
-}
-
-/* ==========================
-ROYAL DESIGN SYSTEM
-========================== */
-
-.ss-card {
-
-  background: white;
-
-  border: 1px solid #E2E8F0;
-
-  border-radius: 24px;
-
-  box-shadow:
-
-    0 10px 35px rgba(15, 23, 42, .05);
-
-  transition: .3s;
-
-}
-
-.ss-card:hover {
-
-  transform: translateY(-2px);
-
-  box-shadow:
-
-    0 20px 45px rgba(15, 23, 42, .08);
-
-}
-
-.ss-btn-primary {
-
-  height: 46px;
-
-  padding: 0 22px;
-
-  background: #2563EB;
-
-  color: white;
-
-  border-radius: 14px;
-
-  font-weight: 600;
-
-  transition: .3s;
-
-}
-
-.ss-btn-primary:hover {
-
-  background: #1D4ED8;
-
-}
-
-.ss-btn-secondary {
-
-  height: 46px;
-
-  padding: 0 22px;
-
-  background: white;
-
-  border: 1px solid #CBD5E1;
-
-  border-radius: 14px;
-
-  font-weight: 600;
-
-}
-
-.ss-input {
-
-  height: 48px;
-
-  border-radius: 14px;
-
-  border: 1px solid #CBD5E1;
-
-  background: white;
-
-  padding: 0 16px;
-
-}
-
-.ss-input:focus {
-
-  outline: none;
-
-  border-color: #2563EB;
-
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, .15);
-
 }

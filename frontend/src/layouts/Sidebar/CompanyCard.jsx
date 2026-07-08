@@ -6,7 +6,7 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 
-export default function CompanyCard({ user }) {
+export default function CompanyCard({ user, stats }) {
   const company = user?.company_name || "SiteSeva Construction";
   const owner = user?.full_name || "Contractor";
 
@@ -111,43 +111,7 @@ export default function CompanyCard({ user }) {
 
       </div>
 
-      {/* Stats */}
 
-      <div className="mt-5 grid grid-cols-2 gap-3">
-
-        <div
-          className="
-            rounded-xl
-            bg-slate-800
-            p-3
-          "
-        >
-          <div className="text-xl font-bold text-white">
-            {user?.site_ids?.length ?? 0}
-          </div>
-
-          <div className="text-[11px] text-slate-400">
-            Active Sites
-          </div>
-        </div>
-
-        <div
-          className="
-            rounded-xl
-            bg-slate-800
-            p-3
-          "
-        >
-          <div className="text-xl font-bold text-white">
-            {user?.role === "CONTRACTOR" ? "PRO" : "--"}
-          </div>
-
-          <div className="text-[11px] text-slate-400">
-            Workspace
-          </div>
-        </div>
-
-      </div>
 
       {/* Upgrade */}
 

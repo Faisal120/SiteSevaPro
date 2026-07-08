@@ -18,7 +18,7 @@ const authApi = {
 
         return apiClient.post(
 
-            "/api/auth/register",
+            "/api/auth/applications",
 
             data
 

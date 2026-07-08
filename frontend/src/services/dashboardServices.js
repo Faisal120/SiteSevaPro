@@ -60,6 +60,14 @@ const dashboardService = {
 
             team: dashboard.data.team,
 
+            charts: dashboard.data.charts,
+
+            alerts: dashboard.data.alerts,
+
+            activities: dashboard.data.activities,
+
+            company: dashboard.data.company,
+
             latestPhotos: dashboard.data.latestPhotos || latestPhotos,
 
         };

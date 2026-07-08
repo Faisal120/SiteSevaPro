@@ -3,96 +3,172 @@ import CountUp from "react-countup";
 import {
   Building2,
   Users,
-  IndianRupee,
-  Wallet,
-  ClipboardList,
-  Clock3,
-  TrendingUp,
   Activity,
+  Package,
+  Package2,
 } from "lucide-react";
 
 const cards = [
   {
     key: "active_sites",
-    title: "Active Sites",
+    title: "Active Projects",
     icon: Building2,
-    color: "bg-blue-100 text-blue-700",
+    iconBg: "bg-blue-100",
+    iconColor: "text-blue-700",
+    valueColor: "text-slate-900",
   },
   {
     key: "labours",
-    title: "Today's Labour",
+    title: "Total Workforce",
     icon: Users,
-    color: "bg-indigo-100 text-indigo-700",
+    iconBg: "bg-violet-100",
+    iconColor: "text-violet-700",
+    valueColor: "text-slate-900",
   },
   {
-    key: "cashflow",
-    title: "Cash Flow",
-    icon: IndianRupee,
-    color: "bg-emerald-100 text-emerald-700",
-    currency: true,
-  },
-  
-  {
-    key: "productivity",
-    title: "Productivity",
+    key: "pending_tasks",
+    title: "Pending Tasks",
     icon: Activity,
-    color: "bg-slate-200 text-slate-800",
-    suffix: "%",
+    iconBg: "bg-orange-100",
+    iconColor: "text-orange-700",
+    valueColor: "text-orange-700",
+  },
+  {
+    key: "low_stock",
+    title: "Low Stock Items",
+    icon: Package, // we'll replace with Package icon if you import it
+    iconBg: "bg-red-100",
+    iconColor: "text-red-700",
+    valueColor: "text-red-700",
   },
 ];
 
 export default function StatsCards({ stats = {} }) {
   return (
-    <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-
+    <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
       {cards.map((item) => {
-
         const Icon = item.icon;
+        let value = stats?.[item.key];
 
-        const value = stats?.[item.key] ?? 0;
+        if (item.isArray) {
+          value = Array.isArray(value) ? value.length : 0;
+        }
+
+        value ??= 0;
 
         return (
-
           <div
             key={item.key}
             className="
               group
-              rounded-3xl
+              relative
+              overflow-hidden
+
+              rounded-[28px]
+
               border
               border-slate-200
+
               bg-white
-              p-5
+
+              p-6
+
               transition-all
               duration-300
+
               hover:-translate-y-1
-              hover:shadow-xl
+              hover:border-blue-200
+              hover:shadow-2xl
             "
           >
+            {/* Background Glow */}
 
-            <div className="flex items-start justify-between">
+            <div
+              className="
+                absolute
 
-              <div>
+                -right-12
+                -top-12
 
-                <p
-                  className="
-                    text-xs
-                    uppercase
-                    tracking-wider
-                    text-slate-500
-                  "
+                h-40
+                w-40
+
+                rounded-full
+
+                bg-blue-50
+
+                opacity-0
+
+                transition-all
+
+                duration-500
+
+                group-hover:opacity-100
+              "
+            />
+
+            <div className="relative z-10">
+
+              {/* Header */}
+
+              <div className="flex items-center justify-between">
+
+                <div>
+
+                  <p
+                    className="
+                      text-xs
+
+                      font-semibold
+
+                      uppercase
+
+                      tracking-[0.18em]
+
+                      text-slate-400
+                    "
+                  >
+                    {item.title}
+                  </p>
+
+                </div>
+
+                <div
+                  className={`
+                    flex
+                    h-14
+                    w-14
+                    items-center
+                    justify-center
+
+                    rounded-2xl
+
+                    ${item.iconBg}
+                  `}
                 >
-                  {item.title}
-                </p>
+                  <Icon
+                    size={26}
+                    className={item.iconColor}
+                  />
+                </div>
+
+              </div>
+
+              {/* Value */}
+
+              <div className="mt-7">
 
                 <h2
-                  className="
-                    mt-3
-                    text-3xl
-                    font-bold
-                    text-slate-800
-                  "
-                >
+                  className={`
+                    text-4xl
 
+                    font-bold
+
+                    tracking-tight
+
+                    ${item.valueColor}
+                  `}
+                >
                   {item.currency && "₹"}
 
                   <CountUp
@@ -102,64 +178,35 @@ export default function StatsCards({ stats = {} }) {
                   />
 
                   {item.suffix}
-
                 </h2>
 
               </div>
 
-              <div
-                className={`
-                  h-14
-                  w-14
-                  rounded-2xl
-                  flex
-                  items-center
-                  justify-center
-                  ${item.color}
-                `}
-              >
-                <Icon size={24} />
+              {/* Footer */}
+
+              <div className="mt-5 flex items-center justify-between">
+
+                <span className="text-xs font-medium text-slate-500">
+
+                  {item.key === "active_sites"
+                    ? "Projects in progress"
+                    : item.key === "labours"
+                      ? "Registered workforce"
+                      : item.key === "pending_tasks"
+                        ? "Needs immediate attention"
+                        : "Material procurement required"}
+
+                </span>
+
+                <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+
               </div>
 
             </div>
 
-            <div
-              className="
-                mt-5
-                flex
-                items-center
-                justify-between
-              "
-            >
-
-              <span
-                className="
-                  text-xs
-                  text-green-600
-                  font-semibold
-                "
-              >
-                Live Data
-              </span>
-
-              <span
-                className="
-                  h-2
-                  w-2
-                  rounded-full
-                  bg-green-500
-                  animate-pulse
-                "
-              />
-
-            </div>
-
           </div>
-
         );
-
       })}
-
     </div>
   );
 }

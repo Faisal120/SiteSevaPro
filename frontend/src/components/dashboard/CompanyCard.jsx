@@ -11,10 +11,19 @@ import {
 } from "lucide-react";
 
 export default function CompanyCard({
-
-    company
-
+    company,
+    stats,
+    user,
 }) {
+
+    const score =
+        stats?.total_sites
+            ? Math.round(
+                (stats.completed_sites /
+                    stats.total_sites) *
+                100
+            )
+            : 0;
 
     return (
 
@@ -34,7 +43,7 @@ export default function CompanyCard({
 
                         <h2 className="text-2xl font-bold">
 
-                            {company?.company_name || "Company Name"}
+                            {company?.branding?.company_name || "Company Name"}
 
                         </h2>
 
@@ -73,7 +82,7 @@ export default function CompanyCard({
 
                         <h3 className="font-semibold mt-1">
 
-                            {company?.owner_name}
+                            {user?.full_name || "Owner Name"}
 
                         </h3>
 
@@ -116,7 +125,7 @@ export default function CompanyCard({
 
                             <Building2 size={16} />
 
-                            {company?.sites || 0}
+                            {stats?.active_sites || 0}
 
                         </div>
 
@@ -134,7 +143,7 @@ export default function CompanyCard({
 
                             <Users size={16} />
 
-                            {company?.labours || 0}
+                            {stats?.labours || 0}
 
                         </div>
 
@@ -152,7 +161,7 @@ export default function CompanyCard({
 
                             <HardHat size={16} />
 
-                            {company?.completed_projects || 0}
+                            {stats?.completed_sites || 0}
 
                         </div>
 
@@ -192,9 +201,10 @@ export default function CompanyCard({
 
                             className="h-full rounded-full bg-gradient-to-r from-blue-600 to-green-500"
 
+
                             style={{
 
-                                width: `${company?.score || 92}%`
+                                width: `${score}%`
 
                             }}
 
@@ -204,7 +214,7 @@ export default function CompanyCard({
 
                     <div className="mt-2 text-right font-semibold">
 
-                        {company?.score || 92}%
+                        {score}%
 
                     </div>
 
