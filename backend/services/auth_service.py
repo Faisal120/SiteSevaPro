@@ -67,6 +67,7 @@ class AuthService:
                 detail="User not found",
             )
 
+
         return user
 
     async def register_application(
