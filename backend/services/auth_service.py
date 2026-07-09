@@ -70,29 +70,7 @@ class AuthService:
 
         return user
 
-    async def register_application(
-        self,
-        payload,
-    ):
-        return await user_repository.register_application(
-            payload
-        )
-
-    async def approve_application(
-        self,
-        application_id: str,
-    ):
-        return await user_repository.approve_application(
-            application_id
-        )
-
-    async def reject_application(
-        self,
-        application_id: str,
-    ):
-        return await user_repository.reject_application(
-            application_id
-        )
+    
 
 
 auth_service = AuthService()

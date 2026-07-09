@@ -10,6 +10,8 @@ from models.auth import (
 
 from services.auth_service import auth_service
 
+from services.application_service import application_service
+
 from core import get_current_user
 
 router = APIRouter(
@@ -48,16 +50,16 @@ async def me(
 async def register_application(
     body: RegisterApplicationIn,
 ):
-    return await auth_service.register_application(
-        body,
-    )
+    return await application_service.submit_application(body)
+
+
 
 @router.get(
     "/applications",
 )
 async def pending_applications():
 
-    return await auth_service.list_pending()
+    return await application_service.list_pending()
 
 
 @router.post(
@@ -66,8 +68,8 @@ async def pending_applications():
 async def approve_application(
     application_id: str,
 ):
-    return await auth_service.approve_application(
-        application_id,
+    return await application_service.approve(
+    application_id,
     )
     
 @router.post(
@@ -76,6 +78,6 @@ async def approve_application(
 async def reject_application(
     application_id: str,
 ):
-    return await auth_service.reject_application(
-        application_id,
+    return await application_service.reject(
+    application_id,
     )

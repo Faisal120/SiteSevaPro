@@ -2,6 +2,9 @@ from typing import Optional
 
 from core import db
 
+import uuid
+from datetime import datetime
+
 
 class UserRepository:
 
@@ -41,23 +44,78 @@ class UserRepository:
     # -----------------------------------------
 
     async def register_application(
-        self,
-        application: dict,
-    ):
+    self,
+    payload,
+):
 
         document = {
             "id": str(uuid.uuid4()),
-            **application,
+            "company_name": payload.company_name,
+            "owner_name": payload.owner_name,
+            "mobile": payload.mobile,
+            "email": payload.email.lower(),
+            "office_address": payload.office_address,
+            "city": payload.city,
+            "state": payload.state,
+            "gst_number": payload.gst_number,
+            "active_projects": payload.active_projects,
+            "employee_count": payload.employee_count,
             "status": "PENDING",
             "created_at": datetime.utcnow().isoformat(),
         }
+
+        existing = await db.applications.find_one(
+            {"email": payload.email.lower()}
+        )
+
+        if existing:
+            raise Exception("Application already exists.")
 
         await db.applications.insert_one(document)
 
         document.pop("_id", None)
 
         return document
+    
+    
+    async def approve_application(
+    self,
+    application_id: str,
+):
 
+        application = await db.applications.find_one(
+            {"id": application_id}
+        )
+
+        if not application:
+            return None
+
+        await db.applications.update_one(
+            {"id": application_id},
+            {
+                "$set": {
+                    "status": "APPROVED"
+                }
+            }
+        )
+
+        return True
+
+    async def reject_application(
+        self,
+        application_id: str,
+    ):
+
+        await db.applications.update_one(
+            {"id": application_id},
+            {
+                "$set": {
+                    "status": "REJECTED"
+                }
+            }
+        )
+
+        return True
     # -----------------------------------------
 
     async def create(
