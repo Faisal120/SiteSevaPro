@@ -1,7 +1,9 @@
 import uuid
 
 from datetime import datetime
+from fastapi import HTTPException
 
+from core import db
 
 class ApplicationRepository:
 
