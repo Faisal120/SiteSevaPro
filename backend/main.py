@@ -156,7 +156,7 @@ async def root():
     return {"app": "Site Seva Pro", "status": "ok", "time": now_iso()}
 
 # ---------- ADMIN ----------
-@api.get("/admin/stats")
+@api.get("/admin/dashboard")
 async def admin_stats(_: dict = Depends(require_roles("SUPER_ADMIN"))):
     total_contractors = await db.users.count_documents({"role": "CONTRACTOR"})
     active_sites = await db.sites.count_documents({"status": "ACTIVE"})
