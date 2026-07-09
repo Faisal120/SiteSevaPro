@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 
-from backend.repositories import audit_repository
+from repositories.audit_repository import audit_repository
 from repositories.application_repository import application_repository
 from services.provisioning_service import provisioning_service
 
