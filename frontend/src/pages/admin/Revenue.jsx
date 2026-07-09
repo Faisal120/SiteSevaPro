@@ -7,7 +7,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 
 export default function Revenue() {
   const [s, setS] = React.useState(null);
-  React.useEffect(() => { api.get("/admin/stats").then((r) => setS(r.data)); }, []);
+  React.useEffect(() => { api.get("/admin/dashboard").then((r) => setS(r.data)); }, []);
   if (!s) return <div className="p-10 text-center text-gray-500">Loading…</div>;
   return (
     <div className="space-y-6 ss-fade-in">
