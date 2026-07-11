@@ -10,9 +10,13 @@ from repositories.company_repository import company_repository
 from repositories.user_repository import user_repository
 from repositories.subscription_repository import subscription_repository
 from repositories.company_wallet_repository import company_wallet_repository
+from repositories.notification_repository import notification_repository
+from repositories.audit_repository import audit_repository
 
 
 class ProvisioningService:
+
+    # --------------------------------------------------
 
     def generate_username(
         self,
@@ -20,28 +24,44 @@ class ProvisioningService:
     ):
 
         prefix = "".join(
+
             c
+
             for c in company_name.upper()
+
             if c.isalpha()
-        )[:4]
+
+        )[:6]
 
         return f"{prefix}{secrets.randbelow(9000)+1000}"
 
-    def generate_password(
-        self,
-    ):
+    # --------------------------------------------------
 
-        chars = string.ascii_letters + string.digits
+    def generate_password(self):
 
-        return "".join(
-            secrets.choice(chars)
-            for _ in range(10)
+        chars = (
+
+            string.ascii_letters
+
+            + string.digits
+
         )
 
+        return "".join(
+
+            secrets.choice(chars)
+
+            for _ in range(10)
+
+        )
+
+    # --------------------------------------------------
+    
     async def create_company(
-        self,
-        application,
-    ):
+    self,
+    application,
+):
+        company_id = str(uuid.uuid4())
 
         company = {
 
@@ -59,35 +79,45 @@ class ProvisioningService:
 
             "address": application["office_address"],
 
+            "status": "ACTIVE",
+
             "created_at": datetime.utcnow().isoformat(),
 
             "branding": {
 
                 "company_name": application["company_name"],
-
-                "logo_url": None,
-
+                
                 "primary_color": "#2563EB",
 
-                "secondary_color": "#0F172A",
+                "secondary_color": "#1E293B",
 
-                "phone": application["mobile"],
+                "currency": "INR",
 
-                "email": application["email"],
+                "timezone": "Asia/Kolkata",
 
-            },
+                "language": "en",
+
+            }
 
         }
 
-        return await company_repository.create(company)
+        return await company_repository.create(
 
+            company
+
+        )
+    
+    
     async def create_contractor(
-        self,
-        application,
-        company,
-    ):
+    self,
+    application,
+    company,
+):
+        username = self.generate_username(
 
-        username = self.generate_username(company["name"])
+            application["company_name"]
+
+        )
 
         password = self.generate_password()
 
@@ -99,15 +129,19 @@ class ProvisioningService:
 
             "username": username,
 
-            "password_hash": hash_password(password),
+            "password_hash": hash_password(
+
+                password
+
+            ),
 
             "full_name": application["owner_name"],
+
+            "role": "CONTRACTOR",
 
             "company_id": company["id"],
 
             "company_name": company["name"],
-
-            "role": "CONTRACTOR",
 
             "plan": "FREE",
 
@@ -117,37 +151,140 @@ class ProvisioningService:
 
             "site_ids": [],
 
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.utcnow().isoformat()
 
         }
 
-        contractor = await user_repository.create(contractor)
+        contractor = await user_repository.create(
 
-        await company_repository.update_owner(
+            contractor
+
+        )
+
+        await company_repository.update(
+
             company["id"],
-            contractor["id"],
+
+            {
+
+                "owner_id": contractor["id"]
+
+            }
+
         )
 
         return contractor, username, password
+    
+    async def create_subscription(
+    self,
+    company_id,
+):
+        await subscription_repository.create_free(
 
-    async def provision(
-        self,
-        application,
-    ):
+            company_id
 
-        company = await self.create_company(application)
+        )
+        
+        
+    async def create_wallet(
+    self,
+    company_id,
+):
+        await company_wallet_repository.create(
+
+            company_id
+
+        )
+        
+    async def create_notification(
+    self,
+    company,
+):
+        try:
+
+            await notification_repository.create(
+
+                {
+
+                    "id": str(uuid.uuid4()),
+
+                    "company_id": company["id"],
+
+                    "title": "Welcome to SiteSeva Pro",
+
+                    "message": "Your company has been activated.",
+
+                    "type": "SYSTEM",
+
+                    "created_at": datetime.utcnow().isoformat(),
+
+                }
+
+            )
+
+        except Exception:
+
+            pass
+        
+        
+    async def create_audit(
+    self,
+    company,
+):
+        try:
+
+            await audit_repository.log(
+
+                action="COMPANY_PROVISIONED",
+
+                description=f"{company['name']} provisioned."
+
+            )
+
+        except Exception:
+
+            pass
+        
+    
+
+    async def provision_company(
+
+    self,
+
+    application: dict,
+
+):
+
+        company = await self.create_company(
+            application
+        )
 
         contractor, username, password = await self.create_contractor(
+
             application,
+
             company,
+
         )
 
-        await subscription_repository.create_free(
+        await self.create_subscription(
             company["id"]
         )
 
-        await company_wallet_repository.create(
+        await self.create_wallet(
             company["id"]
+        )
+
+        await self.create_notification(
+
+            company,
+
+            contractor,
+
+        )
+
+        await self.create_audit(
+            company
         )
 
         return {

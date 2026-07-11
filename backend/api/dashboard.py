@@ -3,7 +3,7 @@ from fastapi import Depends
 
 from core import get_current_user
 
-from services.dashboard_service import dashboard_service
+from services.dashboard import dashboard_dispatcher
 
 router = APIRouter(
     prefix="/api/dashboard",
@@ -13,9 +13,14 @@ router = APIRouter(
 
 @router.get("/bootstrap")
 async def bootstrap(
-    user=Depends(get_current_user),
+
+    user=Depends(
+        get_current_user
+    ),
+
 ):
-    return await dashboard_service.bootstrap(
+
+    return await dashboard_dispatcher.bootstrap(
         user
     )
 
@@ -37,6 +42,6 @@ async def dashboard(
 
 ):
 
-    return await dashboard_service.get_dashboard(
+    return await dashboard_dispatcher.dashboard(
         user
     )

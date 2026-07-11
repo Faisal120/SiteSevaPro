@@ -13,7 +13,7 @@ const authService = {
 
         localStorage.setItem(
             TOKEN_KEY,
-            data.access_token
+            data.token
         );
 
         localStorage.setItem(

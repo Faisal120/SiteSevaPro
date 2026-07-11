@@ -69,7 +69,7 @@ async def approve_application(
     application_id: str,
 ):
     return await application_service.approve(
-    application_id,
+    application_id
     )
     
 @router.post(
@@ -79,5 +79,5 @@ async def reject_application(
     application_id: str,
 ):
     return await application_service.reject(
-    application_id,
+    application_id
     )
