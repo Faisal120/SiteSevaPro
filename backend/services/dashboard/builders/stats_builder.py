@@ -5,111 +5,109 @@ class StatsBuilder:
         dashboard: dict,
     ):
 
-        stats = dashboard["stats"]
-
         return {
 
             "total_sites":
 
-                stats.get(
+                dashboard.get(
                     "total_sites",
                     0,
                 ),
 
             "active_sites":
 
-                stats.get(
+                dashboard.get(
                     "active_sites",
                     0,
                 ),
 
             "completed_sites":
 
-                stats.get(
+                dashboard.get(
                     "completed_sites",
                     0,
                 ),
 
             "labours":
 
-                stats.get(
-                    "labours",
+                dashboard.get(
+                    "total_labours",
                     0,
                 ),
 
             "today_labours":
 
-                stats.get(
-                    "today_labours",
+                dashboard.get(
+                    "todays_labours",
                     0,
                 ),
 
             "pending_tasks":
 
-                stats.get(
+                dashboard.get(
                     "pending_tasks",
                     0,
                 ),
 
             "completed_tasks":
 
-                stats.get(
+                dashboard.get(
                     "completed_tasks",
                     0,
                 ),
 
             "today_reports":
 
-                stats.get(
-                    "today_reports",
+                dashboard.get(
+                    "todays_reports",
                     0,
                 ),
 
             "cashflow":
 
-                stats.get(
+                dashboard.get(
                     "cashflow",
                     0,
                 ),
 
             "expense":
 
-                stats.get(
+                dashboard.get(
                     "expense",
                     0,
                 ),
 
             "pending_payments":
 
-                stats.get(
+                dashboard.get(
                     "pending_payments",
                     0,
                 ),
 
             "net_profit":
 
-                stats.get(
+                dashboard.get(
                     "net_profit",
                     0,
                 ),
 
             "total_budget":
 
-                stats.get(
+                dashboard.get(
                     "total_budget",
                     0,
                 ),
 
             "low_stock":
 
-                stats.get(
+                dashboard.get(
                     "low_stock",
                     0,
                 ),
 
             "productivity":
 
-                stats.get(
+                dashboard.get(
                     "productivity",
                     0,
                 ),
