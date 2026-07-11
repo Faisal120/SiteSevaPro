@@ -1,57 +1,48 @@
-from services.dashboard.contractor_dashboard_service import (
-    contractor_dashboard_service,
-)
-
-from services.dashboard.supervisor_dashboard_service import (
-    supervisor_dashboard_service,
-)
-
-from services.dashboard.client_dashboard_service import (
-    client_dashboard_service,
-)
-
-from services.dashboard.admin_dashboard_service import (
-    admin_dashboard_service,
-)
+from services.dashboard.contractor_dashboard_service import contractor_dashboard_service
+from services.dashboard.supervisor_dashboard_service import supervisor_dashboard_service
+from services.dashboard.client_dashboard_service import client_dashboard_service
+from services.dashboard.admin_dashboard_service import admin_dashboard_service
 
 
 class DashboardDispatcher:
 
-    async def get_dashboard(
-        self,
-        user: dict,
-    ):
+    def _service(self, role: str):
 
-        role = user.get(
-            "role",
-            "",
-        ).upper()
+        role = role.upper()
 
-        dispatch = {
+        if role in ("CONTRACTOR", "OWNER"):
+            return contractor_dashboard_service
 
-            "CONTRACTOR": contractor_dashboard_service,
+        if role == "SUPERVISOR":
+            return supervisor_dashboard_service
 
-            "OWNER": contractor_dashboard_service,
+        if role == "CLIENT":
+            return client_dashboard_service
 
-            "SUPERVISOR": supervisor_dashboard_service,
+        if role == "SUPER_ADMIN":
+            return admin_dashboard_service
 
-            "CLIENT": client_dashboard_service,
+        raise Exception(f"Unknown role: {role}")
 
-            "SUPER_ADMIN": admin_dashboard_service,
+    async def dashboard(self, user):
 
+        service = self._service(user["role"])
+
+        return await service.dashboard(user)
+
+    async def bootstrap(self, user):
+
+        service = self._service(user["role"])
+
+        if hasattr(service, "bootstrap"):
+            return await service.bootstrap(user)
+
+        return {
+            "role": user["role"],
+            "permissions": [],
+            "menu": [],
+            "company": {},
         }
-
-        service = dispatch.get(role)
-
-        if service is None:
-
-            raise Exception(
-                f"Unsupported dashboard role: {role}"
-            )
-
-        return await service.dashboard(
-            user
-        )
 
 
 dashboard_dispatcher = DashboardDispatcher()
