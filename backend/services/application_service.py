@@ -10,9 +10,6 @@ import string
 
 import uuid
 
-
-
-
 class ApplicationService:
 
 

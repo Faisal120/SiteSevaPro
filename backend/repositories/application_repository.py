@@ -1,75 +1,70 @@
-from fastapi import HTTPException
+import uuid
+from datetime import datetime
 
-from repositories.application_repository import application_repository
-
-from repositories.audit_repository import audit_repository
-
-from services.provisioning_service import provisioning_service
+from core import db
 
 
-class ApplicationService:
+class ApplicationRepository:
 
     # =====================================================
-    # Submit Application
+    # CREATE
     # =====================================================
 
-    async def submit_application(
+    async def create(
         self,
         payload,
     ):
 
-        existing = await application_repository.get_by_email(
-            payload.email.lower()
-        )
+        document = {
 
-        if existing:
+            "id": str(uuid.uuid4()),
 
-            if existing["status"] == "PENDING":
+            "company_name": payload.company_name,
 
-                raise HTTPException(
-                    status_code=409,
-                    detail="Application already submitted.",
-                )
+            "owner_name": payload.owner_name,
 
-            if existing["status"] == "APPROVED":
+            "mobile": payload.mobile,
 
-                raise HTTPException(
-                    status_code=409,
-                    detail="Company already exists.",
-                )
+            "email": payload.email.lower(),
 
-        payload.company_name = payload.company_name.strip()
+            "office_address": payload.office_address,
 
-        payload.owner_name = payload.owner_name.strip()
+            "city": payload.city,
 
-        payload.email = payload.email.lower().strip()
+            "state": payload.state,
 
-        payload.city = payload.city.strip()
+            "gst_number": payload.gst_number,
 
-        payload.state = payload.state.strip()
+            "active_projects": payload.active_projects,
 
-        application = await application_repository.create(
-            payload
-        )
+            "employee_count": payload.employee_count,
 
-        try:
+            "status": "PENDING",
 
-            await audit_repository.log(
+            "remarks": None,
 
-                action="APPLICATION_SUBMITTED",
+            "reviewed_by": None,
 
-                description=f"{payload.company_name} submitted contractor application."
+            "reviewed_at": None,
 
-            )
+            "submitted_ip": None,
 
-        except Exception:
+            "device": None,
 
-            pass
+            "attachments": [],
 
-        return application
+            "created_at": datetime.utcnow().isoformat(),
+
+            "updated_at": datetime.utcnow().isoformat(),
+
+        }
+
+        await db.applications.insert_one(document)
+
+        return document
 
     # =====================================================
-    # Get Application
+    # GET
     # =====================================================
 
     async def get(
@@ -77,97 +72,146 @@ class ApplicationService:
         application_id: str,
     ):
 
-        application = await application_repository.get(
-            application_id
+        return await db.applications.find_one(
+
+            {
+                "id": application_id,
+            },
+
+            {
+                "_id": 0,
+            },
+
         )
 
-        if application is None:
+    # =====================================================
+    # GET BY EMAIL
+    # =====================================================
 
-            raise HTTPException(
+    async def get_by_email(
+        self,
+        email: str,
+    ):
 
-                status_code=404,
+        return await db.applications.find_one(
 
-                detail="Application not found.",
+            {
+                "email": email.lower(),
+            },
+
+            {
+                "_id": 0,
+            },
+
+        )
+
+    # =====================================================
+    # LIST PENDING
+    # =====================================================
+
+    async def list_pending(
+        self,
+        limit: int = 500,
+    ):
+
+        return await (
+
+            db.applications
+
+            .find(
+
+                {
+                    "status": "PENDING",
+                },
+
+                {
+                    "_id": 0,
+                },
 
             )
 
-        return application
+            .sort(
+
+                "created_at",
+
+                -1,
+
+            )
+
+            .limit(limit)
+
+            .to_list(limit)
+
+        )
 
     # =====================================================
-    # List Pending
-    # =====================================================
-
-    async def list_pending(self):
-
-        return await application_repository.list_pending()
-
-    # =====================================================
-    # Approve Application
+    # APPROVE
     # =====================================================
 
     async def approve(
         self,
         application_id: str,
+        reviewed_by: str | None = None,
     ):
 
-        application = await self.get(
-            application_id
+        await db.applications.update_one(
+
+            {
+                "id": application_id,
+            },
+
+            {
+                "$set": {
+
+                    "status": "APPROVED",
+
+                    "reviewed_by": reviewed_by,
+
+                    "reviewed_at": datetime.utcnow().isoformat(),
+
+                    "updated_at": datetime.utcnow().isoformat(),
+
+                }
+
+            },
+
         )
-
-        result = await provisioning_service.provision_company(
-            application
-        )
-
-        await application_repository.approve(
-            application_id
-        )
-
-        return {
-
-            "success": True,
-
-            "company": result["company"]["name"],
-
-            "username": result["username"],
-
-            "temporary_password": result["temporary_password"],
-
-        }
 
     # =====================================================
-    # Reject Application
+    # REJECT
     # =====================================================
 
     async def reject(
         self,
         application_id: str,
+        reviewed_by: str | None = None,
+        remarks: str | None = None,
     ):
 
-        application = await self.get(
-            application_id
+        await db.applications.update_one(
+
+            {
+                "id": application_id,
+            },
+
+            {
+                "$set": {
+
+                    "status": "REJECTED",
+
+                    "reviewed_by": reviewed_by,
+
+                    "remarks": remarks,
+
+                    "reviewed_at": datetime.utcnow().isoformat(),
+
+                    "updated_at": datetime.utcnow().isoformat(),
+
+                }
+
+            },
+
         )
 
-        if application["status"] == "REJECTED":
 
-            raise HTTPException(
-
-                status_code=400,
-
-                detail="Application already rejected.",
-
-            )
-
-        await application_repository.reject(
-            application_id
-        )
-
-        return {
-
-            "success": True,
-
-            "message": "Application rejected."
-
-        }
-
-
-application_service = ApplicationService()
+application_repository = ApplicationRepository()

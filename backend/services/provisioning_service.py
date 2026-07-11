@@ -65,7 +65,7 @@ class ProvisioningService:
 
         company = {
 
-            "id": str(uuid.uuid4()),
+            "id": company_id,
 
             "name": application["company_name"],
 
@@ -197,7 +197,6 @@ class ProvisioningService:
         )
         
     async def create_notification(
-    self,
     company,
 ):
         try:
@@ -278,8 +277,6 @@ class ProvisioningService:
         await self.create_notification(
 
             company,
-
-            contractor,
 
         )
 
