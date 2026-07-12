@@ -6,7 +6,7 @@ export const API_BASE = `${BACKEND_URL}/api`;
 export const api = axios.create({ baseURL: API_BASE });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("ss_token");
+  const token = localStorage.getItem("access_token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -15,8 +15,8 @@ api.interceptors.response.use(
   (r) => r,
   (err) => {
     if (err?.response?.status === 401 && window.location.pathname.startsWith("/app")) {
-      localStorage.removeItem("ss_token");
-      localStorage.removeItem("ss_user");
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("user");
       window.location.href = "/login";
     }
     return Promise.reject(err);

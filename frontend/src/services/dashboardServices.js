@@ -22,9 +22,9 @@ const dashboardService = {
 
             siteApi.list(),
 
-            apiClient.get("/api/team"),
+            apiClient.get("/team"),
 
-            apiClient.get("/api/reports"),
+            apiClient.get("/reports"),
 
         ]);
 

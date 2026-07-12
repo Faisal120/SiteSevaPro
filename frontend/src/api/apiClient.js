@@ -1,59 +1,34 @@
 import axios from "axios";
 
-const apiClient = axios.create({
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
-    baseURL: process.env.REACT_APP_BACKEND_URL,
+export const API_BASE = `${BACKEND_URL}/api`;
 
-    timeout: 30000,
+export const api = axios.create({
+    baseURL: API_BASE,
+});
 
-    headers: {
+api.interceptors.request.use((config) => {
 
-        "Content-Type": "application/json",
+    const token = localStorage.getItem("access_token");
 
-    },
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
 
 });
 
-
-// ==========================================
-// REQUEST
-// ==========================================
-
-apiClient.interceptors.request.use(
-
-    (config) => {
-
-        const token = localStorage.getItem("access_token");
-
-        if (token) {
-
-            config.headers.Authorization = `Bearer ${token}`;
-
-        }
-
-        return config;
-
-    },
-
-    (error) => Promise.reject(error)
-
-);
-
-
-// ==========================================
-// RESPONSE
-// ==========================================
-
-apiClient.interceptors.response.use(
+api.interceptors.response.use(
 
     (response) => response,
 
     (error) => {
 
-        if (error.response?.status === 401) {
+        if (error?.response?.status === 401) {
 
             localStorage.removeItem("access_token");
-
             localStorage.removeItem("user");
 
             window.location.href = "/login";
@@ -66,5 +41,4 @@ apiClient.interceptors.response.use(
 
 );
 
-
-export default apiClient;
+export default api;

@@ -6,7 +6,7 @@ const attendanceApi = {
 
         return apiClient.post(
 
-            "/api/attendance",
+            "/attendance",
 
             data
 
@@ -16,7 +16,7 @@ const attendanceApi = {
 
     list(siteId, date = null) {
 
-        let url = `/api/attendance?site_id=${siteId}`;
+        let url = `/attendance?site_id=${siteId}`;
 
         if (date) {
 

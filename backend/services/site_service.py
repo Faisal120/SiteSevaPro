@@ -314,12 +314,9 @@ class SiteService:
                 detail="Site not found",
             )
 
-        supervisor = await site_repository.get_user(
-            {
-                "id": body.user_id,
-                "company_id": user["company_id"],
-                "role": "SUPERVISOR",
-            }
+        supervisor = await site_repository.get_user_by_id(
+            company_id=user["company_id"],
+            user_id=body.user_id,
         )
 
         if not supervisor:
@@ -405,16 +402,12 @@ class SiteService:
                 detail="Site not found",
             )
 
-        client = await site_repository.get_user(
-            {
-                "id": body.user_id,
-                "company_id": user["company_id"],
-                "role": "CLIENT",
-            }
+        client = await site_repository.get_user_by_id(
+            company_id=user["company_id"],
+            user_id=body.user_id,
         )
 
-        if not client:
-
+        if not client or client["role"] != "CLIENT":
             raise HTTPException(
                 status_code=404,
                 detail="Client not found",

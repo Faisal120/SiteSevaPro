@@ -6,7 +6,7 @@ const dashboardApi = {
 
         return apiClient.get(
 
-            "/api/dashboard"
+            "/dashboard"
 
         );
 
