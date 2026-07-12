@@ -16,7 +16,7 @@ from services.dashboard.builders.stats_builder import (
     StatsBuilder,
 )
 
-from services.dashboard.builders.charts_builder import ChartsBuilder
+from services.dashboard.builders.charts_builders import ChartsBuilder
 from services.dashboard.builders.photos_builder import PhotosBuilder
 from services.dashboard.builders.activities_builder import ActivitiesBuilder
 from services.dashboard.builders.alerts_builder import AlertsBuilder
