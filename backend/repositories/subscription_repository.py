@@ -43,6 +43,41 @@ class SubscriptionRepository:
         )
 
         return document
+    
+    async def get_active(
+        self,
+        company_id: str,
+    ):
+
+        return await db.subscriptions.find_one(
+
+            {
+                "company_id": company_id,
+                "status": "ACTIVE",
+            },
+
+            {
+                "_id": 0,
+            },
+
+        )
+
+    async def get_plan(
+        self,
+        company_id: str,
+    ):
+
+        subscription = await self.get_active(
+            company_id
+        )
+
+        if subscription:
+
+            return subscription["plan"]
+
+        return "FREE"
+    
+    
 
 
 subscription_repository=SubscriptionRepository()

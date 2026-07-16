@@ -1,6 +1,7 @@
 """Site Seva Pro - FastAPI backend (main app + V1 routes)."""
 from __future__ import annotations
 
+from services.design_service import design_service
 from models.auth import (
     Role,
     Plan,
@@ -56,6 +57,12 @@ from api.reports import router as reports_router
 from api.admin import (
 router as admin_router
 )
+
+from api.design import router as design_router
+
+from api.branding import router as branding_router
+
+from api.design_wallet import router as design_wallet_router
 
 # Shared infra — single source of truth for db, auth, helpers
 from core import (
@@ -686,87 +693,12 @@ async def generate_map(
             "Site not found"
         )
 
-    layout = generate_floor_plan({
+    design = await design_service.create(
+    user,
+    body,
+    )
 
-        "plot_width": body.plot_width,
-
-        "plot_length": body.plot_length,
-
-        "bedrooms": body.bedrooms,
-
-        "bathrooms": body.bathrooms,
-
-        "floors": body.floors,
-
-        "facing": body.facing,
-
-        "type": body.type
-
-    })
-
-    request_id = new_id()
-
-    await db.map_requests.insert_one({
-
-    "id": request_id,
-
-    "company_id": user["company_id"],
-
-    "site_id": body.site_id,
-
-    "status": "COMPLETED",
-
-    "layout": layout,
-
-    "created_at": now_iso()
-
-    })
-
-    plan_id = new_id()
-
-    await db.floor_plans.insert_one({
-
-        "id": plan_id,
-
-        "company_id": user["company_id"],
-
-        "site_id": body.site_id,
-
-        "project_name": site.get("name"),
-
-        "client_name": site.get("client_name"),
-
-        "plot_width": body.plot_width,
-
-        "plot_length": body.plot_length,
-
-        "floors": body.floors,
-
-        "layout": layout,
-
-        "created_at": now_iso()
-
-    })
-
-    
-
-    wallet = {
-    "credits": 999999
-    }
-    
-
-
-    return {
-
-        "success": True,
-
-        "id": plan_id,
-
-        "layout": layout,
-
-        "wallet": wallet
-
-    }
+    return design
     
 @api.get("/plans/{plan_id}")
 async def get_plan(
@@ -957,6 +889,18 @@ app.include_router(
 
 app.include_router(
     labour_router
+)
+
+app.include_router(
+    design_router
+)
+
+app.include_router(
+    branding_router
+)
+
+app.include_router(
+    design_wallet_router
 )
 
 @app.on_event("startup")
