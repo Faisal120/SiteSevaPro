@@ -32,7 +32,7 @@ export default function Vendors() {
           {list.map((v) => (
             <div key={v.id} className="ss-card p-5" data-testid={`vendor-card-${v.id}`}>
               <div className="flex items-start justify-between">
-                <div className="h-10 w-10 rounded-lg bg-[#171717] text-[#F97316] flex items-center justify-center"><Building className="h-5 w-5" /></div>
+                <div className="h-10 w-10 rounded-lg bg-[#171717] text-[#3B82F6] flex items-center justify-center"><Building className="h-5 w-5" /></div>
                 <button onClick={() => remove(v.id)} className="text-gray-400 hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
               </div>
               <h3 className="mt-4 font-display font-bold text-lg">{v.name}</h3>

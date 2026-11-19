@@ -1,5 +1,5 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Building2, Plus, MapPin, Calendar, IndianRupee, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export default function Sites() {
   const { user } = useAuth();
   const nav = useNavigate();
+  const location = useLocation();
   const [sites, setSites] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [open, setOpen] = React.useState(false);
@@ -26,6 +27,9 @@ export default function Sites() {
     setLoading(false);
   };
   React.useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  React.useEffect(() => {
+    if (new URLSearchParams(location.search).get("create") === "1" && user?.role === "CONTRACTOR") setOpen(true);
+  }, [location.search, user?.role]);
 
   const filtered = sites.filter((s) => filter === "ALL" || s.status === filter);
 
@@ -39,12 +43,52 @@ export default function Sites() {
         <div className="flex items-center gap-2">
           <Select value={filter} onValueChange={setFilter}>
             <SelectTrigger className="w-40" data-testid="sites-filter"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All</SelectItem>
-              <SelectItem value="ACTIVE">Active</SelectItem>
-              <SelectItem value="PLANNING">Planning</SelectItem>
-              <SelectItem value="ON_HOLD">On Hold</SelectItem>
-              <SelectItem value="COMPLETED">Completed</SelectItem>
+            <SelectContent
+              className="
+    bg-[#161618]
+    border-[#30323a]
+    text-white
+    rounded-xl
+    shadow-2xl
+  "
+            >
+              <SelectItem
+                className="
+    text-gray-100
+    focus:bg-blue-600
+    focus:text-white
+    data-[state=checked]:bg-blue-600
+    data-[state=checked]:text-white
+  "
+                value="ALL">All</SelectItem>
+              <SelectItem className="
+    text-gray-100
+    focus:bg-blue-600
+    focus:text-white
+    data-[state=checked]:bg-blue-600
+    data-[state=checked]:text-white
+  " value="ACTIVE">Active</SelectItem>
+              <SelectItem className="
+    text-gray-100
+    focus:bg-blue-600
+    focus:text-white
+    data-[state=checked]:bg-blue-600
+    data-[state=checked]:text-white
+  " value="PLANNING">Planning</SelectItem>
+              <SelectItem className="
+    text-gray-100
+    focus:bg-blue-600
+    focus:text-white
+    data-[state=checked]:bg-blue-600
+    data-[state=checked]:text-white
+  " value="ON_HOLD">On Hold</SelectItem>
+              <SelectItem className="
+    text-gray-100
+    focus:bg-blue-600
+    focus:text-white
+    data-[state=checked]:bg-blue-600
+    data-[state=checked]:text-white
+  " value="COMPLETED">Completed</SelectItem>
             </SelectContent>
           </Select>
           {user.role === "CONTRACTOR" && (
@@ -71,12 +115,8 @@ export default function Sites() {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filtered.map((s) => (
             <button key={s.id} onClick={() => nav(`/app/sites/${s.id}`)} className="ss-card text-left overflow-hidden hover:-translate-y-1" data-testid={`site-card-${s.id}`}>
-              <div className="h-32 bg-gradient-to-br from-[#171717] to-[#262626] relative">
-                <img
-                  src="https://images.pexels.com/photos/1816030/pexels-photo-1816030.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=200&w=400"
-                  alt={s.name}
-                  className="w-full h-full object-cover opacity-80"
-                />
+              <div className="h-32 bg-gradient-to-br from-[#111214] via-[#172554] to-[#1e3a8a] relative">
+                {(s.cover_image || s.cover_photo_url || s.image_url) ? <img src={s.cover_image || s.cover_photo_url || s.image_url} alt={s.name} className="w-full h-full object-cover opacity-80" /> : <div className="flex h-full items-end p-5"><span className="font-display text-3xl font-extrabold text-white/90">{s.name?.slice(0, 1)?.toUpperCase() || "S"}</span></div>}
                 <Chip className={`${SITE_STATUS_COLOR[s.status]} absolute top-3 right-3`}>{s.status}</Chip>
               </div>
               <div className="p-5">
@@ -85,11 +125,11 @@ export default function Sites() {
                 <div className="grid grid-cols-2 gap-3 mt-4 text-xs">
                   <div>
                     <div className="text-gray-500">Budget</div>
-                    <div className="font-bold text-[#171717]">{inr(s.budget)}</div>
+                    <div className="font-bold text-[#171717]">{inr(s.budget ?? s.total_budget ?? s.estimated_budget ?? 0)}</div>
                   </div>
                   <div>
                     <div className="text-gray-500">End Date</div>
-                    <div className="font-bold text-[#171717]">{fmtDate(s.end_date)}</div>
+                    <div className="font-bold text-[#171717]">{fmtDate(s.end_date || s.expected_completion_date || s.target_date)}</div>
                   </div>
                 </div>
                 <div className="mt-4">
@@ -98,7 +138,7 @@ export default function Sites() {
                     <span className="font-bold">{s.progress}%</span>
                   </div>
                   <div className="w-full h-1.5 bg-gray-200 rounded-full mt-1 overflow-hidden">
-                    <div className="h-full bg-[#F97316]" style={{ width: `${s.progress}%` }} />
+                    <div className="h-full bg-[#3B82F6]" style={{ width: `${s.progress}%` }} />
                   </div>
                 </div>
               </div>
@@ -114,6 +154,7 @@ function SiteForm({ onDone }) {
   const [f, setF] = React.useState({
     name: "", client_id: "",
     supervisor_ids: [], location: "", budget: 0,
+    cover_image: "",
     floors: 1, has_boring: false, has_septic_tank: false,
     has_soak_pit: false, has_mumty: false,
     start_date: new Date().toISOString().slice(0, 10),
@@ -166,6 +207,10 @@ function SiteForm({ onDone }) {
         <div className="md:col-span-2">
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Location</label>
           <input className="ss-input mt-1" required value={f.location} onChange={set("location")} data-testid="site-location" />
+        </div>
+        <div className="md:col-span-2">
+          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Cover image URL <span className="normal-case font-normal">(optional)</span></label>
+          <input className="ss-input mt-1" value={f.cover_image} onChange={set("cover_image")} placeholder="https://…" />
         </div>
         <div>
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">

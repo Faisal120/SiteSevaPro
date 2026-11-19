@@ -11,12 +11,8 @@ class SVGDocument:
         svg = [
 
             f'<svg xmlns="http://www.w3.org/2000/svg" '
-
-            f'width="{context.width}" '
-
-            f'height="{context.height}" '
-
-            f'viewBox="0 0 {context.width} {context.height}">'
+            f'viewBox="0 0 {context.width} {context.height}" '
+            f'preserveAspectRatio="xMidYMid meet">'
 
         ]
 

@@ -23,7 +23,7 @@ const defaultInsights = [
         title: "Delay Prediction",
         description: "Project has 18% delay probability.",
         icon: TriangleAlert,
-        color: "orange"
+        color: "blue"
     },
     {
         title: "Material Forecast",

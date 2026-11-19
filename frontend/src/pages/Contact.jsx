@@ -1,7 +1,7 @@
 import React from "react";
 import PublicNav from "@/components/PublicNav";
 import PublicFooter from "@/components/PublicFooter";
-import { Mail, Phone, MapPin, Send } from "lucide-react";
+import { Mail, Send } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Contact() {
@@ -13,18 +13,17 @@ export default function Contact() {
     setForm({ name: "", email: "", message: "" });
   };
   return (
-    <div className="min-h-screen ss-mesh">
+    <div className="landing-shell min-h-screen ss-mesh">
       <PublicNav />
       <section className="py-16 lg:py-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 grid lg:grid-cols-2 gap-10">
           <div>
-            <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#F97316]">Contact</span>
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#3B82F6]">Contact</span>
             <h1 className="mt-2 text-4xl sm:text-5xl font-extrabold font-display tracking-tight">Talk to our team.</h1>
             <p className="mt-4 text-gray-600">Questions about pricing, demo, or onboarding your sites? We're here.</p>
             <div className="mt-8 space-y-4 text-sm">
-              <div className="flex items-center gap-3"><Mail className="h-4 w-4 text-[#F97316]" /> hello@siteseva.pro</div>
-              <div className="flex items-center gap-3"><Phone className="h-4 w-4 text-[#F97316]" /> +91 80-4040-2020</div>
-              <div className="flex items-center gap-3"><MapPin className="h-4 w-4 text-[#F97316]" /> WeWork BKC, Mumbai 400051</div>
+              <a href="mailto:support@sitesevapro.in" className="flex items-center gap-3 text-slate-200 hover:text-blue-300"><Mail className="h-4 w-4 text-[#3B82F6]" /> support@sitesevapro.in</a>
+              <a href="mailto:info@sitesevapro.in" className="flex items-center gap-3 text-slate-200 hover:text-blue-300"><Mail className="h-4 w-4 text-[#3B82F6]" /> info@sitesevapro.in</a>
             </div>
           </div>
           <form onSubmit={submit} className="ss-card p-6 space-y-4" data-testid="contact-form">

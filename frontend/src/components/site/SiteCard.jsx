@@ -144,7 +144,7 @@ export default function SiteCard({ site }) {
         <InfoRow
           icon={
             site?.payment_pending ? (
-              <AlertTriangle size={16} className="text-orange-500" />
+              <AlertTriangle size={16} className="text-blue-500" />
             ) : (
               <CheckCircle2 size={16} className="text-green-600" />
             )

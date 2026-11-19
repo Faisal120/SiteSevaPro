@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Building2,
   Crown,
@@ -6,39 +7,40 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 
-export default function CompanyCard({ user, stats }) {
-  const company = user?.company_name || "SiteSeva Construction";
+export default function CompanyCard({ user, stats, branding, subscription }) {
+  const navigate = useNavigate();
+  const company = branding?.company_name || user?.company_name || "SiteSeva Construction";
   const owner = user?.full_name || "Contractor";
+  const plan = (subscription?.plan || user?.plan || "FREE").toUpperCase();
+  const planLabel = plan === "PREMIUM" ? "Pro" : plan === "ENTERPRISE" ? "Enterprise" : "Free";
+  const isEnterprise = plan === "ENTERPRISE";
 
   return (
     <div
       className="
         rounded-2xl
         border
-        border-slate-800
-        bg-slate-900
+        border-[#30323a]
+        bg-[#111214]
         p-4
       "
     >
       {/* Header */}
 
-      <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
 
         <div
           className="
             h-12
             w-12
             rounded-xl
-            bg-blue-600
+            bg-[#3b82f6]
             flex
             items-center
             justify-center
           "
         >
-          <Building2
-            size={22}
-            className="text-white"
-          />
+          {branding?.logo_url ? <img src={branding.logo_url} alt="Company logo" className="h-full w-full rounded-xl bg-white object-contain p-1" /> : <Building2 size={22} className="text-white" />}
         </div>
 
         <div className="min-w-0 flex-1">
@@ -91,7 +93,7 @@ export default function CompanyCard({ user, stats }) {
 
               rounded-full
 
-              bg-blue-600/20
+              bg-blue-500/15
 
               px-2
               py-1
@@ -99,12 +101,12 @@ export default function CompanyCard({ user, stats }) {
               text-[11px]
               font-medium
 
-              text-blue-400
+              text-blue-300
             "
           >
             <Crown size={12} />
 
-            Professional
+            {planLabel}
           </span>
 
         </div>
@@ -116,6 +118,7 @@ export default function CompanyCard({ user, stats }) {
       {/* Upgrade */}
 
       <button
+        onClick={() => navigate("/app/subscription")}
         className="
           mt-5
 
@@ -145,7 +148,7 @@ export default function CompanyCard({ user, stats }) {
       >
         <ArrowUpRight size={16} />
 
-        Upgrade Plan
+        {isEnterprise ? "Renew Enterprise" : "Upgrade Plan"}
 
       </button>
 

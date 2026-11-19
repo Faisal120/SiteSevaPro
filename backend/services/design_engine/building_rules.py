@@ -1,59 +1,63 @@
 BUILDING_RULES = {
 
-    "Living":{
-
-        "adjacent":[
-
+    "Living": {
+        "adjacent": [
             "Dining",
-
-            "Entrance",
-
+            "Bedroom",
         ],
-
-        "avoid":[
-
+        "avoid": [
             "Bathroom",
-
         ],
-
     },
 
-    "Dining":{
-
-        "adjacent":[
-
+    "Dining": {
+        "adjacent": [
+            "Living",
             "Kitchen",
-
-            "Living",
-
         ],
-
     },
 
-    "Kitchen":{
-
-        "adjacent":[
-
+    "Kitchen": {
+        "adjacent": [
             "Dining",
-
         ],
-
-        "avoid":[
-
-            "Master Bedroom",
-
+        "avoid": [
+            "Bedroom",
         ],
-
     },
 
-    "Bathroom":{
-
-        "avoid":[
-
+    "Bedroom": {
+        "adjacent": [
             "Living",
-
+            "Bathroom",
         ],
+    },
 
-    }
+    "Bathroom": {
+        "adjacent": [
+            "Bedroom",
+        ],
+        "avoid": [
+            "Living",
+        ],
+    },
+
+    "Parking": {
+        "adjacent": [
+            "Living",
+        ],
+    },
+
+    "Garden": {
+        "adjacent": [
+            "Living",
+        ],
+    },
+
+    "Stair": {
+        "adjacent": [
+            "Living",
+        ],
+    },
 
 }

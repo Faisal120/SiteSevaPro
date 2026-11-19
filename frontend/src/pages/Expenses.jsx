@@ -10,8 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 
 const CAT_ICON = { FUEL: Fuel, TRANSPORT: Truck, EQUIPMENT: Wrench, FOOD: Coffee, MISC: MoreHorizontal };
-const CAT_COLOR = { FUEL: "bg-orange-100 text-orange-700", TRANSPORT: "bg-blue-100 text-blue-700", EQUIPMENT: "bg-purple-100 text-purple-700", FOOD: "bg-yellow-100 text-yellow-800", MISC: "bg-gray-100 text-gray-700" };
-const COLORS = ["#F97316", "#171717", "#EAB308", "#22C55E", "#94A3B8"];
+const CAT_COLOR = { FUEL: "bg-blue-100 text-blue-700", TRANSPORT: "bg-blue-100 text-blue-700", EQUIPMENT: "bg-purple-100 text-purple-700", FOOD: "bg-yellow-100 text-yellow-800", MISC: "bg-gray-100 text-gray-700" };
+const COLORS = ["#3B82F6", "#171717", "#2563EB", "#22C55E", "#94A3B8"];
 
 export default function Expenses() {
   const { user } = useAuth();
@@ -76,7 +76,7 @@ export default function Expenses() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <StatCard label="Total Expenses" value={inr(total)} icon={Receipt} accent="orange" testId="exp-stat-total" />
+        <StatCard label="Total Expenses" value={inr(total)} icon={Receipt} accent="blue" testId="exp-stat-total" />
         <StatCard label="Today" value={inr(today)} icon={Receipt} accent="ink" testId="exp-stat-today" />
         <StatCard label="Entries" value={cnt} icon={Receipt} accent="soft" testId="exp-stat-count" />
       </div>
@@ -105,7 +105,7 @@ export default function Expenses() {
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#525252" }} />
                   <YAxis tick={{ fontSize: 11, fill: "#525252" }} />
                   <Tooltip contentStyle={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8 }} formatter={(v) => inr(v)} />
-                  <Bar dataKey="total" fill="#F97316" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="total" fill="#3B82F6" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -128,7 +128,7 @@ export default function Expenses() {
                     <td><Chip className={CAT_COLOR[e.category]}><Icon className="h-3.5 w-3.5" /> {e.category}</Chip></td>
                     <td>{e.description}</td>
                     <td>{e.paid_by || "—"}</td>
-                    <td>{e.receipt_url ? <a href={e.receipt_url} target="_blank" rel="noreferrer" className="text-[#F97316] text-xs font-semibold hover:underline">View</a> : "—"}</td>
+                    <td>{e.receipt_url ? <a href={e.receipt_url} target="_blank" rel="noreferrer" className="text-[#3B82F6] text-xs font-semibold hover:underline">View</a> : "—"}</td>
                     <td className="text-right font-bold">{inr(e.amount)}</td>
                   </tr>
                 );

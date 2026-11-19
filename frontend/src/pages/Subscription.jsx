@@ -37,7 +37,7 @@ export default function Subscription() {
       <div className="ss-card p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="h-14 w-14 rounded-xl bg-[#F97316] text-white flex items-center justify-center"><Crown className="h-6 w-6" /></div>
+            <div className="h-14 w-14 rounded-xl bg-[#3B82F6] text-white flex items-center justify-center"><Crown className="h-6 w-6" /></div>
             <div>
               <div className="text-xs font-bold uppercase tracking-wider text-gray-500">Current plan</div>
               <div className="font-display text-2xl font-extrabold">{PLAN_FEATURES[current]?.name || current}</div>
@@ -54,30 +54,28 @@ export default function Subscription() {
         {Object.entries(PLAN_FEATURES).map(([k, p]) => {
           const isCurrent = current === k;
           return (
-            <div key={k} className={`rounded-2xl p-6 ${p.color} ${k === "PREMIUM" ? "shadow-lg" : "shadow-sm border border-gray-200"}`}>
+            <div key={k} className={`rounded-2xl border p-6 ${k === "PREMIUM" ? "border-blue-400 bg-[#101b30]" : "border-[#30323a] bg-[#111214]"}`}>
               <div className="flex items-center justify-between">
-                <h3 className={`font-display text-xl font-extrabold ${k === "ENTERPRISE" ? "text-white" : "text-[#171717]"}`}>{p.name}</h3>
-                {isCurrent && <span className="ss-chip bg-emerald-100 text-emerald-700">Active</span>}
+                <h3 className="font-display text-xl font-extrabold text-white">{p.name}</h3>
+                {isCurrent && <span className="ss-chip bg-blue-500/15 text-blue-200">Active</span>}
               </div>
-              <div className={`mt-3 text-3xl font-extrabold font-display ${k === "ENTERPRISE" ? "text-white" : "text-[#171717]"}`}>
+              <div className="mt-3 font-display text-3xl font-extrabold text-white">
                 {p.price === 0 ? "₹0" : `₹${p.price.toLocaleString("en-IN")}`}
-                <span className={`text-sm font-medium ${k === "ENTERPRISE" ? "text-gray-300" : "text-gray-500"}`}>/mo</span>
+                <span className="text-sm font-medium text-gray-400">/mo</span>
               </div>
-              <ul className={`mt-5 space-y-1.5 text-sm ${k === "ENTERPRISE" ? "text-gray-200" : "text-gray-700"}`}>
-                {p.features.map((f) => (<li key={f} className="flex items-start gap-2"><CheckCircle2 className={`h-4 w-4 mt-0.5 ${k === "ENTERPRISE" ? "text-[#F97316]" : "text-emerald-500"}`} /> {f}</li>))}
+              <ul className="mt-5 space-y-1.5 text-sm text-gray-300">
+                {p.features.map((f) => (<li key={f} className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 text-blue-400" /> {f}</li>))}
               </ul>
               <button
                 disabled={isCurrent || hasPending || k === "FREE"}
                 onClick={() => setPayOpen({ open: true, plan: k })}
                 className={`mt-5 w-full rounded-lg px-5 py-2.5 text-sm font-semibold transition-all ${
-                  isCurrent || k === "FREE" ? "bg-gray-100 text-gray-400 cursor-not-allowed" :
-                  k === "ENTERPRISE" ? "bg-[#F97316] text-white hover:bg-[#EA580C]" :
-                  k === "PREMIUM" ? "bg-[#F97316] text-white hover:bg-[#EA580C]" :
-                  "bg-[#171717] text-white hover:bg-[#262626]"
+                  isCurrent || k === "FREE" ? "cursor-not-allowed border border-[#363941] bg-[#1b1d22] text-slate-400" :
+                  "bg-blue-500 text-white hover:bg-blue-600"
                 }`}
                 data-testid={`sub-upgrade-${k.toLowerCase()}`}
               >
-                {isCurrent ? "Current plan" : k === "FREE" ? "Default plan" : hasPending ? "Pending verification" : "Pay via UPI"}
+                {isCurrent ? (k === "ENTERPRISE" ? "Renew Enterprise" : "Current plan") : k === "FREE" ? "Default plan" : hasPending ? "Pending verification" : "Pay via UPI"}
               </button>
             </div>
           );
@@ -168,8 +166,8 @@ function UpiPayDialog({ plan, cfg, onDone }) {
             </div>
             <div>
               <label className="text-xs font-bold uppercase text-gray-500">Screenshot (optional)</label>
-              <label className="mt-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-4 cursor-pointer hover:border-[#F97316] hover:bg-orange-50/30">
-                {uploading ? <Loader2 className="h-5 w-5 text-[#F97316] animate-spin" /> : <Upload className="h-5 w-5 text-gray-500" />}
+              <label className="mt-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-4 cursor-pointer hover:border-[#3B82F6] hover:bg-blue-50/30">
+                {uploading ? <Loader2 className="h-5 w-5 text-[#3B82F6] animate-spin" /> : <Upload className="h-5 w-5 text-gray-500" />}
                 <span className="text-xs text-gray-500 mt-2">Upload payment screenshot</span>
                 <input type="file" accept="image/*" hidden onChange={(e) => handleFile(e.target.files[0])} data-testid="upi-screenshot" />
               </label>
@@ -179,7 +177,7 @@ function UpiPayDialog({ plan, cfg, onDone }) {
               {busy ? "Submitting…" : "Submit for verification"}
             </button>
             <div className="text-[11px] text-gray-500 flex items-start gap-1.5">
-              <AlertCircle className="h-3.5 w-3.5 text-[#F97316] shrink-0 mt-0.5" />
+              <AlertCircle className="h-3.5 w-3.5 text-[#3B82F6] shrink-0 mt-0.5" />
               <span>Admin verifies within 24 hours. Plan activates immediately after approval.</span>
             </div>
           </div>

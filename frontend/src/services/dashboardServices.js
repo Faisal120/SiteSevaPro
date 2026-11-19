@@ -1,74 +1,29 @@
 import dashboardApi from "../api/dashboardApi";
-import siteApi from "../api/siteApi";
-import apiClient from "../api/apiClient";
 
 const dashboardService = {
 
     async getDashboard() {
 
-        const [
-
-            dashboard,
-
-            sites,
-
-            team,
-
-            reports,
-
-        ] = await Promise.all([
-
-            dashboardApi.getDashboard(),
-
-            siteApi.list(),
-
-            apiClient.get("/team"),
-
-            apiClient.get("/reports"),
-
-        ]);
-
-        const latestPhotos =
-
-            reports.data
-
-                .flatMap(report =>
-
-                    (report.media_urls || [])
-
-                        .filter(media => media.type === "image")
-
-                        .map(media => ({
-
-                            ...media,
-
-                            site_id: report.site_id,
-
-                            report_date: report.date,
-
-                        }))
-
-                )
-
-                .slice(0, 8);
+        const dashboard = await dashboardApi.getDashboard();
+        const data = dashboard.data || {};
 
         return {
 
-            stats: dashboard.data.stats,
+            stats: data.stats || {},
 
-            sites: dashboard.data.sites,
+            sites: data.sites || [],
 
-            team: dashboard.data.team,
+            team: data.team || [],
 
-            charts: dashboard.data.charts,
+            charts: data.charts || {},
 
-            alerts: dashboard.data.alerts,
+            alerts: data.alerts || [],
 
-            activities: dashboard.data.activities,
+            activities: data.activities || [],
 
-            company: dashboard.data.company,
+            company: data.company || {},
 
-            latestPhotos: dashboard.data.latestPhotos || latestPhotos,
+            latestPhotos: data.latestPhotos || [],
 
         };
 

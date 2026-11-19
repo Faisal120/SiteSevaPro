@@ -1,4 +1,5 @@
 import React from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
     Menu,
     Search,
@@ -11,18 +12,43 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui";
+import { api } from "@/lib/api";
 
 export default function Header({
     user,
     theme,
     toggle,
     setMobileOpen,
+    branding,
 }) {
+    const navigate = useNavigate();
     const [open, setOpen] = React.useState(false);
+    const [notificationsOpen, setNotificationsOpen] = React.useState(false);
+    const [notifications, setNotifications] = React.useState([]);
+
+    React.useEffect(() => {
+        let mounted = true;
+        const loadNotifications = async () => {
+            try {
+                const response = await api.get("/notifications");
+                if (mounted) setNotifications((response.data || []).slice(0, 5));
+            } catch { /* Header remains usable when notifications are unavailable. */ }
+        };
+        loadNotifications();
+        const poll = window.setInterval(loadNotifications, 60000);
+        return () => { mounted = false; window.clearInterval(poll); };
+    }, []);
+    const unreadCount = notifications.filter((notification) => !notification.read).length;
+    const markNotificationRead = async (id) => {
+        try {
+            await api.put(`/notifications/${id}/read`);
+            setNotifications((current) => current.map((notification) => notification.id === id ? { ...notification, read: true } : notification));
+        } catch { /* The activity centre remains the recovery path. */ }
+    };
 
     return (
         <header
-            className="
+            className={`
         sticky
         top-0
         z-40
@@ -35,17 +61,14 @@ export default function Header({
 
         px-8
 
-        bg-white/80
+        ${theme === "dark" ? "bg-[#0d0e10]/95 text-[#f5f7fa] border-[#25272c] shadow-none" : "bg-white/80 border-slate-200/70 shadow-sm"}
         backdrop-blur-2xl
 
         border-b
-        border-slate-200/70
-
-        shadow-sm
 
         transition-all
         duration-300
-    "
+    `}
         >
             {/* Left */}
 
@@ -65,7 +88,7 @@ export default function Header({
             items-center
             justify-center
 
-            hover:bg-slate-100
+            hover:bg-slate-100 ss-header-icon
           "
                 >
                     <Menu size={20} />
@@ -75,7 +98,7 @@ export default function Header({
 
 
                 <div
-                    className="
+                    className="ss-header-search
             hidden
             md:flex
 
@@ -103,7 +126,7 @@ export default function Header({
 
                     <input
                         type="text"
-                        placeholder="Search sites, labour, materials, payments..."
+                        placeholder={`Search ${branding?.company_name || "workspace"}...`}
                         className="
               flex-1
 
@@ -143,14 +166,18 @@ export default function Header({
                 <Button
                     icon={Plus}
                     className="hidden md:flex"
+                    onClick={() => navigate("/app/sites?create=1")}
                 >
                     Create
                 </Button>
 
                 {/* Notifications */}
 
-                <button
-                    className="
+                <div className="relative">
+                    <button
+                        onClick={() => setNotificationsOpen((value) => !value)}
+                        aria-label="Open notifications"
+                        className="ss-header-icon
             relative
 
             h-11
@@ -170,11 +197,11 @@ export default function Header({
             transition-all
             duration-200
           "
-                >
-                    <Bell size={19} />
+                    >
+                        <Bell size={19} />
 
-                    <span
-                        className="
+                        {unreadCount > 0 && <span
+                            className="
               absolute
 
               top-2
@@ -185,51 +212,26 @@ export default function Header({
 
               rounded-full
 
-              bg-red-500
+                        bg-blue-500
             "
-                    />
-                </button>
-
-                {/* Theme */}
+                        />}
+                    </button>
+                    {notificationsOpen && <div className="absolute right-0 top-14 z-50 w-[340px] overflow-hidden rounded-2xl border border-[#30323a] bg-[#111214] shadow-2xl"><div className="flex items-center justify-between border-b border-[#25272c] px-4 py-3"><div><p className="font-semibold text-white">Notifications</p><p className="text-xs text-gray-400">{unreadCount ? `${unreadCount} unread updates` : "You are all caught up"}</p></div><Link to="/app/notifications" onClick={() => setNotificationsOpen(false)} className="text-xs font-semibold text-blue-300 hover:text-white">View all</Link></div><div className="max-h-[320px] overflow-y-auto">{notifications.length ? notifications.map((notification) => <button key={notification.id} onClick={() => markNotificationRead(notification.id)} className={`block w-full border-b border-[#25272c] px-4 py-3 text-left hover:bg-white/5 ${notification.read ? "" : "bg-blue-500/10"}`}><div className="flex gap-2"><span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${notification.read ? "bg-transparent" : "bg-blue-400"}`} /><div><p className="text-sm font-semibold text-white">{notification.title}</p><p className="mt-0.5 line-clamp-2 text-xs leading-5 text-gray-400">{notification.message || notification.body}</p></div></div></button>) : <p className="p-5 text-center text-sm text-gray-400">No notifications yet.</p>}</div></div>}
+                </div>
 
                 <button
                     onClick={toggle}
-                    className="
-            relative
-
-            h-11
-            w-11
-
-            rounded-2xl
-
-            border
-            border-slate-300/60
-
-            flex
-            items-center
-            justify-center
-
-            hover:bg-slate-100
-
-            hover:scale-105
-
-            transition-all
-
-            duration-200
-          "
+                    aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                    className="ss-header-icon h-11 w-11 rounded-2xl border border-slate-300/60 flex items-center justify-center hover:bg-slate-100 hover:scale-105 transition-all duration-200"
                 >
-                    {theme === "dark" ? (
-                        <Sun size={18} />
-                    ) : (
-                        <Moon size={18} />
-                    )}
+                    {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
                 </button>
 
                 {/* User */}
 
                 <button
                     onClick={() => setOpen(!open)}
-                    className="
+                    className="ss-header-user
             flex
             items-center
 
@@ -278,7 +280,7 @@ export default function Header({
 
                     <div className="hidden lg:block text-left">
 
-                        <p
+                        <div
                             className="
                 text-[15px]
                 font-semibold
@@ -288,9 +290,9 @@ export default function Header({
               "
                         >
                             {user?.full_name}
-                        </p>
+                        </div>
 
-                        <p
+                        <div
                             className="
                 text-xs
 
@@ -302,7 +304,7 @@ export default function Header({
                                 .replace("_", " ")
                                 .replace(/\b\w/g, l => l.toUpperCase())}
 
-                            <p
+                            <span
                                 className="
         mt-1
 
@@ -314,7 +316,7 @@ export default function Header({
 
         rounded-full
 
-        bg-orange-100
+        bg-blue-100
 
         px-2
 
@@ -324,14 +326,14 @@ export default function Header({
 
         font-semibold
 
-        text-orange-700
+        text-blue-900
     "
                             >
                                 <Sparkles size={11} />
 
                                 AI Enabled
-                            </p>
-                        </p>
+                            </span>
+                        </div>
 
                     </div>
 

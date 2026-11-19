@@ -19,6 +19,7 @@ class ExportStage:
         context.response = json_renderer.render(
             context
         )
+        context.svg = context.response["svg"]
 
         return context
 

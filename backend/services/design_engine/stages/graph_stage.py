@@ -19,36 +19,37 @@ from services.design_engine.graph.graph_exporter import (
 
 class GraphStage:
 
-    def run(
-        self,
-        context,
-    ):
+    def run(self, context):
 
-        context.graph = graph_builder.build(
+        context.graph = graph_builder.build(context.rooms)
 
-            context.rooms
+        print("\n========== GRAPH DEBUG ==========")
+        print("Rooms:", len(context.rooms))
+        print("Nodes:", len(context.graph.all_nodes()))
 
+        edge_count = sum(
+            len(node.edges)
+            for node in context.graph.all_nodes()
         )
 
-        if not graph_validator.validate(
+        print("Edges:", edge_count)
 
-            context.graph
-
-        ):
-
-            raise Exception(
-
-                "Invalid Layout Graph"
-
+        for node in context.graph.all_nodes():
+            neighbours = context.graph.neighbours(node.id)
+            print(
+                f"{node.room_name} -> {[n.room_name for n in neighbours]}"
             )
 
-        context.graph_json = graph_exporter.export(
+        is_valid = graph_validator.validate(context.graph)
 
-            context.graph
+        print("Graph valid:", is_valid)
+        print("=================================\n")
 
-        )
+        if not is_valid:
+            raise Exception("Invalid Layout Graph")
+
+        context.graph_json = graph_exporter.export(context.graph)
 
         return context
-
-
+    
 graph_stage = GraphStage()

@@ -136,7 +136,7 @@ mb-6
           <div key={i} className="mt-6">
             <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-2">
               <h3 className="font-display font-bold text-lg">{i + 1}. {sec.name}</h3>
-              <span className="text-sm font-bold text-[#F97316]">{inr(sec.subtotal)}</span>
+              <span className="text-sm font-bold text-[#3B82F6]">{inr(sec.subtotal)}</span>
             </div>
             <table className="ss-table">
               <thead><tr><th>Description</th><th>Unit</th><th className="text-right">Qty</th><th className="text-right">Rate</th><th className="text-right">Amount</th></tr></thead>
@@ -177,7 +177,7 @@ text-gray-500
             Powered By SiteSevaPro
 
           </div>
-          <div className="font-display text-2xl font-extrabold text-[#F97316]">{inr(boq.total)}</div>
+          <div className="font-display text-2xl font-extrabold text-[#3B82F6]">{inr(boq.total)}</div>
         </div>
       </div>
     </div>

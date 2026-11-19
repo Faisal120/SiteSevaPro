@@ -3,8 +3,8 @@ import React from "react";
 export function StatCard({ label, value, icon: Icon, accent = "ink", trend, testId }) {
   const accents = {
     ink: "bg-[#171717] text-white",
-    orange: "bg-[#F97316] text-white",
-    yellow: "bg-[#EAB308] text-[#171717]",
+    blue: "bg-[#3B82F6] text-white",
+    yellow: "bg-[#2563EB] text-[#171717]",
     soft: "bg-gray-100 text-[#171717]",
   };
   return (

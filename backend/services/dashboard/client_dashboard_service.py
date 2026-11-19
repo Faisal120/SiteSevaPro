@@ -86,8 +86,6 @@ class ClientDashboardService:
 
             reports,
 
-            payments,
-
             total_sites,
 
             active_sites,
@@ -104,35 +102,46 @@ class ClientDashboardService:
                 company_id,
                 "CLIENT",
                 user_id,
+                user.get("email"),
+                user.get("site_ids", []),
             ),
 
             dashboard_repository.latest_reports(
                 company_id,
             ),
 
-            dashboard_repository.payments(
-                company_id,
-                20,
-            ),
-
             dashboard_repository.total_sites(
                 company_id,
                 "CLIENT",
                 user_id,
+                user.get("email"),
+                user.get("site_ids", []),
             ),
 
             dashboard_repository.active_sites(
                 company_id,
                 "CLIENT",
                 user_id,
+                user.get("email"),
+                user.get("site_ids", []),
             ),
 
             dashboard_repository.completed_sites(
                 company_id,
                 "CLIENT",
                 user_id,
+                user.get("email"),
+                user.get("site_ids", []),
             ),
 
+        )
+
+        # Payment scope depends on the resolved client project IDs, so it must
+        # run after the independent dashboard queries above have completed.
+        payments = await dashboard_repository.payments(
+            company_id,
+            20,
+            [site["id"] for site in assigned_sites],
         )
 
         return {
@@ -143,7 +152,13 @@ class ClientDashboardService:
 
             "reports": reports,
 
-            "payments": payments,
+            "payments": [
+                payment
+                for payment in payments
+                if str(
+                    payment.get("type") or payment.get("payment_type") or ""
+                ).upper() == "CLIENT_RECEIVED"
+            ],
 
             "team": [],
 

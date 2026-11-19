@@ -48,7 +48,7 @@ export default function MaterialsTab({
           title="Low Stock"
           value={lowStock}
           icon={AlertTriangle}
-          color="orange"
+          color="blue"
         />
 
         <StatsCard

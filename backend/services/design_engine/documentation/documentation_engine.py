@@ -16,7 +16,7 @@ from services.design_engine.documentation.sheets.sheet_renderer import (
     sheet_renderer,
 )
 
-from services.design_engine.documentation.exporters import (
+from services.design_engine.documentation.exporters.export_engine import (
     export_engine,
 )
 
@@ -50,6 +50,8 @@ class DocumentationEngine:
         # ----------------------------------------
         # Compose final sheets
         # ----------------------------------------
+        
+        print("PROJECT =", context.project)
 
         context.drawings = sheet_renderer.render(
             context,

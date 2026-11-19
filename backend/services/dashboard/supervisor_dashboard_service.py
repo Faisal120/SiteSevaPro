@@ -113,6 +113,7 @@ class SupervisorDashboardService:
                 company_id,
                 "SUPERVISOR",
                 user_id,
+                legacy_site_ids=user.get("site_ids", []),
             ),
 
             dashboard_repository.latest_reports(
@@ -127,18 +128,21 @@ class SupervisorDashboardService:
                 company_id,
                 "SUPERVISOR",
                 user_id,
+                legacy_site_ids=user.get("site_ids", []),
             ),
 
             dashboard_repository.active_sites(
                 company_id,
                 "SUPERVISOR",
                 user_id,
+                legacy_site_ids=user.get("site_ids", []),
             ),
 
             dashboard_repository.completed_sites(
                 company_id,
                 "SUPERVISOR",
                 user_id,
+                legacy_site_ids=user.get("site_ids", []),
             ),
 
             dashboard_repository.pending_tasks(

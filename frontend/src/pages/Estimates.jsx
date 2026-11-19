@@ -75,7 +75,7 @@ export default function Estimates() {
           <label className="flex items-center gap-2 cursor-pointer select-none">
             <input
               type="checkbox"
-              className="h-4 w-4 accent-[#F97316]"
+              className="h-4 w-4 accent-[#3B82F6]"
               checked={f.basement}
               onChange={(e) => setF({ ...f, basement: e.target.checked })}
               data-testid="est-basement"
@@ -118,7 +118,7 @@ export default function Estimates() {
             </div>
             <div className="text-right">
               <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Derived rate</div>
-              <div className="font-display font-extrabold text-[#F97316]">₹{livePsf.toFixed(0)}/sqft</div>
+              <div className="font-display font-extrabold text-[#3B82F6]">₹{livePsf.toFixed(0)}/sqft</div>
             </div>
           </div>
           <button type="submit" disabled={busy} className="ss-btn-accent" data-testid="est-submit"><Calculator className="h-4 w-4" /> {busy ? "Calculating…" : "Generate Estimate"}</button>
@@ -242,7 +242,7 @@ function Box({ label, v, accent }) {
   return (
     <div className={`rounded-lg p-3 ${accent ? "bg-[#171717] text-white" : "bg-gray-50"}`}>
       <div className={`text-[10px] font-bold uppercase tracking-wider ${accent ? "text-gray-400" : "text-gray-500"}`}>{label}</div>
-      <div className={`text-lg font-extrabold mt-0.5 ${accent ? "text-[#F97316]" : "text-[#171717]"}`}>{inr(v)}</div>
+      <div className={`text-lg font-extrabold mt-0.5 ${accent ? "text-[#3B82F6]" : "text-[#171717]"}`}>{inr(v)}</div>
     </div>
   );
 }

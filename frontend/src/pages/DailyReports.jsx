@@ -121,17 +121,17 @@ export default function DailyReports() {
           <div className="space-y-5">
             {filtered.map((r) => (
               <div key={r.id} className="relative" data-testid={`dr-${r.id}`}>
-                <div className="absolute -left-4 top-3 h-3 w-3 rounded-full bg-[#F97316] ring-4 ring-white" />
+                <div className="absolute -left-4 top-3 h-3 w-3 rounded-full bg-[#3B82F6] ring-4 ring-white" />
                 <div className="ss-card p-6 hover:shadow-lg transition-all">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div>
-                      <div className="text-xs font-bold uppercase tracking-wider text-[#F97316]">{fmtDate(r.date)}</div>
+                      <div className="text-xs font-bold uppercase tracking-wider text-[#3B82F6]">{fmtDate(r.date)}</div>
                       <h3 className="font-display font-bold text-xl mt-1">{siteName(r.site_id)}</h3>
                       <div className="text-xs text-gray-500 mt-0.5">by {r.created_by_name || "Supervisor"}</div>
                     </div>
                      <div className="flex gap-2 mt-2">
 
-                        <span className="ss-chip bg-orange-100 text-orange-700">
+                        <span className="ss-chip bg-blue-100 text-blue-700">
                           Report
                         </span>
 
@@ -217,8 +217,8 @@ function ReportForm({ sites, onDone }) {
         <div><label className="text-xs font-bold uppercase text-gray-500">Issues (one per line)</label><textarea className="ss-input mt-1 min-h-[60px]" value={f.issues_raw} onChange={(e) => setF({ ...f, issues_raw: e.target.value })} /></div>
         <div>
           <label className="text-xs font-bold uppercase text-gray-500">Photos / Videos</label>
-          <label className="mt-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 cursor-pointer hover:border-[#F97316] hover:bg-orange-50/30 transition-colors">
-            {uploading ? <Loader2 className="h-6 w-6 text-[#F97316] animate-spin" /> : <Camera className="h-6 w-6 text-gray-500" />}
+          <label className="mt-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 cursor-pointer hover:border-[#3B82F6] hover:bg-blue-50/30 transition-colors">
+            {uploading ? <Loader2 className="h-6 w-6 text-[#3B82F6] animate-spin" /> : <Camera className="h-6 w-6 text-gray-500" />}
             <span className="text-xs text-gray-500 mt-2">Click to upload (multiple)</span>
             <input type="file" multiple accept="image/*,video/*" hidden onChange={(e) => handleFiles(e.target.files)} data-testid="drf-files" />
           </label>

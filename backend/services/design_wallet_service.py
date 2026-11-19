@@ -21,6 +21,10 @@ from design_core.design_constants import (
 )
 
 
+class InsufficientCreditsError(Exception):
+    """Raised when a billable design operation cannot be funded."""
+
+
 class DesignWalletService:
 
     # ==========================================
@@ -72,33 +76,42 @@ class DesignWalletService:
         self,
         company_id: str,
     ):
+        wallet = await design_wallet_repository.get(company_id)
 
-        return await design_wallet_repository.get(
-            company_id
-        )
+        if wallet is None:
+            plan = await subscription_repository.get_plan(company_id)
+            wallet = await self.initialize(company_id, plan)
+
+        return wallet
 
     # ==========================================
 
     async def consume(
-        self,
-        company_id: str,
-        credits: int,
-        reason: str,
-    ):
+    self,
+    company_id: str,
+    credits: int,
+    reason: str,
+):
 
         wallet = await design_wallet_repository.get(
             company_id
         )
 
+        # Auto-create wallet if missing
         if wallet is None:
 
-            raise Exception(
-                "Wallet not found."
+            plan = await subscription_repository.get_plan(
+                company_id
+            )
+
+            wallet = await self.initialize(
+                company_id,
+                plan,
             )
 
         if wallet["credits"] < credits:
 
-            raise Exception(
+            raise InsufficientCreditsError(
                 "Insufficient credits."
             )
 

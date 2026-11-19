@@ -144,6 +144,34 @@ class SiteRepository:
             },
         )
 
+    async def get_user_by_email(
+        self,
+        company_id: str,
+        email: str,
+    ):
+        return await db.users.find_one(
+            {
+                "company_id": company_id,
+                "email": email.lower(),
+            },
+            {"_id": 0},
+        )
+
+    async def get_users_by_ids(
+        self,
+        company_id: str,
+        user_ids: List[str],
+    ):
+        if not user_ids:
+            return []
+        return await db.users.find(
+            {
+                "company_id": company_id,
+                "id": {"$in": user_ids},
+            },
+            {"_id": 0},
+        ).to_list(len(user_ids))
+
     async def update_user(
         self,
         user_id: str,
@@ -174,6 +202,16 @@ class SiteRepository:
                     "site_ids": site_id
                 }
             }
+        )
+
+    async def remove_site_from_user(
+        self,
+        user_id: str,
+        site_id: str,
+    ):
+        return await db.users.update_one(
+            {"id": user_id},
+            {"$pull": {"site_ids": site_id}},
         )
         
     async def count(
@@ -376,13 +414,27 @@ class SiteRepository:
         self,
         company_id: str,
         supervisor_id: str,
+        legacy_site_ids: List[str] | None = None,
     ):
 
+        query = {
+            "company_id": company_id,
+            "$or": [
+                {"supervisor_ids": supervisor_id},
+                {"supervisor_id": supervisor_id},
+            ],
+        }
+        if legacy_site_ids:
+            query["$or"].append({
+                "$and": [
+                    {"supervisor_ids": {"$exists": False}},
+                    {"supervisor_id": {"$exists": False}},
+                    {"id": {"$in": legacy_site_ids}},
+                ],
+            })
+
         return await db.sites.find(
-            {
-                "company_id": company_id,
-                "supervisor_ids": supervisor_id,
-            },
+            query,
             {
                 "_id": 0,
             },
@@ -396,12 +448,30 @@ class SiteRepository:
         self,
         company_id: str,
         client_id: str,
+        client_email: str | None = None,
+        legacy_site_ids: List[str] | None = None,
     ):
+
+        assignments = [
+            {"client_ids": client_id},
+            {"client_id": client_id},
+        ]
+        if client_email:
+            assignments.append({"client_email": client_email.lower()})
+        if legacy_site_ids:
+            assignments.append({
+                "$and": [
+                    {"client_ids": {"$exists": False}},
+                    {"client_id": {"$exists": False}},
+                    {"client_email": {"$exists": False}},
+                    {"id": {"$in": legacy_site_ids}},
+                ],
+            })
 
         return await db.sites.find(
             {
                 "company_id": company_id,
-                "client_ids": client_id,
+                "$or": assignments,
             },
             {
                 "_id": 0,

@@ -1,24 +1,32 @@
 import React from "react";
 
 const KEY = "ss_theme";
+const ThemeContext = React.createContext({ theme: "dark", toggle: () => {} });
+
+function getInitialTheme() {
+  if (typeof window === "undefined") return "dark";
+  const saved = window.localStorage.getItem(KEY);
+  return saved === "light" || saved === "dark" ? saved : "dark";
+}
 
 export function ThemeProvider({ children }) {
+  const [theme, setTheme] = React.useState(getInitialTheme);
+
   React.useEffect(() => {
-    const t = localStorage.getItem(KEY) || "light";
-    if (t === "dark") document.documentElement.classList.add("ss-dark");
-    else document.documentElement.classList.remove("ss-dark");
-  }, []);
-  return children;
+    window.localStorage.setItem(KEY, theme);
+    document.documentElement.classList.toggle("ss-dark", theme === "dark");
+    document.documentElement.style.colorScheme = theme;
+  }, [theme]);
+
+  const value = React.useMemo(() => ({
+    theme,
+    toggle: () => setTheme((current) => current === "dark" ? "light" : "dark"),
+    setTheme,
+  }), [theme]);
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme() {
-  const [theme, setTheme] = React.useState(() => localStorage.getItem(KEY) || "light");
-  const toggle = () => {
-    const next = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    localStorage.setItem(KEY, next);
-    if (next === "dark") document.documentElement.classList.add("ss-dark");
-    else document.documentElement.classList.remove("ss-dark");
-  };
-  return { theme, toggle };
+  return React.useContext(ThemeContext);
 }

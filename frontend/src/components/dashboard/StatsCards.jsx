@@ -13,8 +13,8 @@ const cards = [
     key: "active_sites",
     title: "Active Projects",
     icon: Building2,
-    iconBg: "bg-blue-100",
-    iconColor: "text-blue-700",
+    iconBg: "bg-blue-500/15",
+    iconColor: "text-blue-400",
     valueColor: "text-slate-900",
   },
   {
@@ -29,9 +29,9 @@ const cards = [
     key: "pending_tasks",
     title: "Pending Tasks",
     icon: Activity,
-    iconBg: "bg-orange-100",
-    iconColor: "text-orange-700",
-    valueColor: "text-orange-700",
+    iconBg: "bg-blue-100",
+    iconColor: "text-blue-900",
+    valueColor: "text-blue-700",
   },
   {
     key: "low_stock",
@@ -64,7 +64,7 @@ export default function StatsCards({ stats = {} }) {
               relative
               overflow-hidden
 
-              rounded-[28px]
+              rounded-[20px]
 
               border
               border-slate-200
@@ -77,8 +77,8 @@ export default function StatsCards({ stats = {} }) {
               duration-300
 
               hover:-translate-y-1
-              hover:border-blue-200
-              hover:shadow-2xl
+              hover:border-blue-500/60
+              hover:shadow-none
             "
           >
             {/* Background Glow */}
@@ -95,7 +95,7 @@ export default function StatsCards({ stats = {} }) {
 
                 rounded-full
 
-                bg-blue-50
+                bg-blue-500/10
 
                 opacity-0
 

@@ -8,7 +8,7 @@ import { inr, fmtDate } from "@/lib/constants";
 const TYPE_CHIP = {
   EARNING: "bg-emerald-100 text-emerald-700",
   PAYMENT: "bg-blue-100 text-blue-700",
-  ADVANCE: "bg-orange-100 text-orange-700",
+  ADVANCE: "bg-blue-100 text-blue-700",
   BONUS: "bg-yellow-100 text-yellow-800",
 };
 
@@ -23,7 +23,7 @@ export default function LabourWalletDetail() {
     <div className="space-y-6 ss-fade-in">
       <button onClick={() => nav(-1)} className="text-sm text-gray-500 hover:text-[#171717] flex items-center gap-1"><ArrowLeft className="h-4 w-4" /> Back</button>
       <div className="ss-card p-6 flex flex-wrap items-center gap-6">
-        <div className="h-14 w-14 rounded-xl bg-[#F97316] text-white flex items-center justify-center font-display text-xl font-extrabold">{labour.name.slice(0,2).toUpperCase()}</div>
+        <div className="h-14 w-14 rounded-xl bg-[#3B82F6] text-white flex items-center justify-center font-display text-xl font-extrabold">{labour.name.slice(0,2).toUpperCase()}</div>
         <div className="flex-1">
           <h1 className="font-display text-2xl font-extrabold">{labour.name}</h1>
           <div className="text-sm text-gray-500 flex flex-wrap gap-3 mt-1">
@@ -35,7 +35,7 @@ export default function LabourWalletDetail() {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <StatCard label="Earned" value={inr(wallet.total_earned)} icon={TrendingUp} accent="ink" />
-        <StatCard label="Paid" value={inr(wallet.total_paid)} icon={TrendingDown} accent="orange" />
+        <StatCard label="Paid" value={inr(wallet.total_paid)} icon={TrendingDown} accent="blue" />
         <StatCard label="Balance" value={inr(wallet.balance)} icon={Wallet} accent="yellow" />
       </div>
       <div className="ss-card p-5 overflow-x-auto">
@@ -48,7 +48,7 @@ export default function LabourWalletDetail() {
                 <td>{fmtDate(l.date)}</td>
                 <td><Chip className={TYPE_CHIP[l.type] || "bg-gray-100 text-gray-700"}>{l.type}</Chip></td>
                 <td>{l.note || "—"}</td>
-                <td className={`text-right font-bold ${l.type === "EARNING" || l.type === "BONUS" ? "text-emerald-600" : "text-[#F97316]"}`}>
+                <td className={`text-right font-bold ${l.type === "EARNING" || l.type === "BONUS" ? "text-emerald-600" : "text-[#3B82F6]"}`}>
                   {l.type === "EARNING" || l.type === "BONUS" ? "+" : "−"}{inr(l.amount)}
                 </td>
               </tr>

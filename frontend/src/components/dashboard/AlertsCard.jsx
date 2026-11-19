@@ -15,7 +15,7 @@ const alerts = [
 
     {
         title: "5 DPR Pending",
-        color: "text-orange-500",
+        color: "text-blue-500",
         icon: Clock3
     },
 

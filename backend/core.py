@@ -83,10 +83,6 @@ async def get_current_user(creds: Optional[HTTPAuthorizationCredentials] = Depen
     except jwt.PyJWTError:
         raise HTTPException(401, "Invalid token") from None
     user = await db.users.find_one({"id": payload.get("sub")}, {"_id": 0})
-    print("="*60)
-    print("JWT Payload:", payload)
-    print("DB User:", user)
-    print("="*60)
     if not user:
         raise HTTPException(401, "User not found")
     if user.get("blocked"):

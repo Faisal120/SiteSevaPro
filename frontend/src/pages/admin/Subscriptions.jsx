@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 const PLAN_CHIP = {
   FREE: "bg-gray-100 text-gray-700",
-  PREMIUM: "bg-[#F97316]/15 text-[#F97316]",
+  PREMIUM: "bg-[#3B82F6]/15 text-[#3B82F6]",
   ENTERPRISE: "bg-purple-100 text-purple-700",
 };
 const STATUS_CHIP = {
@@ -40,7 +40,7 @@ export default function Subscriptions() {
         <div>
           <h1 className="font-display text-3xl font-extrabold tracking-tight">Subscriptions</h1>
           <p className="text-sm text-gray-500 mt-1">
-            All tenant subscriptions · <span className="font-bold text-[#F97316]">{inr(mrr)}</span> active MRR
+            All tenant subscriptions · <span className="font-bold text-[#3B82F6]">{inr(mrr)}</span> active MRR
           </p>
         </div>
         <div className="flex gap-2">

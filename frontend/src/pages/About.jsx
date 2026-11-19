@@ -9,7 +9,7 @@ export default function About() {
       <PublicNav />
       <section className="py-16 lg:py-24">
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-          <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#F97316]">About</span>
+          <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#3B82F6]">About</span>
           <h1 className="mt-2 text-4xl sm:text-5xl font-extrabold font-display tracking-tight">
             Built by builders, for builders.
           </h1>
@@ -25,7 +25,7 @@ export default function About() {
               { i: Award, t: "India-first", d: "GST, INR formatting, Hindi roadmap and on-ground support." },
             ].map((b) => (
               <div key={b.t} className="ss-card p-6">
-                <div className="h-10 w-10 rounded-lg bg-[#171717] text-[#F97316] flex items-center justify-center">
+                <div className="h-10 w-10 rounded-lg bg-[#171717] text-[#3B82F6] flex items-center justify-center">
                   <b.i className="h-5 w-5" />
                 </div>
                 <h3 className="mt-4 font-display text-xl font-bold">{b.t}</h3>

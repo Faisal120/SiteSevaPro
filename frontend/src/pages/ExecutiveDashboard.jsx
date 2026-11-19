@@ -25,7 +25,7 @@ export default function ExecutiveDashboard() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
         <StatCard label="Active Sites" value={`${d.active_sites}/${d.total_sites}`} icon={Building2} accent="ink" testId="exec-sites" />
-        <StatCard label="Supervisors" value={d.supervisors} icon={Users} accent="orange" testId="exec-sup" />
+        <StatCard label="Supervisors" value={d.supervisors} icon={Users} accent="blue" testId="exec-sup" />
         <StatCard label="Total Labour" value={d.total_labour} icon={Users} accent="yellow" testId="exec-lab" />
         <StatCard label="Net Profit" value={inr(d.profit)} icon={Activity} accent="soft" testId="exec-profit" />
       </div>
@@ -47,7 +47,7 @@ export default function ExecutiveDashboard() {
                     <stop offset="5%" stopColor="#22C55E" stopOpacity={0.4} /><stop offset="95%" stopColor="#22C55E" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="exp" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#F97316" stopOpacity={0.4} /><stop offset="95%" stopColor="#F97316" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.4} /><stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
@@ -56,7 +56,7 @@ export default function ExecutiveDashboard() {
                 <Tooltip contentStyle={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8 }} formatter={(v) => inr(v)} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Area dataKey="received" stroke="#22C55E" strokeWidth={2} fill="url(#rec)" />
-                <Area dataKey="expense" stroke="#F97316" strokeWidth={2} fill="url(#exp)" />
+                <Area dataKey="expense" stroke="#3B82F6" strokeWidth={2} fill="url(#exp)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -86,7 +86,7 @@ export default function ExecutiveDashboard() {
               <Tooltip contentStyle={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8 }} formatter={(v) => inr(v)} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
               <Bar dataKey="received" fill="#171717" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="cost" fill="#F97316" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="cost" fill="#3B82F6" radius={[4, 4, 0, 0]} />
               <Bar dataKey="profit" fill="#22C55E" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -100,7 +100,7 @@ function Row({ label, v, pos, bold }) {
   return (
     <div className="flex justify-between">
       <span className={`text-gray-600 ${bold ? "font-bold text-[#171717]" : ""}`}>{label}</span>
-      <span className={`${bold ? "font-extrabold text-[#171717]" : pos ? "text-emerald-600 font-semibold" : "text-[#F97316] font-semibold"}`}>{inr(v)}</span>
+      <span className={`${bold ? "font-extrabold text-[#171717]" : pos ? "text-emerald-600 font-semibold" : "text-[#3B82F6] font-semibold"}`}>{inr(v)}</span>
     </div>
   );
 }

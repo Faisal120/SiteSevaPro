@@ -58,7 +58,7 @@ export default function Applications() {
           <p className="text-sm text-gray-500 mt-1">
             {counts.PENDING > 0 ? (
               <>
-                <span className="font-bold text-[#F97316]">{counts.PENDING}</span> awaiting your review · {counts.ALL} total
+                <span className="font-bold text-[#3B82F6]">{counts.PENDING}</span> awaiting your review · {counts.ALL} total
               </>
             ) : (
               <>No pending applications · {counts.ALL} total received</>

@@ -17,7 +17,8 @@ class Canvas:
 
         context.scale = 25
 
-        context.margin = 60
+        # Leave room for external dimensions and a drawing title block.
+        context.margin = 80
 
         context.width = int(
 
@@ -31,7 +32,7 @@ class Canvas:
 
             plot.length * context.scale
 
-            + context.margin * 2
+            + context.margin + 150
 
         )
 

@@ -1,182 +1,88 @@
-"""
-Creates graph from layout.
-"""
-
 import uuid
 
 from services.design_engine.graph.graph import (
-
     GeometryGraph,
-
     Node,
-
 )
 
 
 class GraphBuilder:
 
-    # --------------------------------------------------
+    def _room_type(self, room):
+        return room.name.split("_")[0]
 
-    def build(
-
-        self,
-
-        rooms,
-
-    ):
+    def build(self, rooms):
 
         graph = GeometryGraph()
-
-        mapping = {}
+        nodes = []
 
         for room in rooms:
 
             node = Node(
-
                 id=str(uuid.uuid4()),
-
                 room_name=room.name,
-
                 x=room.x,
-
                 y=room.y,
-
                 width=room.width,
-
                 height=room.length,
-
                 zone=room.preferred_zone or "",
-
             )
+
+            room.graph_id = node.id
 
             graph.add_node(node)
 
-            mapping[room] = node.id
+            nodes.append((room, node))
 
-        ids = list(mapping.values())
+        for i in range(len(nodes)):
+            room_a, node_a = nodes[i]
 
-        room_list = list(mapping.keys())
+            for j in range(i + 1, len(nodes)):
+                room_b, node_b = nodes[j]
 
-        for i in range(len(room_list)):
+                type_a = self._room_type(room_a)
+                type_b = self._room_type(room_b)
 
-            for j in range(i + 1, len(room_list)):
+                should_connect = (
+                    type_b in room_a.adjacent_to
+                    or type_a in room_b.adjacent_to
+                    or self._touching(room_a, room_b)
+                )
 
-                if self._touching(
-
-                    room_list[i],
-
-                    room_list[j],
-
-                ):
-
-                    graph.add_edge(
-
-                        ids[i],
-
-                        ids[j],
-
-                    )
-
-                    graph.add_edge(
-
-                        ids[j],
-
-                        ids[i],
-
-                    )
+                if should_connect:
+                    graph.add_edge(node_a.id, node_b.id)
+                    graph.add_edge(node_b.id, node_a.id)
 
         return graph
 
-    # --------------------------------------------------
+    def _touching(self, a, b):
 
-    def _touching(
-
-        self,
-
-        a,
-
-        b,
-
-    ):
-
-        tol = 0.5
+        tol = 2.0
 
         horizontal = (
-
-            abs(
-
-                (a.x + a.width)
-
-                - b.x
-
-            ) <= tol
-
-            or
-
-            abs(
-
-                (b.x + b.width)
-
-                - a.x
-
-            ) <= tol
-
+            abs((a.x + a.width) - b.x) <= tol
+            or abs((b.x + b.width) - a.x) <= tol
         )
 
         vertical = (
-
-            abs(
-
-                (a.y + a.length)
-
-                - b.y
-
-            ) <= tol
-
-            or
-
-            abs(
-
-                (b.y + b.length)
-
-                - a.y
-
-            ) <= tol
-
+            abs((a.y + a.length) - b.y) <= tol
+            or abs((b.y + b.length) - a.y) <= tol
         )
 
         overlap_x = not (
-
             a.x + a.width <= b.x
-
-            or
-
-            b.x + b.width <= a.x
-
+            or b.x + b.width <= a.x
         )
 
         overlap_y = not (
-
             a.y + a.length <= b.y
-
-            or
-
-            b.y + b.length <= a.y
-
+            or b.y + b.length <= a.y
         )
 
         return (
-
-            horizontal
-
-            and overlap_y
-
+            horizontal and overlap_y
         ) or (
-
-            vertical
-
-            and overlap_x
-
+            vertical and overlap_x
         )
 
 

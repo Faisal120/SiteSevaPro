@@ -20,25 +20,25 @@ class DesignRepository:
     # ==========================================
 
     async def create(
-        self,
-        document: dict,
-    ):
-
+    self,
+    document: dict,
+):
         document["id"] = str(uuid.uuid4())
-
         document["created_at"] = datetime.utcnow().isoformat()
-
         document["updated_at"] = datetime.utcnow().isoformat()
 
         await db.designs.insert_one(document)
 
-        return document
+        return await db.designs.find_one(
+            {"id": document["id"]},
+            {"_id": 0},
+        )
 
     # ==========================================
     # GET
     # ==========================================
 
-    async def get(
+    async def get_by_id(
         self,
         design_id: str,
         company_id: str,
@@ -92,22 +92,16 @@ class DesignRepository:
     self,
     design_id,
     values,
-    ):
+):
 
         await db.designs.update_one(
-
-            {
-                "id": design_id,
-            },
-
-            {
-                "$set": values,
-            }
-
+            {"id": design_id},
+            {"$set": values},
         )
 
-        return await self.get_by_id(
-            design_id
+        return await db.designs.find_one(
+            {"id": design_id},
+            {"_id": 0},
         )
 
     # ==========================================

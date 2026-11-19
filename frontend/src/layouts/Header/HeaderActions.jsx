@@ -46,7 +46,7 @@ export default function HeaderActions({
 
         <CloudSun
           size={18}
-          className="text-amber-500"
+          className="text-blue-500"
         />
 
         <div className="leading-tight">
@@ -163,7 +163,7 @@ export default function HeaderActions({
 
       <SSButton
 
-        onClick={() => nav("/app/sites")}
+        onClick={() => nav("/app/sites?create=1")}
 
         className="hidden lg:flex items-center gap-2"
 

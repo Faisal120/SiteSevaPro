@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import HTTPException
 
 from core import new_id, now_iso
@@ -21,29 +23,32 @@ class SiteService:
         role = user["role"]
 
         if role == "CONTRACTOR":
-
-            return await site_repository.get_by_company(
+            sites = await site_repository.get_by_company(
                 user["company_id"]
             )
 
         elif role == "SUPERVISOR":
-
-            return await site_repository.get_for_supervisor(
+            sites = await site_repository.get_for_supervisor(
                 company_id=user["company_id"],
                 supervisor_id=user["id"],
+                legacy_site_ids=user.get("site_ids", []),
             )
 
         elif role == "CLIENT":
-
-            return await site_repository.get_for_client(
+            sites = await site_repository.get_for_client(
                 company_id=user["company_id"],
                 client_id=user["id"],
+                client_email=user.get("email"),
+                legacy_site_ids=user.get("site_ids", []),
             )
 
-        raise HTTPException(
-            status_code=403,
-            detail="Forbidden",
-        )
+        else:
+            raise HTTPException(
+                status_code=403,
+                detail="Forbidden",
+            )
+
+        return await self._hydrate_sites(sites, user["company_id"])
 
     # ============================================================
     # CREATE SITE
@@ -183,41 +188,17 @@ class SiteService:
         role = user["role"]
 
         if role == "CONTRACTOR":
+            return (await self._hydrate_sites([site], user["company_id"]))[0]
 
-            return site
-
-        if role == "SUPERVISOR":
-
-            if user["id"] not in site.get(
-                "supervisor_ids",
-                [],
-            ):
-
+        if role in ("SUPERVISOR", "CLIENT"):
+            if not self._has_site_access(site, user):
                 raise HTTPException(
                     status_code=403,
                     detail="You are not assigned to this site.",
                 )
+            return (await self._hydrate_sites([site], user["company_id"]))[0]
 
-            return site
-
-        if role == "CLIENT":
-
-            if user["id"] not in site.get(
-                "client_ids",
-                [],
-            ):
-
-                raise HTTPException(
-                    status_code=403,
-                    detail="You are not assigned to this site.",
-                )
-
-            return site
-
-        raise HTTPException(
-            status_code=403,
-            detail="Forbidden",
-        )
+        raise HTTPException(status_code=403, detail="Forbidden")
 
     # ============================================================
     # UPDATE SITE
@@ -242,9 +223,28 @@ class SiteService:
                 detail="Site not found",
             )
 
-        payload = body.model_dump(
-            exclude_unset=True
-        )
+        supervisors = await self._load_supervisors(body, user)
+        client = await self._load_client(body, user)
+        payload = body.model_dump(exclude_unset=True)
+        supervisor_ids = [supervisor["id"] for supervisor in supervisors]
+        previous_assignees = set(site.get("supervisor_ids", []))
+        if site.get("supervisor_id"):
+            previous_assignees.add(site["supervisor_id"])
+        previous_assignees.update(site.get("client_ids", []))
+        if site.get("client_id"):
+            previous_assignees.add(site["client_id"])
+        current_assignees = set(supervisor_ids)
+        if client:
+            current_assignees.add(client["id"])
+
+        payload.update({
+            "supervisor_ids": supervisor_ids,
+            "supervisor_names": [supervisor["full_name"] for supervisor in supervisors],
+            "client_id": client["id"] if client else None,
+            "client_ids": [client["id"]] if client else [],
+            "client_name": client["full_name"] if client else None,
+            "client_email": client["email"] if client else None,
+        })
 
         payload["updated_at"] = now_iso()
 
@@ -254,10 +254,15 @@ class SiteService:
             payload=payload,
         )
 
-        return await site_repository.get(
+        for user_id in previous_assignees - current_assignees:
+            await site_repository.remove_site_from_user(user_id, site_id)
+        await self._assign_users(site_id, supervisors, client)
+
+        updated = await site_repository.get(
             site_id=site_id,
             company_id=user["company_id"],
         )
+        return (await self._hydrate_sites([updated], user["company_id"]))[0]
 
     # ============================================================
     # DELETE SITE
@@ -517,6 +522,11 @@ class SiteService:
             supervisor_ids,
         )
 
+        found_ids = {supervisor["id"] for supervisor in supervisors}
+        missing_ids = set(supervisor_ids) - found_ids
+        if missing_ids:
+            raise HTTPException(422, "One or more supervisors are not in this company.")
+
         return supervisors
 
     # ============================================================
@@ -539,10 +549,99 @@ class SiteService:
 
             return None
 
-        return await site_repository.get_client(
+        client = await site_repository.get_client(
             user["company_id"],
             client_id,
         )
+        if not client:
+            raise HTTPException(422, "The selected client is not in this company.")
+        return client
+
+    def _has_site_access(self, site: dict, user: dict) -> bool:
+        user_id = user["id"]
+        if user["role"] == "SUPERVISOR":
+            assigned = set(site.get("supervisor_ids") or [])
+            if site.get("supervisor_id"):
+                assigned.add(site["supervisor_id"])
+            if assigned:
+                return user_id in assigned
+            has_assignment_fields = any(
+                key in site for key in ("supervisor_ids", "supervisor_id")
+            )
+        else:
+            assigned = set(site.get("client_ids") or [])
+            if site.get("client_id"):
+                assigned.add(site["client_id"])
+            if user_id in assigned:
+                return True
+            if str(site.get("client_email") or "").lower() == str(user.get("email") or "").lower():
+                return True
+            has_assignment_fields = any(
+                key in site for key in ("client_ids", "client_id", "client_email")
+            )
+        return not has_assignment_fields and site["id"] in user.get("site_ids", [])
+
+    async def _hydrate_sites(self, sites: list[dict], company_id: str) -> list[dict]:
+        if not sites:
+            return []
+        user_ids = set()
+        client_emails = set()
+        for site in sites:
+            user_ids.update(site.get("supervisor_ids") or [])
+            if site.get("supervisor_id"):
+                user_ids.add(site["supervisor_id"])
+            user_ids.update(site.get("client_ids") or [])
+            if site.get("client_id"):
+                user_ids.add(site["client_id"])
+            if site.get("client_email"):
+                client_emails.add(site["client_email"].lower())
+        users = await site_repository.get_users_by_ids(company_id, list(user_ids))
+        users_by_id = {user["id"]: user for user in users}
+        missing_emails = [
+            email for email in client_emails
+            if not any(user.get("email", "").lower() == email for user in users)
+        ]
+        email_users = await asyncio.gather(*[
+            site_repository.get_user_by_email(company_id, email)
+            for email in missing_emails
+        ])
+        users_by_email = {
+            user["email"].lower(): user
+            for user in (*users, *email_users)
+            if user
+        }
+        return [
+            self._hydrate_site(site, users_by_id, users_by_email)
+            for site in sites
+        ]
+
+    def _hydrate_site(self, site: dict, users_by_id: dict, users_by_email: dict) -> dict:
+        result = dict(site)
+        supervisor_ids = list(dict.fromkeys([
+            *(site.get("supervisor_ids") or []),
+            *([site["supervisor_id"]] if site.get("supervisor_id") else []),
+        ]))
+        supervisor_names = [
+            users_by_id[user_id].get("full_name") or users_by_id[user_id].get("email")
+            for user_id in supervisor_ids
+            if users_by_id.get(user_id)
+        ] or list(site.get("supervisor_names") or [])
+        client_ids = list(dict.fromkeys([
+            *(site.get("client_ids") or []),
+            *([site["client_id"]] if site.get("client_id") else []),
+        ]))
+        client = users_by_id.get(client_ids[0]) if client_ids else None
+        if not client and site.get("client_email"):
+            client = users_by_email.get(site["client_email"].lower())
+        result.update({
+            "supervisor_ids": supervisor_ids,
+            "supervisor_names": supervisor_names,
+            "client_ids": client_ids,
+            "client_id": client_ids[0] if client_ids else None,
+            "client_name": (client or {}).get("full_name") or site.get("client_name"),
+            "client_email": (client or {}).get("email") or site.get("client_email"),
+        })
+        return result
         
         
             # ============================================================

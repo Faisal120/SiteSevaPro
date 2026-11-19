@@ -90,6 +90,41 @@ ROOM_LIBRARY = {
 
         "zone":"CENTER",
 
+    },
+
+    "Parking": {
+        "sizes": [(10, 16), (12, 16), (14, 18)],
+        "zone": "SOUTH",
+    },
+
+    "Garden": {
+        "sizes": [(8, 10), (10, 12)],
+        "zone": "NORTH",
+    },
+
+    "Pooja": {
+        "sizes": [(4, 5), (5, 6)],
+        "zone": "NE",
+    },
+
+    "Study": {
+        "sizes": [(7, 8), (8, 10)],
+        "zone": "EAST",
+    },
+
+    "Store": {
+        "sizes": [(4, 5), (5, 6)],
+        "zone": "WEST",
+    },
+
+    "Utility": {
+        "sizes": [(4, 6), (5, 7)],
+        "zone": "SE",
+    },
+
+    "Lift": {
+        "sizes": [(5, 5), (6, 6)],
+        "zone": "CENTER",
     }
 
 }

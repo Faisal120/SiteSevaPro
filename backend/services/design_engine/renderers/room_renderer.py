@@ -56,8 +56,6 @@ class RoomRenderer:
                     width="{w}"
                     height="{h}"
                     fill="{color}"
-                    stroke="#444"
-                    stroke-width="2"
                 />
                 """
 

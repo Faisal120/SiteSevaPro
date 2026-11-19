@@ -1,388 +1,48 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import {
-  ArrowRight, Building2, Users, Package, Wallet, FileText, Bell, Sparkles,
-  CheckCircle2, ChevronRight, Star, Quote, Plus, Minus, HardHat, ShieldCheck, BarChart3, Camera,
-} from "lucide-react";
-import PublicNav from "@/components/PublicNav";
+import { ArrowRight, CheckCircle2, ChevronDown, ClipboardCheck, HardHat, Map, MessageCircle, Package, Ruler, Sparkles, WalletCards } from "lucide-react";
 import PublicFooter from "@/components/PublicFooter";
-import { PLAN_FEATURES, inr } from "@/lib/constants";
+import PublicNav from "@/components/PublicNav";
+import { PLAN_FEATURES } from "@/lib/constants";
 
-const FEATURES = [
-  { icon: Building2, title: "Site Management", desc: "Track every site, drawing, milestone and progress in one place." },
-  { icon: Users, title: "Labour & Attendance", desc: "Digital muster, daily wages, advances and monthly payroll exports." },
-  { icon: Package, title: "Material Inventory", desc: "Inward / outward, vendor invoices, low-stock alerts across categories." },
-  { icon: Wallet, title: "Payments & P&L", desc: "Client receipts, expense tracking, automatic profit-loss per site." },
-  { icon: Camera, title: "Daily Site Reports", desc: "Supervisor uploads of photos, videos and tasks with a clean timeline." },
-  { icon: Sparkles, title: "AI Insights", desc: "Material estimation, delay prediction and expense analysis on tap." },
+const faqs = [
+  ["Can I generate a plan for every floor?", "Yes. Add a short brief for each floor, create its 2D drawing, then select the approved floor for its furnished 3D concept. Parking is reserved for the ground floor."],
+  ["Are the plans construction-ready?", "They are a clear overview and rough planning direction. Use them to align the brief and consult a qualified architect or engineer for detailed, approved working drawings."],
+  ["What can I download?", "2D layouts can be downloaded as SVG or PDF. The furnished 3D concept has its own SVG export, so planning and presentation files remain separate."],
+  ["How do design credits work?", "A 2D multi-floor brief uses 10 design credits. A selected-floor 3D concept uses 25 credits. Technical overlays are 5 credits each."],
+  ["Can my site team use the platform too?", "Yes. Contractors, supervisors and clients each have focused access, while the contractor retains the full operational view."],
 ];
 
-const FAQS = [
-  { q: "How does the contractor approval flow work?", a: "Fill the registration form on the site. Our admin reviews your application and manually generates a username and password sent to your email." },
-  { q: "Can I run multiple sites on the Free plan?", a: "Free is limited to 1 site and 2 supervisors. Upgrade to Premium for unlimited sites and supervisors." },
-  { q: "Do supervisors get a separate login?", a: "Yes. Each supervisor sees only the sites assigned by the contractor — attendance, materials and daily reports." },
-  { q: "Can clients track project progress?", a: "Absolutely. Clients log in to a clean portal with timeline, photos, videos and payment history for their project." },
-  { q: "Is GST invoicing supported?", a: "Yes. We auto-generate GST-compliant invoices for subscription billing and you can attach vendor invoices to material entries." },
-];
+function Faq({ item }) {
+  return <article className="border-b border-white/10 py-6 last:border-0"><div className="flex items-start justify-between gap-6"><div><h3 className="font-display text-lg font-semibold text-white">{item[0]}</h3><p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">{item[1]}</p><Link to="/register" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-blue-300 hover:text-white">Start with this workflow <ArrowRight className="h-3.5 w-3.5" /></Link></div><ChevronDown className="mt-1 h-5 w-5 shrink-0 text-blue-300" /></div></article>;
+}
 
-function FAQItem({ q, a }) {
-  const [open, setOpen] = React.useState(false);
-  return (
-    <button
-      onClick={() => setOpen((v) => !v)}
-      className="w-full text-left ss-card p-5"
-      data-testid={`faq-${q.slice(0, 10)}`}
-    >
-      <div className="flex items-start justify-between gap-4">
-        <span className="font-semibold text-[#171717]">{q}</span>
-        {open ? <Minus className="h-5 w-5 text-[#F97316] shrink-0" /> : <Plus className="h-5 w-5 text-gray-500 shrink-0" />}
-      </div>
-      {open && <p className="mt-3 text-sm text-gray-600 leading-relaxed">{a}</p>}
-    </button>
-  );
+function ProductPreview({ type = "dashboard" }) {
+  if (type === "2d") return <div className="marketing-preview marketing-plan-preview"><div className="preview-topline"><span>GROUND FLOOR · CONCEPT PLAN</span><span>30' × 50'</span></div><div className="plan-grid"><div className="plan-room room-bed"><span>BEDROOM</span><i /></div><div className="plan-room room-bath"><span>TOILET</span><i /></div><div className="plan-room room-bed"><span>BEDROOM</span><i /></div><div className="plan-room room-living"><span>LIVING</span><i /></div><div className="plan-room room-kitchen"><span>KITCHEN</span><i /></div><div className="plan-room room-parking"><span>PARKING</span><i /></div></div><div className="preview-caption">Furniture, room labels, walls, openings, entrance and ground-floor parking</div></div>;
+  if (type === "3d") return <div className="marketing-preview marketing-3d-preview"><div className="preview-topline"><span>FURNISHED 3D CONCEPT</span><span>SELECTED FLOOR</span></div><div className="iso-scene"><div className="iso-room iso-bed"><b>Bed</b></div><div className="iso-room iso-living"><b>Sofa</b></div><div className="iso-room iso-dining"><b>Dining</b></div><div className="iso-room iso-kitchen"><b>Kitchen</b></div></div><div className="preview-caption">Open-top architectural view with room surfaces and furniture</div></div>;
+  return <div className="marketing-preview marketing-dashboard-preview"><div className="preview-sidebar"><b>SS</b><span>Overview</span><span>Sites</span><span>Reports</span><span>Planning</span></div><div className="preview-workspace"><div className="preview-toolbar"><span>SiteSeva Pro</span><button>Create site</button></div><div className="preview-title">Project operations</div><div className="preview-stats"><div><small>Active sites</small><b>12</b></div><div><small>Budget health</small><b>On track</b></div><div><small>Updates today</small><b>24</b></div></div><div className="preview-chart"><span>Live cashflow and progress overview</span><i /><i /><i /><i /></div></div></div>;
 }
 
 export default function Landing() {
-  return (
-    <div className="min-h-screen ss-mesh">
-      <PublicNav />
+  return <div className="landing-shell min-h-screen overflow-x-hidden">
+    <PublicNav />
+    <main>
+      <section className="relative border-b border-white/10"><div className="ss-grid-dots absolute inset-0 opacity-20" /><div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-12 lg:items-center lg:px-8 lg:py-28"><div className="lg:col-span-6"><div className="inline-flex items-center gap-2 rounded-full border border-blue-400/25 bg-blue-500/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[.16em] text-blue-200"><HardHat className="h-3.5 w-3.5" />Construction operations, made clear</div><h1 className="mt-6 max-w-3xl font-display text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">Run the site. <span className="text-blue-400">Design the plan.</span> Keep every decision connected.</h1><p className="mt-6 max-w-2xl text-lg leading-8 text-slate-400">SiteSeva Pro gives contractors one reliable workspace for sites, finance, daily execution and floor-plan direction—without scattered chats and spreadsheets.</p><div className="mt-8 flex flex-wrap gap-3"><Link to="/register" className="ss-btn-accent">Start your workspace <ArrowRight className="h-4 w-4" /></Link><Link to="/pricing" className="ss-btn-outline">See plans & pricing</Link></div><div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm text-slate-300"><span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-blue-400" />No card required</span><span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-blue-400" />Contractor, supervisor & client access</span></div></div><div className="lg:col-span-6"><ProductPreview /></div></div></section>
 
-      {/* HERO */}
-      <section className="relative">
-        <div className="ss-grid-dots absolute inset-0 opacity-60" aria-hidden />
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-16 pb-20 lg:pt-24 lg:pb-28">
-          <div className="grid lg:grid-cols-12 gap-10 items-center">
-            <div className="lg:col-span-7 ss-fade-in">
-              <span className="ss-chip bg-[#171717] text-[#F97316] uppercase tracking-[0.18em]">
-                <HardHat className="h-3.5 w-3.5" /> Built for Indian construction
-              </span>
-              <h1 className="mt-5 text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight font-display text-[#171717]">
-                Manage Sites, Labour, Materials & Payments in One Platform.<span className="text-[#F97316]">One Platform.</span>.
-              </h1>
-              <p className="mt-5 text-base sm:text-lg text-gray-600 max-w-xl leading-relaxed">
-                Built specifically for Indian contractors, builders and construction companies.
+      <section className="border-b border-white/10 bg-[#0d0e10] py-8"><div className="mx-auto grid max-w-7xl gap-5 px-4 sm:grid-cols-3 sm:px-6 lg:px-8"><div><b className="text-white">One operating view</b><p className="mt-1 text-sm text-slate-400">Sites, team, materials and money in a shared workspace.</p></div><div><b className="text-white">Floor-wise planning</b><p className="mt-1 text-sm text-slate-400">Separate requirements and drawings for every floor.</p></div><div><b className="text-white">Clear handover</b><p className="mt-1 text-sm text-slate-400">SVG/PDF exports for planning conversations that move forward.</p></div></div></section>
 
-                Track every site, every labour, every payment, and every material — without WhatsApp chaos or Excel sheets.
-              </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link to="/register" className="ss-btn-accent" data-testid="hero-cta-register">
-                  Start Free Trial <ArrowRight className="h-4 w-4" />
-                </Link>
-                <Link to="/pricing" className="ss-btn-outline" data-testid="hero-cta-pricing">
-                  Book Demo
-                </Link>
-              </div>
-              <div className="mt-8 flex flex-wrap items-center gap-6 text-sm text-gray-500">
-                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> 1-site free forever</div>
-                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> GST invoicing</div>
-                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> AI insights included</div>
-              </div>
-            </div>
+      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28"><div className="grid gap-10 lg:grid-cols-12 lg:items-center"><div className="lg:col-span-5"><p className="text-xs font-bold uppercase tracking-[.2em] text-blue-300">Product proof</p><h2 className="mt-3 font-display text-3xl font-extrabold text-white sm:text-4xl">A clean operating view your whole business can use.</h2><p className="mt-4 text-sm leading-7 text-slate-400">The preview is deliberately anonymized. Your live workspace carries your own branded company and site data, with role-based visibility.</p><div className="mt-7 space-y-3 text-sm text-slate-300"><p className="flex gap-2"><CheckCircle2 className="h-5 w-5 shrink-0 text-blue-400" />Create a site, set the budget and assign the field team.</p><p className="flex gap-2"><CheckCircle2 className="h-5 w-5 shrink-0 text-blue-400" />Capture reports, materials, attendance and client receipts.</p><p className="flex gap-2"><CheckCircle2 className="h-5 w-5 shrink-0 text-blue-400" />Use live operations data to act before small issues grow.</p></div></div><div className="lg:col-span-7"><ProductPreview /></div></div></section>
 
-            <div className="lg:col-span-5">
-              <div className="relative">
-                <div className="absolute -inset-3 bg-gradient-to-tr from-[#F97316]/10 to-[#EAB308]/5 rounded-3xl blur-xl" aria-hidden />
-                <div className="relative ss-card p-3 overflow-hidden">
-                  <img
-                    src="https://images.pexels.com/photos/1816030/pexels-photo-1816030.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
-                    alt="Construction site"
-                    className="w-full h-72 object-cover rounded-lg"
-                  />
-                  <div className="absolute top-6 left-6 ss-glass rounded-lg p-3 shadow-md border border-white">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Active sites</div>
-                    <div className="text-2xl font-extrabold text-[#171717]">14</div>
-                  </div>
-                  <div className="absolute bottom-6 right-6 ss-glass rounded-lg p-3 shadow-md border border-white">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Net Profit</div>
-                    <div className="text-xl font-extrabold text-emerald-600">{inr(8240000)}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <section className="border-y border-blue-400/15 bg-[#0d1524] py-20 lg:py-28"><div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"><div className="max-w-3xl"><div className="inline-flex items-center gap-2 text-blue-300"><Map className="h-5 w-5" /><span className="text-xs font-bold uppercase tracking-[.2em]">Design Studio</span></div><h2 className="mt-4 font-display text-3xl font-extrabold text-white sm:text-4xl">From your brief to a readable 2D plan—then a furnished 3D concept.</h2><p className="mt-4 text-sm leading-7 text-blue-100/70">Plan each floor independently. Ground-floor parking, entrance gate, furniture and room labels stay in the right context, while upper floors are planned without vehicle space.</p></div><div className="mt-10 grid gap-6 lg:grid-cols-2"><div><ProductPreview type="2d" /><div className="mt-5 flex items-start gap-3"><Ruler className="mt-0.5 h-5 w-5 text-blue-300" /><p className="text-sm leading-6 text-blue-100/75"><b className="text-white">1. Build the 2D brief.</b> Choose plot size, facing and floor-specific rooms. Regenerate a rough option when it is not right.</p></div></div><div><ProductPreview type="3d" /><div className="mt-5 flex items-start gap-3"><Sparkles className="mt-0.5 h-5 w-5 text-blue-300" /><p className="text-sm leading-6 text-blue-100/75"><b className="text-white">2. Select one floor for 3D.</b> Generate an open-top furnished concept only after that floor’s 2D direction is approved.</p></div></div></div><div className="mt-9 flex flex-wrap items-center gap-4"><Link to="/register" className="ss-btn-accent">Try Design Studio <ArrowRight className="h-4 w-4" /></Link><p className="text-xs text-blue-100/60">Overview and rough map planning only. Detailed planning support: WhatsApp +91 7905226334.</p></div></div></section>
 
-      {/* SOCIAL PROOF MARQUEE */}
-      <section className="border-y border-gray-200 bg-white">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 overflow-hidden">
-          <div className="flex items-center gap-4 mb-3">
-            <span className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Trusted by 200+ contractors</span>
-            <div className="flex-1 h-px bg-gray-200" />
-          </div>
-          <div className="flex gap-12 ss-marquee whitespace-nowrap font-display text-2xl font-bold text-gray-300">
-            {Array(2).fill(0).map((_, i) => (
-              <div key={i} className="flex gap-12">
-                <span>SHAPOORJI</span><span>L&amp;T</span><span>GODREJ</span><span>DLF</span><span>PRESTIGE</span>
-                <span>OBEROI</span><span>RAHEJA</span><span>TATA HOUSING</span><span>HIRANANDANI</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28"><div className="mx-auto max-w-2xl text-center"><p className="text-xs font-bold uppercase tracking-[.2em] text-blue-300">A complete construction workspace</p><h2 className="mt-3 font-display text-3xl font-extrabold text-white sm:text-4xl">The tools your project uses every day, in one connected flow.</h2><p className="mt-4 text-slate-400">Open only what you need; each product area is accessible from the workspace navigation.</p></div><div className="mt-12 space-y-20">{[[ClipboardCheck,"Site execution","Daily reports, attendance, task progress and client-ready evidence.","/app/reports","sitesevapro.in/app/reports","dashboard"],[WalletCards,"BOQ & estimates","Turn scope and rates into a controlled estimate, then produce a structured BOQ.","/app/estimates","sitesevapro.in/app/estimates","2d"],[Package,"Materials & cashflow","Track stock movements, vendor activity, expenses and receipts against each site.","/app/materials","sitesevapro.in/app/materials","dashboard"]].map(([Icon,title,copy,path,url,preview], index) => <article key={title} className="grid items-center gap-8 lg:grid-cols-2"><div className={index % 2 ? "lg:order-2" : ""}><div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/15 text-blue-300"><Icon className="h-5 w-5" /></div><h3 className="mt-5 font-display text-2xl font-extrabold text-white">{title}</h3><p className="mt-3 max-w-lg text-sm leading-7 text-slate-400">{copy}</p><p className="mt-5 font-mono text-xs text-blue-300">{url}</p><Link to="/register" className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-white hover:text-blue-300">Explore this workflow <ArrowRight className="h-4 w-4" /></Link></div><div className={`marketing-feature-motion ${index % 2 ? "lg:order-1" : ""}`}><ProductPreview type={preview} /></div></article>)}</div></section>
 
-      {/* FEATURES BENTO */}
-      <section className="py-20 lg:py-28">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="max-w-2xl">
-            <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#F97316]">Modules</span>
-            <h2 className="mt-2 text-3xl sm:text-4xl lg:text-5xl font-extrabold font-display tracking-tight">
-              Everything your site needs. Nothing it doesn't.
-            </h2>
-            <p className="mt-4 text-gray-600">From a single mason's attendance to a multi-crore P&amp;L — one platform, every workflow.</p>
-          </div>
+      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28"><div className="max-w-2xl"><p className="text-xs font-bold uppercase tracking-[.2em] text-blue-300">Plans that grow with your work</p><h2 className="mt-3 font-display text-3xl font-extrabold text-white sm:text-4xl">Simple, clear pricing for construction teams.</h2><p className="mt-4 text-slate-400">The same Free, Pro and Enterprise plans are available inside your workspace. Pro prioritises BOQ, estimates and 2D planning; Enterprise adds furnished 3D planning and AI operations.</p></div><div className="mt-12 grid gap-5 md:grid-cols-3">{Object.entries(PLAN_FEATURES).map(([key, plan]) => <article key={key} className={`relative rounded-2xl border p-7 ${key === "PREMIUM" ? "border-blue-400 bg-[#101b30]" : "border-[#30323a] bg-[#111214]"}`}>{key === "PREMIUM" && <span className="absolute -top-3 left-6 rounded-full bg-blue-500 px-3 py-1 text-xs font-bold text-white">Most popular</span>}<h3 className="font-display text-2xl font-bold text-white">{plan.name}</h3><p className="mt-3 text-4xl font-extrabold text-white">{plan.price ? `₹${plan.price.toLocaleString("en-IN")}` : "₹0"}<span className="ml-1 text-sm font-medium text-slate-400">/month</span></p><ul className="mt-7 space-y-3 text-sm text-slate-300">{plan.features.slice(0, 7).map((feature) => <li key={feature} className="flex gap-2"><CheckCircle2 className="h-4 w-4 shrink-0 text-blue-400" />{feature}</li>)}</ul><Link to="/register" className="mt-8 inline-flex w-full items-center justify-center rounded-lg bg-blue-500 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-600">{key === "FREE" ? "Start free" : `Choose ${plan.name}`}</Link></article>)}</div></section>
 
-          <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map((f, i) => (
-              <div key={f.title} className="ss-card p-6 group relative overflow-hidden">
-                <div className="h-10 w-10 rounded-lg bg-[#171717] text-[#F97316] flex items-center justify-center mb-4 group-hover:bg-[#F97316] group-hover:text-white transition-colors">
-                  <f.icon className="h-5 w-5" />
-                </div>
-                <h3 className="font-display text-lg font-bold">{f.title}</h3>
-                <p className="mt-1 text-sm text-gray-600 leading-relaxed">{f.desc}</p>
-                <div className="mt-4 text-xs font-semibold text-[#F97316] flex items-center gap-1">
-                  Module {String(i + 1).padStart(2, "0")} <ChevronRight className="h-3.5 w-3.5" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <section className="border-y border-white/10 bg-[#0d0e10]"><div className="mx-auto grid max-w-7xl gap-10 px-4 py-20 sm:px-6 lg:grid-cols-[.7fr_1.3fr] lg:py-24"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-blue-300">Questions, answered</p><h2 className="mt-3 font-display text-3xl font-extrabold leading-tight text-white sm:text-4xl">SiteSeva Pro questions, answered clearly.</h2><p className="mt-4 text-sm leading-7 text-slate-400">The important product details, without sales jargon. If you need a walkthrough, our team is one email away.</p><Link to="/contact" className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-blue-300 hover:text-white">Talk to our team <ArrowRight className="h-4 w-4" /></Link></div><div className="border-t border-white/10">{faqs.map((item) => <Faq key={item[0]} item={item} />)}</div></div></section>
 
-      {/* DASHBOARD PREVIEW */}
-      <section className="py-16 lg:py-20 bg-[#171717] text-white relative overflow-hidden">
-        <div className="absolute inset-0 ss-grid-dots opacity-10" aria-hidden />
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-12 gap-10 items-center">
-            <div className="lg:col-span-5">
-              <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#F97316]">Dashboard</span>
-              <h2 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-extrabold font-display tracking-tight">
-                Numbers that move your business.
-              </h2>
-              <p className="mt-4 text-gray-300">
-                Active sites, budgets, materials and net profit — beautifully laid out. Drill into any site for tasks, labour, photos and daily reports.
-              </p>
-              <div className="mt-6 grid grid-cols-2 gap-3 max-w-md">
-                {[
-                  { k: "Active Sites", v: "14" },
-                  { k: "Net Profit", v: "₹82.4L" },
-                  { k: "Pending", v: "₹21.0L" },
-                  { k: "Material Cost", v: "₹38.6L" },
-                ].map((s) => (
-                  <div key={s.k} className="bg-white/5 border border-white/10 rounded-lg p-4">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{s.k}</div>
-                    <div className="mt-1 text-xl font-extrabold">{s.v}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="lg:col-span-7">
-              <div className="ss-card p-2 bg-white">
-                <img
-                  src="https://images.unsplash.com/photo-1479839672679-a46483c0e7c8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxNzV8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBidWlsZGluZyUyMGFyY2hpdGVjdHVyZSUyMGNvbnN0cnVjdGlvbnxlbnwwfHx8fDE3Nzk4NjE1Njl8MA&ixlib=rb-4.1.0&q=85"
-                  alt="Dashboard"
-                  className="w-full h-80 object-cover rounded-lg"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-      <section className="py-20 bg-gray-50">
-
-        <div className="mx-auto max-w-7xl px-4">
-
-          <h2 className="text-4xl font-bold text-center">
-            Built For Real Construction Work
-          </h2>
-
-          <p className="text-center text-gray-500 mt-3">
-            Everything your company needs
-            to run sites digitally.
-          </p>
-
-          <div className="grid md:grid-cols-3 gap-6 mt-12">
-
-            <div className="ss-card p-3">
-              <img
-                src="/screens/dashboard.png"
-                alt=""
-                className="rounded-lg"
-              />
-            </div>
-
-            <div className="ss-card p-3">
-              <img
-                src="/screens/site-detail.png"
-                alt=""
-                className="rounded-lg"
-              />
-            </div>
-
-            <div className="ss-card p-3">
-              <img
-                src="/screens/team.png"
-                alt=""
-                className="rounded-lg"
-              />
-            </div>
-
-          </div>
-
-        </div>
-
-      </section>
-      {/* PRICING */}
-      <section className="py-20 lg:py-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="max-w-2xl">
-            <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#F97316]">Pricing</span>
-            <h2 className="mt-2 text-3xl sm:text-4xl lg:text-5xl font-extrabold font-display tracking-tight">
-              Simple plans. Pay only when you scale.
-            </h2>
-          </div>
-          <div className="mt-12 grid gap-6 md:grid-cols-3">
-            {Object.entries(PLAN_FEATURES).map(([k, p]) => (
-              <div key={k} className={`rounded-2xl p-7 ${p.color} ${k === "PREMIUM" ? "shadow-lg" : "shadow-sm border border-gray-200"}`}>
-                {k === "PREMIUM" && (
-                  <span className="ss-chip bg-[#F97316] text-white mb-4">Most Popular</span>
-                )}
-                <h3 className={`font-display text-2xl font-extrabold ${k === "ENTERPRISE" ? "text-white" : "text-[#171717]"}`}>{p.name}</h3>
-                <div className={`mt-3 text-4xl font-extrabold font-display ${k === "ENTERPRISE" ? "text-white" : "text-[#171717]"}`}>
-                  {p.price === 0 ? "₹0" : `₹${p.price.toLocaleString("en-IN")}`}
-                  <span className={`text-sm font-medium ${k === "ENTERPRISE" ? "text-gray-300" : "text-gray-500"}`}>/month</span>
-                </div>
-                <ul className={`mt-6 space-y-2 text-sm ${k === "ENTERPRISE" ? "text-gray-200" : "text-gray-700"}`}>
-                  {p.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2">
-                      <CheckCircle2 className={`h-4 w-4 mt-0.5 ${k === "ENTERPRISE" ? "text-[#F97316]" : "text-emerald-500"}`} /> {f}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  to="/register"
-                  className={`mt-7 inline-flex justify-center w-full rounded-lg px-5 py-2.5 text-sm font-semibold transition-all ${k === "PREMIUM" ? "bg-[#F97316] text-white hover:bg-[#EA580C]" :
-                    k === "ENTERPRISE" ? "bg-[#F97316] text-white hover:bg-[#EA580C]" :
-                      "bg-[#171717] text-white hover:bg-[#262626]"
-                    }`}
-                  data-testid={`pricing-cta-${k.toLowerCase()}`}
-                >
-                  {k === "FREE" ? "Start Free" : k === "PREMIUM" ? "Choose Premium" : "Contact Sales"}
-                </Link>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* TESTIMONIALS */}
-      <section className="py-16 lg:py-20 bg-white">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="max-w-2xl">
-            <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#F97316]">Testimonials</span>
-            <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold font-display tracking-tight">Loved by builders across India.</h2>
-          </div>
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            {[
-              { q: "Cut our material wastage by 22% in 3 months. Worth every rupee.", n: "Rajesh Sharma", r: "MD, Sharma Constructions" },
-              { q: "My supervisors actually upload daily updates now — clients love the photos.", n: "Priya Desai", r: "Director, Green Valley Developers" },
-              { q: "Real-time P&L per site changed how we plan. Phenomenal product.", n: "Vikram Singh", r: "Founder, Coastal Builders" },
-            ].map((t, i) => (
-              <div key={i} className="ss-card p-6">
-                <Quote className="h-6 w-6 text-[#F97316] mb-3" />
-                <p className="text-[15px] text-gray-700 leading-relaxed">"{t.q}"</p>
-                <div className="mt-5 flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-[#171717] text-white flex items-center justify-center font-bold">
-                    {t.n.split(" ").map(x => x[0]).slice(0, 2).join("")}
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold">{t.n}</div>
-                    <div className="text-xs text-gray-500">{t.r}</div>
-                  </div>
-                  <div className="ml-auto flex text-[#EAB308]">
-                    {Array(5).fill(0).map((_, i) => <Star key={i} className="h-4 w-4 fill-current" />)}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section className="py-20 lg:py-24">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto">
-            <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#F97316]">FAQ</span>
-            <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold font-display tracking-tight">Questions, answered.</h2>
-          </div>
-          <div className="mt-10 space-y-3">
-            {FAQS.map((f) => <FAQItem key={f.q} {...f} />)}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="py-16">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-          <div className="rounded-3xl bg-[#171717] text-white p-10 lg:p-14 relative overflow-hidden">
-            <div className="absolute -right-12 -top-12 h-64 w-64 rounded-full bg-[#F97316]/20 blur-3xl" aria-hidden />
-            <div className="absolute -left-12 -bottom-12 h-64 w-64 rounded-full bg-[#EAB308]/10 blur-3xl" aria-hidden />
-            <div className="relative grid md:grid-cols-2 gap-8 items-center">
-              <div>
-                <h2 className="text-3xl sm:text-4xl font-extrabold font-display">Stop juggling WhatsApp groups and Excel sheets.</h2>
-                <p className="mt-3 text-gray-300">Start your first site free in under 2 minutes. No card required.</p>
-              </div>
-              <div className="flex flex-wrap gap-3 md:justify-end">
-                <Link to="/register" className="ss-btn-accent" data-testid="bottom-cta-register">Get Started <ArrowRight className="h-4 w-4" /></Link>
-                <Link to="/contact" className="inline-flex items-center justify-center gap-2 rounded-lg border-2 border-white/20 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/5">Talk to Sales</Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-12 bg-orange-50">
-
-        <div className="max-w-7xl mx-auto">
-
-          <div className="grid md:grid-cols-4 gap-6 text-center">
-
-            <div>
-              <h3 className="text-3xl font-bold">
-                200+
-              </h3>
-              <p>Contractors</p>
-            </div>
-
-            <div>
-              <h3 className="text-3xl font-bold">
-                500+
-              </h3>
-              <p>Projects Managed</p>
-            </div>
-
-            <div>
-              <h3 className="text-3xl font-bold">
-                ₹100Cr+
-              </h3>
-              <p>Tracked</p>
-            </div>
-
-            <div>
-              <h3 className="text-3xl font-bold">
-                99%
-              </h3>
-              <p>Client Satisfaction</p>
-            </div>
-
-          </div>
-
-        </div>
-
-      </section>
-
-      <PublicFooter />
-    </div>
-  );
+      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6"><div className="relative overflow-hidden rounded-3xl border border-blue-400/25 bg-[#111b31] p-8 sm:p-12"><div className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-blue-500/20 blur-3xl" /><div className="relative flex flex-col justify-between gap-7 md:flex-row md:items-center"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-blue-200">Ready when your next site is</p><h2 className="mt-3 font-display text-3xl font-extrabold text-white">Bring operations and planning into one workspace.</h2></div><div className="flex flex-wrap gap-3"><Link to="/register" className="ss-btn-accent">Create workspace <ArrowRight className="h-4 w-4" /></Link><Link to="/contact" className="inline-flex items-center gap-2 rounded-lg border border-white/20 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/10">Talk to us <MessageCircle className="h-4 w-4" /></Link></div></div></div></section>
+    </main>
+    <PublicFooter />
+  </div>;
 }

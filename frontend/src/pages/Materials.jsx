@@ -54,8 +54,8 @@ export default function Materials() {
       </div>
 
       {lowCount > 0 && (
-        <div className="ss-card p-4 border-l-4 border-l-[#F97316] flex items-center gap-3">
-          <AlertTriangle className="h-5 w-5 text-[#F97316]" />
+        <div className="ss-card p-4 border-l-4 border-l-[#3B82F6] flex items-center gap-3">
+          <AlertTriangle className="h-5 w-5 text-[#3B82F6]" />
           <span className="text-sm"><span className="font-bold">{lowCount}</span> material{lowCount > 1 && "s"} below stock threshold.</span>
         </div>
       )}
@@ -93,7 +93,7 @@ export default function Materials() {
                   <td>{m.stock < m.low_stock_threshold ? <Chip className="bg-red-100 text-red-700">Low stock</Chip> : <Chip className="bg-emerald-100 text-emerald-700">OK</Chip>}</td>
                   <td className="text-right">
                     {user.role !== "CLIENT" && (
-                      <button onClick={() => setOpenTxn({ open: true, material: m })} className="text-xs font-semibold text-[#F97316] hover:underline" data-testid={`mat-txn-${m.id}`}>
+                      <button onClick={() => setOpenTxn({ open: true, material: m })} className="text-xs font-semibold text-[#3B82F6] hover:underline" data-testid={`mat-txn-${m.id}`}>
                         Inward / Outward
                       </button>
                     )}
@@ -154,7 +154,7 @@ function TxnForm({ material, siteId, onDone }) {
       <form onSubmit={submit} className="grid gap-4">
         <div className="flex gap-2">
           <button type="button" onClick={()=>setF({...f, type:"INWARD"})} className={`flex-1 py-2 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 ${f.type==="INWARD"?"bg-emerald-100 text-emerald-700 border-2 border-emerald-300":"bg-gray-50 text-gray-600 border-2 border-transparent"}`} data-testid="txn-inward"><ArrowDownToLine className="h-4 w-4" /> Inward</button>
-          <button type="button" onClick={()=>setF({...f, type:"OUTWARD"})} className={`flex-1 py-2 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 ${f.type==="OUTWARD"?"bg-orange-100 text-orange-700 border-2 border-orange-300":"bg-gray-50 text-gray-600 border-2 border-transparent"}`} data-testid="txn-outward"><ArrowUpFromLine className="h-4 w-4" /> Outward</button>
+          <button type="button" onClick={()=>setF({...f, type:"OUTWARD"})} className={`flex-1 py-2 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 ${f.type==="OUTWARD"?"bg-blue-100 text-blue-700 border-2 border-blue-300":"bg-gray-50 text-gray-600 border-2 border-transparent"}`} data-testid="txn-outward"><ArrowUpFromLine className="h-4 w-4" /> Outward</button>
         </div>
         <div><label className="text-xs font-bold uppercase text-gray-500">Quantity ({material.unit})</label><input type="number" required className="ss-input mt-1" value={f.quantity} onChange={(e)=>setF({...f, quantity:e.target.value})} data-testid="txn-qty" /></div>
         {f.type === "INWARD" && (

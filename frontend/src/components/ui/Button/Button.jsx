@@ -2,7 +2,7 @@ import clsx from "clsx";
 
 const variants = {
     primary:
-        "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20",
+        "bg-[#3b82f6] hover:bg-[#2563eb] text-white shadow-lg shadow-blue-950/25",
 
     secondary:
         "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50",
@@ -14,7 +14,7 @@ const variants = {
         "bg-red-600 hover:bg-red-700 text-white",
 
     ai:
-        "bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-lg shadow-orange-500/20",
+        "bg-gradient-to-r from-blue-500 to-blue-500 hover:from-blue-600 hover:to-blue-600 text-white shadow-lg shadow-blue-500/20",
 };
 
 export default function Button({

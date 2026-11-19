@@ -21,7 +21,7 @@ export default function NavItem({
             flex
             items-center
 
-            h-11
+            h-10
 
             rounded-xl
 
@@ -32,14 +32,14 @@ export default function NavItem({
 
             ${isActive
               ? `
-                    bg-blue-600
+                    bg-[#1d2025]
                     text-white
-                    shadow-lg
-                    shadow-blue-900/20
+                    border
+                    border-[#30323a]
                   `
               : `
                     text-slate-400
-                    hover:bg-slate-900
+                    hover:bg-[#17191d]
                     hover:text-white
                   `
             }
@@ -59,7 +59,7 @@ export default function NavItem({
 
                 rounded-r-full
 
-                bg-white
+                bg-[#3b82f6]
               "
             />
           )}
@@ -115,7 +115,7 @@ export default function NavItem({
 
                 ${isActive
                   ? "bg-white/20 text-white"
-                  : "bg-blue-100 text-blue-700"
+                  : "bg-blue-500/15 text-blue-300"
                 }
               `}
             >

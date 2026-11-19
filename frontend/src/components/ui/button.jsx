@@ -28,8 +28,8 @@ export default function Button({
     success:
       "bg-emerald-600 text-white hover:bg-emerald-700",
 
-    orange:
-      "bg-orange-500 text-white hover:bg-orange-600",
+    blue:
+      "bg-blue-500 text-white hover:bg-blue-600",
 
   };
 

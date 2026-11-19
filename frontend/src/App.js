@@ -32,6 +32,8 @@ import DailyReports from "@/pages/DailyReports";
 import Notifications from "@/pages/Notifications";
 import Subscription from "@/pages/Subscription";
 import Settings from "@/pages/Settings";
+import HelpCenter from "@/pages/HelpCenter";
+import Security from "@/pages/Security";
 
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import Applications from "@/pages/admin/Applications";
@@ -41,6 +43,7 @@ import Subscriptions from "@/pages/admin/Subscriptions";
 import Revenue from "@/pages/admin/Revenue";
 import AdminPayments from "@/pages/admin/AdminPayments";
 import AuditLogs from "@/pages/admin/AuditLogs";
+import DesignCreditRequests from "@/pages/admin/DesignCreditRequests";
 import Branding from "@/pages/Branding";
 import DesignStudio from "@/pages/DesignStudio";
 import { BootstrapProvider } from "@/context/BootstrapContext";
@@ -128,6 +131,8 @@ function App() {
                     }
                   />
                   <Route path="settings" element={<Settings />} />
+                  <Route path="help" element={<HelpCenter />} />
+                  <Route path="security" element={<Security />} />
 
                   <Route path="admin" element={<Protected roles={["SUPER_ADMIN"]}><AdminDashboard /></Protected>} />
                   <Route path="admin/applications" element={<Protected roles={["SUPER_ADMIN"]}><Applications /></Protected>} />
@@ -136,6 +141,7 @@ function App() {
                   <Route path="admin/subscriptions" element={<Protected roles={["SUPER_ADMIN"]}><Subscriptions /></Protected>} />
                   <Route path="admin/revenue" element={<Protected roles={["SUPER_ADMIN"]}><Revenue /></Protected>} />
                   <Route path="admin/payments" element={<Protected roles={["SUPER_ADMIN"]}><AdminPayments /></Protected>} />
+                  <Route path="admin/design-credits" element={<Protected roles={["SUPER_ADMIN"]}><DesignCreditRequests /></Protected>} />
                   <Route path="admin/audit" element={<Protected roles={["SUPER_ADMIN"]}><AuditLogs /></Protected>} />
                 </Route>
 

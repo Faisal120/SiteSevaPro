@@ -14,12 +14,16 @@ class ActivitiesBuilder:
                 "type": "PAYMENT",
 
                 "title": payment.get(
+                    "type"
+                ) or payment.get(
                     "payment_type"
                 ),
 
                 "description": f"₹ {payment.get('amount',0):,.0f}",
 
                 "created_at": payment.get(
+                    "date"
+                ) or payment.get(
                     "created_at"
                 ),
 

@@ -7,6 +7,7 @@ import {
     TrendingUp,
     ArrowUpRight,
 } from "lucide-react";
+import { api } from "@/lib/api";
 
 export default function DashboardHeader({
     user,
@@ -14,6 +15,7 @@ export default function DashboardHeader({
     company,
 }) {
     const [time, setTime] = React.useState(new Date());
+    const [branding, setBranding] = React.useState(null);
 
     React.useEffect(() => {
         const timer = setInterval(() => {
@@ -22,6 +24,15 @@ export default function DashboardHeader({
 
         return () => clearInterval(timer);
     }, []);
+
+    React.useEffect(() => {
+        const loadBranding = () => api.get("/branding").then((response) => setBranding(response.data || null)).catch(() => {});
+        loadBranding();
+        window.addEventListener("siteseva:branding-updated", loadBranding);
+        return () => window.removeEventListener("siteseva:branding-updated", loadBranding);
+    }, []);
+    const identity = branding || company?.branding || {};
+    const health = Number(stats?.productivity) || (Number(stats?.total_sites) ? Math.round(((Number(stats?.completed_sites) || 0) / Number(stats.total_sites)) * 100) : 0);
 
     const greeting = () => {
         const h = time.getHours();
@@ -37,15 +48,12 @@ export default function DashboardHeader({
         relative
         overflow-hidden
 
-        rounded-[32px]
+        rounded-[22px]
 
         border
-        border-slate-200
+        border-[#30323a]
 
-        bg-gradient-to-r
-        from-[#0F3DDE]
-        via-[#2563EB]
-        to-[#3B82F6]
+        bg-[#111214]
 
         px-10
         py-10
@@ -55,8 +63,8 @@ export default function DashboardHeader({
         >
             {/* Decorative Blur */}
 
-            <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
-            <div className="absolute left-1/2 bottom-0 h-40 w-40 rounded-full bg-blue-300/20 blur-3xl" />
+            <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-blue-500/15 blur-3xl" />
+            <div className="absolute left-1/2 bottom-0 h-40 w-40 rounded-full bg-blue-300/10 blur-3xl" />
 
             <div
                 className="
@@ -95,7 +103,7 @@ export default function DashboardHeader({
                     >
                         <Sparkles size={16} />
 
-                        SiteSeva Pro Enterprise
+                        {identity.company_name || company?.name || "Construction workspace"}
                     </span>
 
                     <div>
@@ -119,17 +127,14 @@ export default function DashboardHeader({
                             className="
                 mt-3
 
-                text-blue-100
+                text-slate-400
 
                 max-w-2xl
                 leading-7
                 text-[15px]
               "
                         >
-                            Welcome back to SiteSeva Pro.
-
-                            Monitor your projects, teams, expenses,
-                            materials and reports from one place.
+                            Monitor live sites, team activity, procurement and finance from one shared workspace.
                         </p>
 
                     </div>
@@ -165,16 +170,16 @@ export default function DashboardHeader({
                     >
                         <div className="flex items-center gap-3">
 
-                            <Building2 size={22} />
+                            {identity.logo_url ? <img src={identity.logo_url} alt="Company logo" className="h-9 w-9 rounded-lg bg-white object-contain p-1" /> : <Building2 size={22} />}
 
                             <div>
 
-                                <p className="text-xs text-blue-100 uppercase">
+                                <p className="text-xs text-slate-400 uppercase">
                                     Company
                                 </p>
 
                                 <h3 className="font-semibold text-lg">
-                                    {company?.branding?.company_name}
+                                    {identity.company_name || company?.name || user?.company_name || "Your company"}
                                 </h3>
 
                             </div>
@@ -203,7 +208,7 @@ export default function DashboardHeader({
                                 size={20}
                             />
 
-                            <p className="text-xs text-blue-100">
+                            <p className="text-xs text-slate-400">
                                 Today
                             </p>
 
@@ -231,7 +236,7 @@ export default function DashboardHeader({
                                 size={20}
                             />
 
-                            <p className="text-xs text-blue-100">
+                            <p className="text-xs text-slate-400">
                                 Current Time
                             </p>
 
@@ -251,11 +256,12 @@ export default function DashboardHeader({
 
               rounded-2xl
 
-              bg-white
+              border border-[#30323a]
+              bg-[#17191d]
 
               p-5
 
-              text-slate-800
+              text-white
             "
                     >
                         <div>
@@ -265,7 +271,7 @@ export default function DashboardHeader({
                   text-xs
                   uppercase
 
-                  text-slate-500
+                  text-slate-300
                 "
                             >
                                 Company Health
@@ -275,12 +281,12 @@ export default function DashboardHeader({
                                 className="
                   mt-1
 
-                  text-4xl
+                  text-4xl text-white
 
                   font-bold
                 "
                             >
-                                {Math.round(stats?.productivity ?? 0)}%
+                                {health}%
                             </h2>
 
                         </div>
@@ -293,8 +299,8 @@ export default function DashboardHeader({
                 rounded-2xl
 
                 bg-gradient-to-br
-from-blue-100
-to-blue-200
+from-blue-500/25
+to-blue-400/15
 
                 flex
                 items-center
@@ -303,23 +309,23 @@ to-blue-200
                         >
                             <TrendingUp
                                 size={26}
-                                className="text-blue-700"
+                                className="text-blue-300"
                             />
                         </div>
 
                         <div
                             className="
 rounded-full
-bg-green-100
+bg-blue-500/15
 px-3
 py-1
 text-xs
 font-semibold
-text-green-700
+text-blue-200
 "
                         >
 
-                            Excellent
+                            {health >= 80 ? "Excellent" : health >= 50 ? "On track" : "Needs review"}
 
                         </div>
 

@@ -52,8 +52,8 @@ export default function ContractorRegister() {
     <div className="min-h-screen ss-mesh py-10">
       <div className="mx-auto max-w-3xl px-4 sm:px-6">
         <Link to="/" className="flex items-center gap-2 mb-6">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#171717] text-[#F97316]"><HardHat className="h-5 w-5" /></div>
-          <span className="font-display text-lg font-extrabold">Site Seva <span className="text-[#F97316]">Pro</span></span>
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#171717] text-[#3B82F6]"><HardHat className="h-5 w-5" /></div>
+          <span className="font-display text-lg font-extrabold">Site Seva <span className="text-[#3B82F6]">Pro</span></span>
         </Link>
         <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">Contractor Registration</h1>
         <p className="mt-2 text-gray-600">Fill the form below. Our admin reviews and emails you your credentials.</p>

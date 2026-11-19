@@ -1,3 +1,6 @@
+from services.dashboard.builders.finance_builder import FinanceBuilder
+
+
 class ChartsBuilder:
 
     @staticmethod
@@ -50,9 +53,7 @@ class ChartsBuilder:
 
         for payment in data.get("payments", []):
 
-            created = payment.get(
-                "created_at"
-            )
+            created = payment.get("date") or payment.get("created_at")
 
             if not created:
 
@@ -74,19 +75,15 @@ class ChartsBuilder:
 
             )
 
-            if payment.get("payment_type") == "CLIENT_RECEIVED":
+            if FinanceBuilder.payment_type(payment) == "CLIENT_RECEIVED":
 
-                cashflow[month]["income"] += payment.get(
-                    "amount",
-                    0,
-                )
+                cashflow[month]["income"] += FinanceBuilder.payment_amount(payment)
 
-            else:
+            elif FinanceBuilder.is_expense_type(
+                FinanceBuilder.payment_type(payment)
+            ):
 
-                cashflow[month]["expense"] += payment.get(
-                    "amount",
-                    0,
-                )
+                cashflow[month]["expense"] += FinanceBuilder.payment_amount(payment)
 
         for row in data.get("attendance", []):
 

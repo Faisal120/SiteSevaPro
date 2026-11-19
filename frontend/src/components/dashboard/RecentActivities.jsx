@@ -30,7 +30,7 @@ const config = {
 
         bg: "bg-blue-100",
 
-        color: "text-blue-700",
+        color: "text-blue-900",
 
         title: "Daily Progress Report",
 
@@ -40,9 +40,9 @@ const config = {
 
         icon: Package,
 
-        bg: "bg-orange-100",
+        bg: "bg-blue-100",
 
-        color: "text-orange-700",
+        color: "text-blue-700",
 
         title: "Material Updated",
 

@@ -1,25 +1,23 @@
-from dataclasses import dataclass
-from typing import List
-
+from typing import List, Optional
+from dataclasses import dataclass, field
 
 @dataclass
 class Room:
-
     name: str
+    room_type: str
 
     width: float
-
     length: float
 
-    preferred_zone: str | None = None
+    x: float = 0.0
+    y: float = 0.0
 
-    adjacent_to: List[str] | None = None
+    preferred_zone: Optional[str] = None
 
-    avoid: List[str] | None = None
+    adjacent_to: list[str] = field(default_factory=list)
+    avoid: list[str] = field(default_factory=list)
 
-    x: float = 0
-
-    y: float = 0
+    graph_id: Optional[str] = None
 
 
 @dataclass

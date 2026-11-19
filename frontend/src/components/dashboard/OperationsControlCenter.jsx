@@ -115,9 +115,9 @@ export default function OperationsControlCenter({
                                     chip: "bg-red-100 text-red-700",
                                 },
                                 MEDIUM: {
-                                    bg: "bg-amber-50",
-                                    text: "text-amber-600",
-                                    chip: "bg-amber-100 text-amber-700",
+                                    bg: "bg-blue-50",
+                                    text: "text-blue-600",
+                                    chip: "bg-blue-100 text-blue-700",
                                 },
                                 LOW: {
                                     bg: "bg-blue-50",

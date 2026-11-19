@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 const TYPE_CHIP = {
   CLIENT_RECEIVED: "bg-emerald-100 text-emerald-700",
-  EXPENSE: "bg-orange-100 text-orange-700",
+  EXPENSE: "bg-blue-100 text-blue-700",
   LABOUR: "bg-blue-100 text-blue-700",
   MATERIAL: "bg-yellow-100 text-yellow-800",
   SUBSCRIPTION: "bg-purple-100 text-purple-700",
@@ -52,7 +52,7 @@ export default function Payments() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
         <StatCard label="Total Received" value={inr(received)} icon={TrendingUp} accent="ink" testId="pay-stat-received" />
-        <StatCard label="Total Expenses" value={inr(expense)} icon={TrendingDown} accent="orange" testId="pay-stat-expense" />
+        <StatCard label="Total Expenses" value={inr(expense)} icon={TrendingDown} accent="blue" testId="pay-stat-expense" />
         <StatCard label="Net Profit" value={inr(profit)} icon={Activity} accent="yellow" testId="pay-stat-profit" />
         <StatCard label="Entries" value={list.length} icon={Wallet} accent="soft" testId="pay-stat-count" />
       </div>

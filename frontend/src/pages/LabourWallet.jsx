@@ -42,7 +42,7 @@ export default function LabourWallet() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <StatCard label="Total Earned" value={inr(data.total_earned)} icon={TrendingUp} accent="ink" testId="wallet-stat-earned" />
-        <StatCard label="Total Paid" value={inr(data.total_paid)} icon={TrendingDown} accent="orange" testId="wallet-stat-paid" />
+        <StatCard label="Total Paid" value={inr(data.total_paid)} icon={TrendingDown} accent="blue" testId="wallet-stat-paid" />
         <StatCard label="Outstanding Balance" value={inr(data.total_balance)} icon={Wallet} accent="yellow" testId="wallet-stat-balance" />
       </div>
 
@@ -61,7 +61,7 @@ export default function LabourWallet() {
                   <td>{inr(r.daily_wage)}</td>
                   <td className="font-semibold text-emerald-600">{inr(r.wallet.total_earned)}</td>
                   <td className="text-gray-700">{inr(r.wallet.total_paid)}</td>
-                  <td className={`font-bold ${r.wallet.balance > 0 ? "text-[#F97316]" : "text-gray-500"}`}>{inr(r.wallet.balance)}</td>
+                  <td className={`font-bold ${r.wallet.balance > 0 ? "text-[#3B82F6]" : "text-gray-500"}`}>{inr(r.wallet.balance)}</td>
                   <td className="text-right">
                     <div className="flex justify-end gap-2">
                       <button onClick={() => nav(`/app/labour/wallet/${r.id}`)} className="text-xs font-semibold text-[#171717] hover:underline" data-testid={`wallet-view-${r.id}`}>
@@ -98,7 +98,7 @@ function PayForm({ row, onDone }) {
   return (
     <DialogContent>
       <DialogHeader><DialogTitle>Pay {row.name}</DialogTitle></DialogHeader>
-      <div className="text-sm text-gray-500 mb-3">Outstanding: <span className="font-bold text-[#F97316]">{inr(row.wallet.balance)}</span></div>
+      <div className="text-sm text-gray-500 mb-3">Outstanding: <span className="font-bold text-[#3B82F6]">{inr(row.wallet.balance)}</span></div>
       <form onSubmit={submit} className="grid gap-4">
         <div><label className="text-xs font-bold uppercase text-gray-500">Type</label>
           <Select value={f.type} onValueChange={(v) => setF({ ...f, type: v })}>

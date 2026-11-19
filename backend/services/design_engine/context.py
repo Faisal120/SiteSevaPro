@@ -1,29 +1,36 @@
 class DesignContext:
 
-    body = None
+    def __init__(self):
 
-    plot = None
+        self.body = None
 
-    rooms = []
+        self.plot = None
 
-    walls = []
+        self.rooms = []
+        self.walls = []
+        self.doors = []
+        self.windows = []
+        self.furniture = []
+        self.corridors = []
+        self.stairs = []
 
-    doors = []
+        self.parking = None
+        self.garden = None
 
-    windows = []
+        self.graph = None
+        self.graph_json = {}
 
-    furniture = []
+        self.score = 0
+        self.errors = []
 
-    graph = None
+        self.svg = ""
 
-    svg = ""
+        self.schedules = []
+        self.drawings = []
+        self.exports = {}
 
-    schedules = []
+        self.metadata = {}
 
-    drawings = []
+        self.project = None
 
-    project = None
-
-    metadata = {}
-    
-    exports = {}
+        self.response = {}

@@ -30,7 +30,7 @@ export default function SidebarFooter({ logout }) {
         ${
           danger
             ? "text-red-400 hover:bg-red-500/10 hover:text-red-300"
-            : "text-slate-400 hover:bg-slate-900 hover:text-white"
+            : "text-slate-400 hover:bg-[#17191d] hover:text-white"
         }
       `}
     >
@@ -65,7 +65,7 @@ export default function SidebarFooter({ logout }) {
         pt-6
 
         border-t
-        border-slate-800
+        border-[#25272c]
 
         space-y-1
       "
@@ -95,7 +95,7 @@ export default function SidebarFooter({ logout }) {
 
           rounded-xl
 
-          bg-slate-900
+          bg-[#111214]
 
           p-3
         "

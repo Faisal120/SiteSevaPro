@@ -35,7 +35,7 @@ class DrawingGenerator:
 
         )
 
-        sheet.svg = design["svg"]
+        sheet.svg = design.svg
 
         return [
 

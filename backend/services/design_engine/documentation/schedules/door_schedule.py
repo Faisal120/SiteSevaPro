@@ -29,15 +29,10 @@ class DoorSchedule:
         for i, door in enumerate(context.doors):
 
             schedule.add_row(
-
                 ID=f"D{i+1}",
-
-                Width=door.width,
-
-                Height=door.height,
-
-                Room=door.room,
-
+                Width=getattr(door, "width", ""),
+                Height=getattr(door, "height", "-"),
+                Room=f"{getattr(door, 'room_a', '')} ↔ {getattr(door, 'room_b', '')}",
             )
 
         return schedule

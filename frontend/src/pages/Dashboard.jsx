@@ -163,28 +163,28 @@ function ContractorDash({
       <div className="grid md:grid-cols-4 gap-4">
 
         <button
-          className="ss-card p-5 text-left hover:border-orange-500"
+          className="ss-card p-5 text-left hover:border-blue-500"
           onClick={() => nav("/app/sites")}
         >
           Manage Sites
         </button>
 
         <button
-          className="ss-card p-5 text-left hover:border-orange-500"
+          className="ss-card p-5 text-left hover:border-blue-500"
           onClick={() => nav("/app/team")}
         >
           Manage Team
         </button>
 
         <button
-          className="ss-card p-5 text-left hover:border-orange-500"
+          className="ss-card p-5 text-left hover:border-blue-500"
           onClick={() => nav("/app/materials")}
         >
           Materials
         </button>
 
         <button
-          className="ss-card p-5 text-left hover:border-orange-500"
+          className="ss-card p-5 text-left hover:border-blue-500"
           onClick={() => nav("/app/payments")}
         >
           Payments
@@ -339,12 +339,12 @@ function ContractorDash({
           <div className="ss-card p-5 lg:col-span-2">
             <SectionTitle
               title="Your Sites"
-              action={<button onClick={() => nav("/app/sites")} className="text-sm font-semibold text-[#F97316] flex items-center gap-1">All sites <ArrowRight className="h-3.5 w-3.5" /></button>}
+              action={<button onClick={() => nav("/app/sites")} className="text-sm font-semibold text-[#3B82F6] flex items-center gap-1">All sites <ArrowRight className="h-3.5 w-3.5" /></button>}
             />
             <div className="space-y-3">
               {sites.slice(0, 4).map((s) => (
-                <button key={s.id} onClick={() => nav(`/app/sites/${s.id}`)} className="w-full text-left flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 border border-gray-100" data-testid={`dash-site-${s.id}`}>
-                  <div className="h-12 w-12 rounded-lg bg-[#171717] text-[#F97316] flex items-center justify-center"><Building2 className="h-5 w-5" /></div>
+                <button key={s.id} onClick={() => nav(`/app/sites/${s.id}`)} className="w-full text-left flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 border border-blue-900" data-testid={`dash-site-${s.id}`}>
+                  <div className="h-12 w-12 rounded-lg bg-[#171717] text-[#3B82F6] flex items-center justify-center"><Building2 className="h-5 w-5" /></div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2"><span className="font-semibold truncate">{s.name}</span><Chip className={SITE_STATUS_COLOR[s.status]}>{s.status}</Chip></div>
                     <div className="text-xs text-gray-500">{s.location} · {inr(s.budget)}</div>
@@ -352,7 +352,7 @@ function ContractorDash({
                   <div className="text-right">
                     <div className="text-sm font-bold">{s.progress}%</div>
                     <div className="w-24 h-1.5 bg-gray-200 rounded-full mt-1 overflow-hidden">
-                      <div className="h-full bg-[#F97316]" style={{ width: `${s.progress}%` }} />
+                      <div className="h-full bg-[#3B82F6]" style={{ width: `${s.progress}%` }} />
                     </div>
                   </div>
                 </button>
@@ -399,7 +399,7 @@ function ContractorDash({
 
       {/* <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
         <StatCard label="Active Sites" value={`${stats.active_sites}/${stats.total_sites}`} icon={Building2} accent="ink" testId="stat-active-sites" />
-        <StatCard label="Total Budget" value={inr(stats.total_budget)} icon={Wallet} accent="orange" testId="stat-total-budget" />
+        <StatCard label="Total Budget" value={inr(stats.total_budget)} icon={Wallet} accent="blue" testId="stat-total-budget" />
         <StatCard label="Total Received" value={inr(stats.total_received)} icon={TrendingUp} accent="yellow" trend={`Pending ${inr(stats.pending_payments)}`} testId="stat-received" />
         <StatCard label="Net Profit" value={inr(stats.net_profit)} icon={Activity} accent="soft" testId="stat-profit" />
         <StatCard
@@ -410,7 +410,7 @@ function ContractorDash({
             ).length
           }
           icon={Users}
-          accent="orange"
+          accent="blue"
         />
 
         <StatCard
@@ -433,15 +433,11 @@ function ContractorDash({
 function SupervisorDash({ user, sites, greeting, nav }) {
   return (
     <div className="space-y-6 ss-fade-in">
-      <div>
-        <p className="text-sm text-gray-500">{greeting},</p>
-        <h1 className="font-display text-4xl font-extrabold tracking-tight">{user.full_name}</h1>
-        <p className="text-sm text-gray-500 mt-1">You're assigned to {sites.length} site{sites.length !== 1 && "s"}.</p>
-      </div>
+      <WorkspaceIntro eyebrow="Site operations" title={`${greeting}, ${user.full_name}`} description={`You have ${sites.length} assigned site${sites.length !== 1 ? "s" : ""}. Record field updates, attendance and material movements in one place.`} />
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
         <StatCard label="My Sites" value={sites.length} icon={Building2} accent="ink" testId="sup-sites" />
-        <StatCard label="Today" value={fmtDate(new Date())} icon={Activity} accent="orange" testId="sup-today" />
+        <StatCard label="Today" value={fmtDate(new Date())} icon={Activity} accent="blue" testId="sup-today" />
         <StatCard label="Role" value={user.role} icon={Users} accent="yellow" testId="sup-role" />
         <StatCard
           label="Completed Sites"
@@ -462,7 +458,7 @@ function SupervisorDash({ user, sites, greeting, nav }) {
             ).length
           }
           icon={Activity}
-          accent="orange"
+          accent="blue"
         />
       </div>
 
@@ -483,7 +479,7 @@ function SupervisorDash({ user, sites, greeting, nav }) {
                 <div className="text-sm font-bold">{s.progress}%</div>
               </div>
               <div className="w-full h-1.5 bg-gray-200 rounded-full mt-1 overflow-hidden">
-                <div className="h-full bg-[#F97316]" style={{ width: `${s.progress}%` }} />
+                <div className="h-full bg-[#3B82F6]" style={{ width: `${s.progress}%` }} />
               </div>
             </button>
           ))}
@@ -499,16 +495,11 @@ function SupervisorDash({ user, sites, greeting, nav }) {
 function ClientDash({ user, sites, greeting, nav, stats }) {
   return (
     <div className="space-y-6 ss-fade-in">
-      <div>
-        <p className="text-sm text-gray-500">{greeting},</p>
-        <h1 className="font-display text-4xl font-extrabold tracking-tight">{user.full_name}</h1>
-        <p className="text-sm text-gray-500 mt-1">Welcome to your project portal.</p>
-
-      </div>
+      <WorkspaceIntro eyebrow="Project portal" title={`${greeting}, ${user.full_name}`} description="Follow progress, payment milestones and verified updates from your construction team." />
       <div className="grid md:grid-cols-2 gap-5">
         {sites.map((s) => (
           <div key={s.id} className="ss-card overflow-hidden">
-            <img src="https://images.pexels.com/photos/1816030/pexels-photo-1816030.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=300&w=600" alt="" className="w-full h-40 object-cover" />
+            {(s.cover_image || s.cover_photo_url || s.image_url) ? <img src={s.cover_image || s.cover_photo_url || s.image_url} alt={s.name} className="h-40 w-full object-cover" /> : <div className="flex h-40 items-end bg-gradient-to-br from-[#111214] via-[#172554] to-[#1e3a8a] p-5"><span className="font-display text-4xl font-extrabold text-white/90">{s.name?.slice(0, 1)?.toUpperCase() || "S"}</span></div>}
             <div className="p-5">
               <div className="flex items-center justify-between">
                 <h3 className="font-display font-bold text-lg">{s.name}</h3>
@@ -539,4 +530,8 @@ function ClientDash({ user, sites, greeting, nav, stats }) {
       </div>
     </div>
   );
+}
+
+function WorkspaceIntro({ eyebrow, title, description }) {
+  return <section className="relative overflow-hidden rounded-[20px] border border-[#30323a] bg-[#111214] px-6 py-7"><div className="absolute -right-14 -top-14 h-48 w-48 rounded-full bg-blue-500/15 blur-3xl" /><div className="relative"><p className="text-xs font-semibold uppercase tracking-[.18em] text-blue-400">{eyebrow}</p><h1 className="mt-2 font-display text-3xl font-extrabold tracking-tight text-white sm:text-4xl">{title}</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-gray-400">{description}</p></div></section>;
 }

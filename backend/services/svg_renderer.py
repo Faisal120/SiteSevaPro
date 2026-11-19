@@ -41,6 +41,19 @@ class SVGRenderer:
     FONT = 18
 
     PADDING = 80
+    
+    def _value(self, obj, key, default=None):
+        """
+        Supports both dict-based and object-based models.
+        """
+
+        if obj is None:
+            return default
+
+        if isinstance(obj, dict):
+            return obj.get(key, default)
+
+        return getattr(obj, key, default)
 
     def __init__(self):
 
@@ -207,8 +220,8 @@ class SVGRenderer:
 
     def _draw_rooms(self):
 
-        rooms = self.layout.get(
-            "rooms",
+        rooms = (self.layout.get(
+            "rooms") or
             [],
         )
 
@@ -221,13 +234,11 @@ class SVGRenderer:
     room,
 ):
 
-        x = self._sx(room["x"])
+        x = self._sx(self._value(room, "x", 0))
+        y = self._sy(self._value(room, "y", 0))
 
-        y = self._sy(room["y"])
-
-        width = self._sw(room["width"])
-
-        height = self._sh(room["height"])
+        width = self._sw(self._value(room, "width", 0))
+        height = self._sh(self._value(room, "height", 0))
 
         self._draw_wall(
             x,
@@ -268,72 +279,22 @@ class SVGRenderer:
         
     def _draw_corridors(self):
 
-        for corridor in self.layout.get(
-
-            "corridors",
-
-            [],
-
-        ):
+        for corridor in (self.layout.get("corridors") or []):
 
             SubElement(
-
                 self.svg,
-
                 "rect",
-
                 {
-
-                    "x": str(
-
-                        self._sx(
-
-                            corridor["x"]
-
-                        )
-
-                    ),
-
-                    "y": str(
-
-                        self._sy(
-
-                            corridor["y"]
-
-                        )
-
-                    ),
-
-                    "width": str(
-
-                        self._sw(
-
-                            corridor["width"]
-
-                        )
-
-                    ),
-
-                    "height": str(
-
-                        self._sh(
-
-                            corridor["height"]
-
-                        )
-
-                    ),
-
+                    "x": str(self._sx(self._value(corridor, "x", 0))),
+                    "y": str(self._sy(self._value(corridor, "y", 0))),
+                    "width": str(self._sw(self._value(corridor, "width", 0))),
+                    "height": str(self._sh(self._value(corridor, "height", 0))),
                     "fill": "#ECECEC",
-
                     "stroke": "#999",
-
                     "stroke-width": "1",
-
                 },
-
             )
-        
+            
     def _room_label(
 
     self,
@@ -354,12 +315,14 @@ class SVGRenderer:
 
         cy = y + height / 2
 
-        name = room.get(
-            "name",
-            "",
-        )
+        name = self._value(room, "name", "")
 
-        size = f'{room["width"]} x {room["height"]}'
+        size = (
+            f'{self._value(room,"width",0)} x '
+            f'{self._value(room,"height",0)}'
+        )
+        
+        room_name = self._value(room, "name", "")
 
         SubElement(
 
@@ -406,9 +369,9 @@ class SVGRenderer:
                 "font-family": "Arial",
 
                 "fill": self.ROOM_COLORS.get(
-                room["name"],
-                "#FFFFFF",
-            ),
+                    room_name.split("_")[0],   # Bedroom_1 -> Bedroom
+                    "#FFFFFF",
+                ),
 
             },
 
@@ -455,22 +418,24 @@ class SVGRenderer:
         
 
     def _draw_doors(self):
+        
+        doors = self.layout.get("doors") or []
 
-        for door in self.layout.get(
+        print("\n========== DOORS DEBUG ==========")
+        print("doors type:", type(doors))
+        print("doors len :", len(doors))
+        
+        for i, door in enumerate(doors):
+            print(i, type(door), door)
 
-            "doors",
+        print("=================================\n")
 
-            [],
+        for door in (self.layout.get("doors") or []):
 
-        ):
-
-            x = self._sx(door["x"])
-
-            y = self._sy(door["y"])
-
-            width = self._sw(door["width"])
-
-            wall = door["wall"]
+            x = self._sx(self._value(door, "x", 0))
+            y = self._sy(self._value(door, "y", 0))
+            width = self._sw(self._value(door, "width", 1))
+            wall = self._value(door, "wall", "north")
 
             if wall in ("east", "west"):
 
@@ -530,16 +495,12 @@ class SVGRenderer:
         door,
     ):
 
-        x = self._sx(door["x"])
+        x = self._sx(self._value(door, "x", 0))
 
-        y = self._sy(door["y"])
+        y = self._sy(self._value(door, "y", 0))
 
-        width = self._sw(door["width"])
-
-        wall = door.get(
-            "wall",
-            "north",
-        )
+        width = self._sw(self._value(door, "width", 1))
+        wall = self._value(door, "wall", "north")
 
         if wall == "north":
 
@@ -648,9 +609,9 @@ class SVGRenderer:
         
     def _draw_windows(self):
 
-        for window in self.layout.get(
+        for window in (self.layout.get(
 
-            "windows",
+            "windows") or
 
             [],
 
@@ -663,19 +624,12 @@ class SVGRenderer:
     window,
 ):
 
-        x = self._sx(window["x"])
+        x = self._sx(self._value(window, "x", 0))
 
-        y = self._sy(window["y"])
+        y = self._sy(self._value(window, "y", 0))
 
-        width = self._sw(window["width"])
-
-        wall = window.get(
-
-            "wall",
-
-            "north",
-
-        )
+        width = self._sw(self._value(window, "width", 1))
+        wall = self._value(window, "wall", "north")
 
         if wall in ("north", "south"):
 
@@ -731,21 +685,20 @@ class SVGRenderer:
 
     def _draw_stairs(self):
 
-        for stair in self.layout.get(
+        for stair in (self.layout.get(
 
-            "stairs",
+            "stairs") or
 
             [],
 
         ):
 
-            x=self._sx(stair["x"])
+            x=self._sx(self._value(stair, "x", 0))
 
-            y=self._sy(stair["y"])
+            y=self._sy(self._value(stair, "y", 0))
 
-            w=self._sw(stair["width"])
-
-            h=self._sh(stair["height"])
+            w = self._sw(self._value(stair, "width", 0))
+            h = self._sh(self._value(stair, "height", 0))
 
             steps=10
 
@@ -865,21 +818,16 @@ class SVGRenderer:
 
     def _draw_parking(self):
 
-        for parking in self.layout.get(
+        for parking in (self.layout.get(
 
-            "parking",
+            "parking") or []):
 
-            [],
+            x = self._sx(self._value(parking, "x", 0))
 
-        ):
+            y = self._sy(self._value(parking, "y", 0))
 
-            x = self._sx(parking["x"])
-
-            y = self._sy(parking["y"])
-
-            w = self._sw(parking["width"])
-
-            h = self._sh(parking["height"])
+            w = self._sw(self._value(parking, "width", 0))
+            h = self._sh(self._value(parking, "height", 0))
 
             SubElement(
 
@@ -959,21 +907,18 @@ class SVGRenderer:
 
     def _draw_garden(self):
 
-        for garden in self.layout.get(
+        for garden in (self.layout.get(
 
-            "garden",
+            "garden") or
 
-            [],
+            []):
 
-        ):
+            x=self._sx(self._value(garden, "x", 0))
 
-            x=self._sx(garden["x"])
+            y=self._sy(self._value(garden, "y", 0))
 
-            y=self._sy(garden["y"])
-
-            w=self._sw(garden["width"])
-
-            h=self._sh(garden["height"])
+            w = self._sw(self._value(garden, "width", 0))
+            h = self._sh(self._value(garden, "height", 0))
 
             SubElement(
 

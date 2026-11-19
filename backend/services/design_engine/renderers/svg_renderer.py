@@ -33,6 +33,11 @@ from services.design_engine.renderers.door_symbol_renderer import (
     door_symbol_renderer,
 )
 
+from services.design_engine.renderers.site_feature_renderer import (
+    site_feature_renderer,
+)
+from services.design_engine.renderers.furniture_renderer import furniture_renderer
+
 
 from services.design_engine.renderers.annotation.dimension_renderer import (
     dimension_renderer,
@@ -89,6 +94,14 @@ class SVGRenderer:
             context,
             layout["windows"],
         )
+
+        site_feature_renderer.render(
+            context,
+            layout["plot"],
+            layout["rooms"],
+        )
+
+        furniture_renderer.render(context, layout["rooms"])
 
         label_renderer.render(
             context,

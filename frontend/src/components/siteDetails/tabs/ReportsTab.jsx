@@ -79,7 +79,7 @@ export default function ReportsTab({
 
                     icon={Clock3}
 
-                    color="orange"
+                    color="blue"
 
                 />
 
@@ -287,7 +287,7 @@ function StatusBadge({ status }) {
 
         Approved: "bg-green-100 text-green-700",
 
-        Pending: "bg-orange-100 text-orange-700",
+        Pending: "bg-blue-100 text-blue-700",
 
         Rejected: "bg-red-100 text-red-700"
 
@@ -327,7 +327,7 @@ function StatCard({
 
         green: "bg-green-50 text-green-600",
 
-        orange: "bg-orange-50 text-orange-600",
+        blue: "bg-blue-50 text-blue-600",
 
         red: "bg-red-50 text-red-600"
 

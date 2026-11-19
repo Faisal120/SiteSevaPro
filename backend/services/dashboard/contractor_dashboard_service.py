@@ -16,6 +16,8 @@ from services.dashboard.builders.stats_builder import (
     StatsBuilder,
 )
 
+from services.dashboard.builders.finance_builder import FinanceBuilder
+
 from services.dashboard.builders.charts_builders import ChartsBuilder
 from services.dashboard.builders.photos_builder import PhotosBuilder
 from services.dashboard.builders.activities_builder import ActivitiesBuilder
@@ -51,6 +53,8 @@ class ContractorDashboardService:
             "team": dashboard["team"],
 
             "charts": ChartsBuilder.build(dashboard),
+
+            "payments": dashboard["payments"][:20],
 
             "latestPhotos": PhotosBuilder.build(
                 dashboard["reports"],
@@ -173,6 +177,8 @@ class ContractorDashboardService:
 
         )
 
+        finance = FinanceBuilder.build(payments, sites)
+
         return {
 
             "company": company,
@@ -204,6 +210,8 @@ class ContractorDashboardService:
             "completed_tasks": completed_tasks,
 
             "todays_reports": todays_reports,
+
+            **finance,
 
         }
 

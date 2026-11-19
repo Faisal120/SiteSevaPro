@@ -36,7 +36,7 @@ export default function SiteFinancialSummary({ site }) {
     {
       title: "Pending",
       value: pending,
-      color: "bg-orange-50 text-orange-600",
+      color: "bg-blue-50 text-blue-600",
       icon: CreditCard
     }
   ];

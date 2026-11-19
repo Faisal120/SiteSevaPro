@@ -99,7 +99,7 @@ export default function SiteProgressTimeline({
 
                                             <Clock3
 
-                                                className="text-orange-500"
+                                                className="text-blue-500"
 
                                                 size={24}
 
@@ -149,7 +149,7 @@ export default function SiteProgressTimeline({
 
                                             isCurrent && (
 
-                                                <span className="text-sm text-orange-600 font-semibold">
+                                                <span className="text-sm text-blue-600 font-semibold">
 
                                                     {progress}%
 

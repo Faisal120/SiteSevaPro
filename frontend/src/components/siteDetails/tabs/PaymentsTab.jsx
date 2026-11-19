@@ -54,7 +54,7 @@ export default function PaymentsTab({
                     title="Pending"
                     value={`₹${pending.toLocaleString("en-IN")}`}
                     icon={Clock3}
-                    color="orange"
+                    color="blue"
                 />
 
                 <StatsCard
@@ -218,7 +218,7 @@ ${payment.status === "Paid"
 
                                                         ?
 
-                                                        "bg-orange-100 text-orange-700"
+                                                        "bg-blue-100 text-blue-700"
 
                                                         :
 

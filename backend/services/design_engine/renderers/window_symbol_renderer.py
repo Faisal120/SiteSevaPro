@@ -5,6 +5,8 @@ Window Symbol Renderer
 
 class WindowSymbolRenderer:
 
+    DEFAULT_WIDTH = 1.2
+
     def render(
         self,
         context,
@@ -13,23 +15,42 @@ class WindowSymbolRenderer:
 
         for window in windows:
 
-            x = context.margin + window["x"] * context.scale
+            if isinstance(window, dict):
 
-            y = context.margin + window["y"] * context.scale
+                x = window.get("x", 0)
+                y = window.get("y", 0)
+                width = window.get(
+                    "width",
+                    self.DEFAULT_WIDTH,
+                )
+                wall = window.get("wall", "north")
 
-            length = window.get("width", 1.2) * context.scale
+            else:
+
+                x = getattr(window, "x", 0)
+                y = getattr(window, "y", 0)
+                width = getattr(
+                    window,
+                    "width",
+                    self.DEFAULT_WIDTH,
+                )
+                wall = getattr(window, "wall", "north")
+
+            x = context.margin + x * context.scale
+            y = context.margin + y * context.scale
+            length = width * context.scale
+
+            wall = wall.upper()
+            if wall in {"EAST", "WEST"}:
+                x1, y1, x2, y2 = x, y - length / 2, x, y + length / 2
+            else:
+                x1, y1, x2, y2 = x - length / 2, y, x + length / 2, y
 
             context.elements.append(
-                f"""
-                <line
-                    x1="{x}"
-                    y1="{y}"
-                    x2="{x+length}"
-                    y2="{y}"
-                    stroke="#0077ff"
-                    stroke-width="4"
-                />
-                """
+                f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="white" stroke-width="10" />'
+            )
+            context.elements.append(
+                f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="#4b5563" stroke-width="3" />'
             )
 
         return context

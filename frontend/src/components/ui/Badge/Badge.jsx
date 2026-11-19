@@ -5,7 +5,7 @@ const variants = {
     "bg-green-100 text-green-700",
 
   warning:
-    "bg-orange-100 text-orange-700",
+    "bg-blue-100 text-blue-700",
 
   info:
     "bg-blue-100 text-blue-700",

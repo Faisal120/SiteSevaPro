@@ -1,4 +1,6 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
+import { api } from "@/lib/api";
 
 import {
     Building2,
@@ -15,6 +17,14 @@ export default function CompanyCard({
     stats,
     user,
 }) {
+    const navigate = useNavigate();
+    const [subscription, setSubscription] = React.useState(null);
+
+    React.useEffect(() => {
+        api.get("/subscription")
+            .then((response) => setSubscription(response.data || null))
+            .catch(() => setSubscription(null));
+    }, []);
 
     const score =
         stats?.total_sites
@@ -105,7 +115,7 @@ export default function CompanyCard({
 
                             <span>
 
-                                {company?.plan || "FREE"}
+                                {subscription?.plan || company?.plan || "FREE"}
 
                             </span>
 
@@ -250,6 +260,7 @@ gap-2
 
 "
 
+                    onClick={() => navigate("/app/branding")}
                 >
 
                     <Pencil size={18} />

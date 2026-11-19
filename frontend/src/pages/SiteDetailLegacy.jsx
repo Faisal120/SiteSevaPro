@@ -150,8 +150,8 @@ export default function SiteDetail() {
       </button>
 
       <div className="ss-card overflow-hidden">
-        <div className="h-44 relative">
-          <img src="https://images.pexels.com/photos/1816030/pexels-photo-1816030.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=400&w=1200" alt="" className="w-full h-full object-cover" />
+        <div className="h-44 relative bg-gradient-to-br from-[#111214] via-[#172554] to-[#1e3a8a]">
+          {site.cover_image ? <img src={site.cover_image} alt={site.name} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-end p-8"><span className="font-display text-8xl font-extrabold text-white/10">{site.name?.slice(0, 1)?.toUpperCase() || "S"}</span></div>}
           <div className="absolute inset-0 bg-gradient-to-t from-[#171717]/80 via-[#171717]/30 to-transparent" />
           <div className="absolute bottom-4 left-6 right-6 flex items-end justify-between text-white">
             <div>
@@ -169,7 +169,7 @@ export default function SiteDetail() {
                 <div className="text-xl font-extrabold">{site.progress}%</div>
                 <div className="w-48 h-2 bg-white/20 rounded-full mt-2">
                   <div
-                    className="h-full bg-[#F97316] rounded-full"
+                    className="h-full bg-[#3B82F6] rounded-full"
                     style={{
                       width: `${site.progress}%`
                     }}
@@ -180,7 +180,7 @@ export default function SiteDetail() {
           </div>
         </div>
         {/* Site Summary + Team Assignment */}
-        <div className="bg-gradient-to-br from-gray-50 to-orange-50 border-t p-6">
+        <div className="border-t border-[#30323a] bg-[#111214] p-6">
 
           <div className="grid lg:grid-cols-3 gap-6">
 
@@ -190,7 +190,7 @@ export default function SiteDetail() {
               {/* Stats */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
 
-                <div className="bg-white rounded-2xl p-5 border border-orange-100 shadow-sm hover:shadow-md transition-all">
+                <div className="bg-white rounded-2xl p-5 border border-blue-100 shadow-sm hover:shadow-md transition-all">
                   <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">
                     Budget
                   </p>
@@ -199,23 +199,23 @@ export default function SiteDetail() {
                   </h3>
                 </div>
 
-                <div className="bg-white rounded-2xl p-5 border border-orange-100 shadow-sm hover:shadow-md transition-all">
+                <div className="bg-white rounded-2xl p-5 border border-blue-100 shadow-sm hover:shadow-md transition-all">
                   <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">
                     Progress
                   </p>
-                  <h3 className="text-2xl font-extrabold text-[#F97316]">
+                  <h3 className="text-2xl font-extrabold text-[#3B82F6]">
                     {site.progress}%
                   </h3>
 
                   <div className="w-full h-2 bg-gray-200 rounded-full mt-3 overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-orange-500 to-orange-400 rounded-full"
+                      className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full"
                       style={{ width: `${site.progress}%` }}
                     />
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl p-5 border border-orange-100 shadow-sm hover:shadow-md transition-all">
+                <div className="bg-white rounded-2xl p-5 border border-blue-100 shadow-sm hover:shadow-md transition-all">
                   <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">
                     Supervisor
                   </p>
@@ -228,7 +228,7 @@ export default function SiteDetail() {
                   </h3>
                 </div>
 
-                <div className="bg-white rounded-2xl p-5 border border-orange-100 shadow-sm hover:shadow-md transition-all">
+                <div className="bg-white rounded-2xl p-5 border border-blue-100 shadow-sm hover:shadow-md transition-all">
                   <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">
                     Client
                   </p>
@@ -302,7 +302,7 @@ export default function SiteDetail() {
           bg-white
           rounded-3xl
           border
-          border-orange-100
+          border-blue-100
           p-6
           shadow-sm
           hover:shadow-lg
@@ -336,7 +336,7 @@ export default function SiteDetail() {
                 px-4
                 focus:outline-none
                 focus:ring-2
-                focus:ring-orange-400
+                focus:ring-blue-400
               "
                     >
                       <option value="">
@@ -360,8 +360,8 @@ export default function SiteDetail() {
                 h-12
                 rounded-xl
                 bg-gradient-to-r
-                from-orange-500
-                to-orange-600
+                from-blue-500
+                to-blue-600
                 text-white
                 font-semibold
                 hover:shadow-lg
@@ -425,7 +425,7 @@ mb-2
                 px-4
                 focus:outline-none
                 focus:ring-2
-                focus:ring-orange-400
+                focus:ring-blue-400
               "
                     >
                       <option value="">
@@ -449,8 +449,8 @@ mb-2
                 h-12
                 rounded-xl
                 bg-gradient-to-r
-                from-orange-500
-                to-orange-600
+                from-blue-500
+                to-blue-600
                 text-white
                 font-semibold
                 hover:shadow-lg
@@ -477,7 +477,7 @@ mb-2
 
 
       <Tabs defaultValue="overview">
-        <TabsList className="bg-white border border-gray-200 p-1">
+        <TabsList className="border border-[#30323a] bg-[#17191d] p-1">
           <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
           {user.role !== "CLIENT" && <TabsTrigger value="labour" data-testid="tab-labour">Labour</TabsTrigger>}
           {user.role !== "CLIENT" && <TabsTrigger value="materials" data-testid="tab-materials">Materials</TabsTrigger>}
@@ -571,7 +571,7 @@ mb-2
                 {payments.map((p) => (
                   <tr key={p.id}>
                     <td>{fmtDate(p.date)}</td>
-                    <td><Chip className={p.type === "CLIENT_RECEIVED" ? "bg-emerald-100 text-emerald-700" : "bg-orange-100 text-orange-700"}>{p.type.replace("_", " ")}</Chip></td>
+                    <td><Chip className={p.type === "CLIENT_RECEIVED" ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"}>{p.type.replace("_", " ")}</Chip></td>
                     <td>{p.description}</td>
                     <td>{p.party || "—"}</td>
                     <td className="text-right font-bold">{inr(p.amount)}</td>
@@ -589,7 +589,7 @@ mb-2
               <div key={r.id} className="ss-card p-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-xs font-bold uppercase tracking-wider text-[#F97316]">{fmtDate(r.date)}</div>
+                    <div className="text-xs font-bold uppercase tracking-wider text-[#3B82F6]">{fmtDate(r.date)}</div>
                     <h3 className="font-display font-bold text-lg mt-1">{r.created_by_name || "Supervisor"}</h3>
                   </div>
                 </div>
@@ -627,7 +627,7 @@ mb-2
           <TabsContent value="ai" className="mt-5">
             <div className="ss-card p-6">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-[#F97316]" />
+                <Sparkles className="h-5 w-5 text-[#3B82F6]" />
                 <h3 className="font-display text-lg font-bold">AI Insights</h3>
               </div>
               <p className="text-sm text-gray-500 mt-1">Powered by Claude Sonnet 4.5</p>
@@ -638,14 +638,14 @@ mb-2
                   ["delay_prediction", "Delay Prediction"],
                   ["expense_analysis", "Expense Analysis"],
                 ].map(([k, l]) => (
-                  <button key={k} disabled={aiBusy} onClick={() => runAI(k)} className="ss-btn-outline" data-testid={`ai-${k}`}>
+                  <button key={k} disabled={aiBusy} onClick={() => runAI(k)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#46505f] bg-[#1a1d22] px-4 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-blue-400 hover:bg-[#242a34] hover:text-white disabled:cursor-not-allowed disabled:opacity-60" data-testid={`ai-${k}`}>
                     {aiBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {l}
                   </button>
                 ))}
               </div>
               {insight && (
                 <div className="mt-5 p-5 bg-gray-50 rounded-lg border border-gray-200">
-                  <div className="text-xs font-bold uppercase tracking-wider text-[#F97316] mb-2">{insight.kind.replace("_", " ")}</div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-[#3B82F6] mb-2">{insight.kind.replace("_", " ")}</div>
                   <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">{insight.text}</pre>
                 </div>
               )}
@@ -713,7 +713,7 @@ mb-2
       px-4
       py-2
       rounded-lg
-      bg-orange-500
+      bg-blue-500
       text-white
     "
                 >
@@ -724,7 +724,7 @@ mb-2
 
                 <span
                   className="
-      text-orange-500
+      text-blue-500
       font-semibold
     "
                 >

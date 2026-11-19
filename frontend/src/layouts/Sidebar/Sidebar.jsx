@@ -21,6 +21,8 @@ export default function Sidebar({
   mobileOpen,
   stats,
   setMobileOpen,
+  branding,
+  subscription,
 }) {
   const nav = useNavigate();
 
@@ -42,11 +44,11 @@ export default function Sidebar({
         bottom-0
         z-50
 
-        w-[280px]
+        w-[264px]
 
-        bg-[#0B1120]
+        bg-[#090a0c]
         border-r
-        border-slate-700/70
+        border-[#25272c]
 
         flex
         flex-col
@@ -65,12 +67,12 @@ export default function Sidebar({
       <div
         className="
           shrink-0
-          h-24
+          min-h-[104px]
 
           border-b
-          border-slate-800
+          border-[#25272c]
 
-          px-7
+          px-5 py-4
 
           flex
           items-center
@@ -80,47 +82,42 @@ export default function Sidebar({
         <Link
           to="/app/dashboard"
           onClick={() => setMobileOpen(false)}
-          className="flex items-center gap-3"
+          className="flex min-w-0 items-center gap-3"
         >
           <div
             className="
-              h-14
-              w-14
-              rounded-2xl
-              bg-gradient-to-br
-              from-blue-600
-              to-indigo-700
+              h-11
+              w-11
+              rounded-xl
+              bg-[#3b82f6]
               shadow-lg
-              shadow-blue-900/30
+              shadow-blue-950/40
 
               flex
               items-center
               justify-center
             "
           >
-            <Building2
-              size={22}
-              className="text-white"
-            />
+            {branding?.logo_url ? <img src={branding.logo_url} alt="Company logo" className="h-full w-full rounded-xl object-contain bg-white p-1" /> : <Building2 size={22} className="text-white" />}
           </div>
 
-          <div>
+          <div className="min-w-0">
 
             <h2 className="
                 font-display
-                text-[20px]
+                line-clamp-2 text-[16px]
                 font-bold
                 tracking-tight
                 text-white
                 ">
 
-              SiteSeva Pro
+              {branding?.company_name || user?.company_name || "SiteSeva Pro"}
 
             </h2>
 
-            <p className="text-xs text-slate-400">
+            <p className="mt-0.5 truncate text-xs text-slate-400">
 
-              Enterprise Edition
+              {branding?.website || "Construction workspace"}
 
             </p>
 
@@ -140,19 +137,19 @@ export default function Sidebar({
           ss-sidebar-scroll
         "
       >
-        <div className="px-4 py-4">
+        <div className="px-3 py-4">
 
           {/* Company */}
 
           {role === "CONTRACTOR" && (
             <div className="mt-5">
-              <CompanyCard user={user} stats={stats} />
+              <CompanyCard user={user} stats={stats} branding={branding} subscription={subscription} />
             </div>
           )}
 
           {/* Navigation */}
 
-          <div className="mt-6 space-y-10">
+          <div className="mt-5 space-y-8">
 
             {menu.map((group) => (
               <NavGroup
@@ -199,7 +196,7 @@ export default function Sidebar({
             text-slate-500
             "
           >
-            SiteSeva Pro v3 Preview
+            SiteSeva Pro · Workspace
 
           </div>
 

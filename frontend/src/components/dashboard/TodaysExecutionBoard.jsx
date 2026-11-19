@@ -27,14 +27,14 @@ export default function TodaysExecutionBoard({
             title: "Pending Tasks",
             value: stats.pending_tasks,
             icon: ClipboardCheck,
-            color: "bg-orange-100 text-orange-700",
+            color: "bg-blue-100 text-blue-900",
             route: "/app/tasks",
         },
         {
             title: "Today's Labour",
             value: stats.today_labours,
             icon: Users,
-            color: "bg-blue-100 text-blue-700",
+            color: "bg-blue-100 text-blue-900",
             route: "/app/labour",
         },
         {
@@ -174,7 +174,7 @@ export default function TodaysExecutionBoard({
                                 text-xs
                                 font-semibold
                                 ${needsAttention
-                                                        ? "bg-orange-100 text-orange-700"
+                                                        ? "bg-blue-400 text-blue-700"
                                                         : "bg-green-100 text-green-700"
                                                     }
                             `}

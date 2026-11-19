@@ -27,7 +27,7 @@ export default function SiteStatsBar({ stats }) {
             title: "Delayed",
             value: stats?.delayed || 0,
             icon: AlertTriangle,
-            color: "text-orange-600 bg-orange-50"
+            color: "text-blue-600 bg-blue-50"
         },
 
         {

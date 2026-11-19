@@ -70,6 +70,13 @@ class StatsBuilder:
                     0,
                 ),
 
+            "total_revenue":
+
+                dashboard.get(
+                    "total_revenue",
+                    0,
+                ),
+
             "expense":
 
                 dashboard.get(
@@ -88,6 +95,34 @@ class StatsBuilder:
 
                 dashboard.get(
                     "net_profit",
+                    0,
+                ),
+
+            "net_loss":
+
+                dashboard.get(
+                    "net_loss",
+                    0,
+                ),
+
+            "labour_expense":
+
+                dashboard.get(
+                    "labour_expense",
+                    0,
+                ),
+
+            "material_expense":
+
+                dashboard.get(
+                    "material_expense",
+                    0,
+                ),
+
+            "other_expense":
+
+                dashboard.get(
+                    "other_expense",
                     0,
                 ),
 

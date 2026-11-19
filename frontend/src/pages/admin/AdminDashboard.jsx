@@ -17,7 +17,7 @@ export default function AdminDashboard() {
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
         <StatCard label="Total Contractors" value={s.total_contractors} icon={Users} accent="ink" testId="admin-stat-contractors" />
-        <StatCard label="Active Sites" value={s.active_sites} icon={Building2} accent="orange" testId="admin-stat-sites" />
+        <StatCard label="Active Sites" value={s.active_sites} icon={Building2} accent="blue" testId="admin-stat-sites" />
         <StatCard label="Monthly Revenue" value={inr(s.monthly_revenue)} icon={TrendingUp} accent="yellow" testId="admin-stat-revenue" />
         <StatCard label="Pending Apps" value={s.pending_applications} icon={Briefcase} accent="soft" testId="admin-stat-apps" />
       </div>
@@ -29,15 +29,15 @@ export default function AdminDashboard() {
               <AreaChart data={s.revenue_trend} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
                 <defs>
                   <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#F97316" stopOpacity={0.45} />
-                    <stop offset="95%" stopColor="#F97316" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.45} />
+                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#525252" }} />
                 <YAxis tick={{ fontSize: 11, fill: "#525252" }} />
                 <Tooltip contentStyle={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8 }} formatter={(v) => inr(v)} />
-                <Area dataKey="revenue" stroke="#F97316" strokeWidth={2} fill="url(#rev)" />
+                <Area dataKey="revenue" stroke="#3B82F6" strokeWidth={2} fill="url(#rev)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -45,7 +45,7 @@ export default function AdminDashboard() {
         <div className="ss-card p-5 flex flex-col gap-4">
           <SectionTitle title="Quick Stats" />
           <div className="flex items-center gap-3"><div className="h-9 w-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center"><Users className="h-4 w-4" /></div><div><div className="text-xs text-gray-500">Active Users</div><div className="font-bold">{s.active_users}</div></div></div>
-          <div className="flex items-center gap-3"><div className="h-9 w-9 rounded-lg bg-orange-100 text-[#F97316] flex items-center justify-center"><AlertCircle className="h-4 w-4" /></div><div><div className="text-xs text-gray-500">Expiring Soon</div><div className="font-bold">{s.expiring_subscriptions}</div></div></div>
+          <div className="flex items-center gap-3"><div className="h-9 w-9 rounded-lg bg-blue-100 text-[#3B82F6] flex items-center justify-center"><AlertCircle className="h-4 w-4" /></div><div><div className="text-xs text-gray-500">Expiring Soon</div><div className="font-bold">{s.expiring_subscriptions}</div></div></div>
           <div className="flex items-center gap-3"><div className="h-9 w-9 rounded-lg bg-yellow-100 text-yellow-700 flex items-center justify-center"><CreditCard className="h-4 w-4" /></div><div><div className="text-xs text-gray-500">Revenue (MTD)</div><div className="font-bold">{inr(s.monthly_revenue)}</div></div></div>
         </div>
       </div>

@@ -46,10 +46,10 @@ export default function AdminPayments() {
                 <tr key={p.id} data-testid={`apay-row-${p.id}`}>
                   <td className="font-semibold">{p.company_name}</td>
                   <td>{p.user_email}</td>
-                  <td><Chip className="bg-orange-100 text-orange-700">{p.plan}</Chip></td>
+                  <td><Chip className="bg-blue-100 text-blue-700">{p.plan}</Chip></td>
                   <td className="font-bold">{inr(p.amount)}</td>
                   <td className="font-mono text-xs">{p.utr}</td>
-                  <td>{p.screenshot_url ? <a className="text-[#F97316] text-xs font-semibold flex items-center gap-1" href={p.screenshot_url} target="_blank" rel="noreferrer">View <ExternalLink className="h-3 w-3" /></a> : "—"}</td>
+                  <td>{p.screenshot_url ? <a className="text-[#3B82F6] text-xs font-semibold flex items-center gap-1" href={p.screenshot_url} target="_blank" rel="noreferrer">View <ExternalLink className="h-3 w-3" /></a> : "—"}</td>
                   <td className="text-gray-500">{fmtDate(p.created_at)}</td>
                   <td className="text-right">
                     {p.status === "PENDING" ? (

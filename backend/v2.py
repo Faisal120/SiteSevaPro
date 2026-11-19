@@ -14,6 +14,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from core import db, get_current_user, require_roles, new_id, now_iso
+from services.design_wallet_service import design_wallet_service
+from design_core.design_constants import PRO_MONTHLY_CREDITS, ENTERPRISE_MONTHLY_CREDITS
 
 v2_router = APIRouter(prefix="/api")
 
@@ -410,7 +412,7 @@ async def get_boq(boq_id: str, user: dict = Depends(require_roles("CONTRACTOR", 
 
 # ---------- QR PAYMENT FLOW (UPI) ----------
 UPI_ID_DEFAULT = "fk1571515@ybl"
-PLAN_PRICES = {"FREE": 0, "PREMIUM": 899, "ENTERPRISE": 1899}
+PLAN_PRICES = {"FREE": 0, "PREMIUM": 2999, "ENTERPRISE": 4999}
 
 class PaymentRequestIn(BaseModel):
     plan: Literal["PREMIUM", "ENTERPRISE"]
@@ -481,6 +483,9 @@ async def approve_payment(pid: str, admin: dict = Depends(require_roles("SUPER_A
         upsert=True,
     )
     await db.users.update_one({"id": p["user_id"]}, {"$set": {"plan": p["plan"]}})
+    credits = ENTERPRISE_MONTHLY_CREDITS if p["plan"] == "ENTERPRISE" else PRO_MONTHLY_CREDITS
+    await design_wallet_service.balance(p["company_id"])
+    await design_wallet_service.add(p["company_id"], credits, f"{p['plan']} subscription credits · UTR {p['utr']}")
     await db.payments.insert_one({
         "id": new_id(), "company_id": p["company_id"], "site_id": None,
         "type": "SUBSCRIPTION", "amount": p["amount"],

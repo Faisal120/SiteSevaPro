@@ -14,29 +14,29 @@ const actions = [
         title: "Create Site",
         subtitle: "Start a new construction project",
         icon: Plus,
-        color: "from-blue-600 to-indigo-600",
-        to: "/app/sites/new",
+        color: "from-blue-500 to-blue-600",
+        to: "/app/sites?create=1",
         featured: true,
     },
     {
         title: "Manage Sites",
         subtitle: "View and monitor all projects",
         icon: Building2,
-        color: "from-slate-700 to-slate-800",
+        color: "from-zinc-700 to-zinc-800",
         to: "/app/sites",
     },
     {
         title: "Daily Reports",
         subtitle: "Progress updates & photos",
         icon: ClipboardCheck,
-        color: "from-cyan-500 to-blue-500",
+        color: "from-blue-500 to-blue-500",
         to: "/app/reports",
     },
     {
         title: "Estimates",
         subtitle: "BOQ & Quotations",
         icon: Calculator,
-        color: "from-orange-500 to-amber-500",
+        color: "from-blue-500 to-blue-500",
         to: "/app/estimates",
     },
 ];
@@ -79,7 +79,7 @@ export default function QuickActions() {
                                 relative
                                 overflow-hidden
 
-                                rounded-[28px]
+                                rounded-[20px]
 
                                 border
 
@@ -87,10 +87,10 @@ export default function QuickActions() {
                                 duration-300
 
                                 hover:-translate-y-1
-                                hover:shadow-2xl
+                                hover:shadow-none
 
                                 ${item.featured
-                                    ? "border-blue-200 bg-gradient-to-br from-blue-600 to-indigo-700 text-white"
+                                    ? "border-blue-500/40 bg-gradient-to-br from-[#3b82f6] to-[#2563eb] text-white"
                                     : "border-slate-200 bg-white"}
                             `}
                         >
@@ -143,11 +143,9 @@ export default function QuickActions() {
                                             size={18}
                                             className="
                                                 text-slate-300
-
                                                 transition-all
-
                                                 group-hover:translate-x-1
-                                                group-hover:text-blue-600
+                                                group-hover:text-blue-400
                                             "
                                         />
                                     )}
@@ -210,7 +208,7 @@ export default function QuickActions() {
 
                                             ${item.featured
                                                 ? "bg-white text-blue-700"
-                                                : "bg-blue-50 text-blue-700 group-hover:bg-blue-100"}
+                                                : "bg-blue-50 text-blue-900 group-hover:bg-white-900"}
                                         `}
                                     >
                                         Visit Now

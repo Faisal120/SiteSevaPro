@@ -14,6 +14,39 @@ from core import db
 
 class DashboardRepository:
 
+    @staticmethod
+    def _role_site_scope(
+        role: str,
+        user_id: str | None,
+        user_email: str | None = None,
+        legacy_site_ids: list[str] | None = None,
+    ) -> dict | None:
+        if role == "SUPERVISOR":
+            assignments = [
+                {"supervisor_ids": user_id},
+                {"supervisor_id": user_id},
+            ]
+            legacy_fields = ("supervisor_ids", "supervisor_id")
+        elif role == "CLIENT":
+            assignments = [
+                {"client_ids": user_id},
+                {"client_id": user_id},
+            ]
+            if user_email:
+                assignments.append({"client_email": user_email.lower()})
+            legacy_fields = ("client_ids", "client_id", "client_email")
+        else:
+            return None
+
+        if legacy_site_ids:
+            assignments.append({
+                "$and": [
+                    *[{field: {"$exists": False}} for field in legacy_fields],
+                    {"id": {"$in": legacy_site_ids}},
+                ],
+            })
+        return {"$or": assignments}
+
     # =====================================================
     # COMPANY
     # =====================================================
@@ -41,19 +74,17 @@ class DashboardRepository:
         company_id: str,
         role: str = "CONTRACTOR",
         user_id: str | None = None,
+        user_email: str | None = None,
+        legacy_site_ids: list[str] | None = None,
     ):
 
         query = {
             "company_id": company_id,
         }
 
-        if role == "SUPERVISOR":
-
-            query["supervisor_ids"] = user_id
-
-        elif role == "CLIENT":
-
-            query["client_ids"] = user_id
+        scope = self._role_site_scope(role, user_id, user_email, legacy_site_ids)
+        if scope:
+            query.update(scope)
 
         return await (
             db.sites.find(
@@ -74,19 +105,17 @@ class DashboardRepository:
         company_id: str,
         role: str = "CONTRACTOR",
         user_id: str | None = None,
+        user_email: str | None = None,
+        legacy_site_ids: list[str] | None = None,
     ):
 
         query = {
             "company_id": company_id,
         }
 
-        if role == "SUPERVISOR":
-
-            query["supervisor_ids"] = user_id
-
-        elif role == "CLIENT":
-
-            query["client_ids"] = user_id
+        scope = self._role_site_scope(role, user_id, user_email, legacy_site_ids)
+        if scope:
+            query.update(scope)
 
         return await db.sites.count_documents(
             query
@@ -97,6 +126,8 @@ class DashboardRepository:
         company_id: str,
         role: str = "CONTRACTOR",
         user_id: str | None = None,
+        user_email: str | None = None,
+        legacy_site_ids: list[str] | None = None,
     ):
 
         query = {
@@ -113,13 +144,9 @@ class DashboardRepository:
 
         }
 
-        if role == "SUPERVISOR":
-
-            query["supervisor_ids"] = user_id
-
-        elif role == "CLIENT":
-
-            query["client_ids"] = user_id
+        scope = self._role_site_scope(role, user_id, user_email, legacy_site_ids)
+        if scope:
+            query.update(scope)
 
         return await db.sites.count_documents(
             query
@@ -130,6 +157,8 @@ class DashboardRepository:
         company_id: str,
         role: str = "CONTRACTOR",
         user_id: str | None = None,
+        user_email: str | None = None,
+        legacy_site_ids: list[str] | None = None,
     ):
 
         query = {
@@ -140,13 +169,9 @@ class DashboardRepository:
 
         }
 
-        if role == "SUPERVISOR":
-
-            query["supervisor_ids"] = user_id
-
-        elif role == "CLIENT":
-
-            query["client_ids"] = user_id
+        scope = self._role_site_scope(role, user_id, user_email, legacy_site_ids)
+        if scope:
+            query.update(scope)
 
         return await db.sites.count_documents(
             query
@@ -341,12 +366,18 @@ class DashboardRepository:
         self,
         company_id: str,
         limit: int | None = None,
+        site_ids: list[str] | None = None,
     ):
 
+        query = {
+            "company_id": company_id,
+        }
+
+        if site_ids is not None:
+            query["site_id"] = {"$in": site_ids}
+
         cursor = db.payments.find(
-            {
-                "company_id": company_id,
-            },
+            query,
             {
                 "_id": 0,
             },

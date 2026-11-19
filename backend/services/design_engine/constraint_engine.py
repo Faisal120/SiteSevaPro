@@ -15,34 +15,31 @@ class ConstraintEngine:
 
         rooms.append(
             self._create_room(
+                "Living",
                 "Living"
             )
         )
 
-        rooms.append(
-            self._create_room(
-                "Dining"
-            )
-        )
+        if getattr(body, "dining", True):
+            rooms.append(self._create_room("Dining", "Dining"))
 
-        rooms.append(
-            self._create_room(
-                "Kitchen"
-            )
-        )
+        if getattr(body, "kitchen", True):
+            rooms.append(self._create_room("Kitchen", "Kitchen"))
 
-        for _ in range(body.bedrooms):
+        for i in range(body.bedrooms):
 
             rooms.append(
                 self._create_room(
-                    "Bedroom"
+                    f"Bedroom_{i+1}",
+                    "Bedroom",
                 )
             )
 
-        for _ in range(body.bathrooms):
+        for i in range(body.bathrooms):
 
             rooms.append(
                 self._create_room(
+                    f"Bathroom_{i+1}",
                     "Bathroom"
                 )
             )
@@ -51,6 +48,7 @@ class ConstraintEngine:
 
             rooms.append(
                 self._create_room(
+                    "Parking",
                     "Parking"
                 )
             )
@@ -59,14 +57,27 @@ class ConstraintEngine:
 
             rooms.append(
                 self._create_room(
+                    "Garden",
                     "Garden"
                 )
             )
 
-        if body.floors > 1:
+        optional_rooms = (
+            ("pooja_room", "Pooja", "Pooja"),
+            ("study_room", "Study", "Study"),
+            ("store_room", "Store", "Store"),
+            ("utility_room", "Utility", "Utility"),
+            ("lift", "Lift", "Lift"),
+        )
+        for field, room_name, room_type in optional_rooms:
+            if getattr(body, field, False):
+                rooms.append(self._create_room(room_name, room_type))
+
+        if body.floors > 1 or getattr(body, "staircase", True):
 
             rooms.append(
                 self._create_room(
+                    "Stair",
                     "Stair"
                 )
             )
@@ -74,28 +85,31 @@ class ConstraintEngine:
         return rooms
 
     def _create_room(
-        self,
-        name,
-    ):
+    self,
+    room_name,
+    room_type,
+):
 
-        lib = ROOM_LIBRARY[name]
+        lib = ROOM_LIBRARY[room_type]
 
         width, length = lib["sizes"][0]
 
         rules = BUILDING_RULES.get(
-            name,
+            room_type,
             {},
         )
 
         return Room(
 
-            name=name,
+            name=room_name,
+
+            room_type=room_type,
 
             width=width,
 
             length=length,
 
-            preferred_zone=VASTU.get(name),
+            preferred_zone=VASTU.get(room_type),
 
             adjacent_to=rules.get(
                 "adjacent",
@@ -106,8 +120,6 @@ class ConstraintEngine:
                 "avoid",
                 [],
             ),
-
         )
-
-
+        
 constraint_engine = ConstraintEngine()

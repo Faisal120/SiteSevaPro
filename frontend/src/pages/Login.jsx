@@ -36,13 +36,13 @@ export default function Login() {
     <div className="min-h-screen flex">
       <div className="hidden lg:flex w-1/2 bg-[#171717] text-white relative overflow-hidden">
         <div className="absolute inset-0 ss-grid-dots opacity-10" aria-hidden />
-        <div className="absolute -right-20 top-20 h-72 w-72 rounded-full bg-[#F97316]/20 blur-3xl" aria-hidden />
+        <div className="absolute -right-20 top-20 h-72 w-72 rounded-full bg-[#3B82F6]/20 blur-3xl" aria-hidden />
         <div className="relative flex flex-col justify-between p-12 w-full">
           <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#F97316]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#3B82F6]">
               <HardHat className="h-5 w-5" />
             </div>
-            <span className="font-display text-lg font-extrabold">Site Seva <span className="text-[#F97316]">Pro</span></span>
+            <span className="font-display text-lg font-extrabold">Site Seva <span className="text-[#3B82F6]">Pro</span></span>
           </Link>
           <div>
             <h1 className="font-display text-4xl font-extrabold leading-tight">Run your construction company like a tech startup.</h1>
@@ -55,8 +55,8 @@ export default function Login() {
       <div className="flex-1 flex items-center justify-center p-6 ss-mesh">
         <div className="w-full max-w-md">
           <Link to="/" className="lg:hidden flex items-center gap-2 mb-8">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#171717] text-[#F97316]"><HardHat className="h-5 w-5" /></div>
-            <span className="font-display text-lg font-extrabold">Site Seva <span className="text-[#F97316]">Pro</span></span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#171717] text-[#3B82F6]"><HardHat className="h-5 w-5" /></div>
+            <span className="font-display text-lg font-extrabold">Site Seva <span className="text-[#3B82F6]">Pro</span></span>
           </Link>
           <h2 className="font-display text-3xl font-extrabold tracking-tight">Welcome back</h2>
           <p className="mt-1 text-sm text-gray-500">Sign in to your dashboard.</p>
@@ -95,7 +95,7 @@ export default function Login() {
           </form>
 
           <div className="mt-6 text-sm text-gray-500 text-center">
-            New contractor? <Link to="/register" className="font-semibold text-[#F97316] hover:underline" data-testid="login-to-register">Apply for access</Link>
+            New contractor? <Link to="/register" className="font-semibold text-[#3B82F6] hover:underline" data-testid="login-to-register">Apply for access</Link>
           </div>
         </div>
       </div>

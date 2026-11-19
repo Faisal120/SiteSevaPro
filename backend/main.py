@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from services.design_service import design_service
+from services.design_wallet_service import InsufficientCreditsError, design_wallet_service
+from design_core.design_constants import PRO_MONTHLY_CREDITS, ENTERPRISE_MONTHLY_CREDITS
 from models.auth import (
     Role,
     Plan,
@@ -23,7 +25,6 @@ import cloudinary.utils
 from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, EmailStr, Field
 from starlette.middleware.cors import CORSMiddleware
-from services.gemini_floorplanner import generate_floor_plan
 from services.openai_floorplanner import (
     generate_floorplan_image
 )
@@ -63,6 +64,7 @@ from api.design import router as design_router
 from api.branding import router as branding_router
 
 from api.design_wallet import router as design_wallet_router
+from api.launch import router as launch_router
 
 # Shared infra — single source of truth for db, auth, helpers
 from core import (
@@ -247,7 +249,7 @@ async def approve_application(app_id: str, _: dict = Depends(require_roles("SUPE
         "expires_at": (datetime.now(timezone.utc) + timedelta(days=365)).isoformat(),
     }
     await db.subscriptions.insert_one(dict(sub))
-    
+
     await db.applications.update_one({"id": app_id}, {"$set": {"status": "APPROVED", "approved_at": now_iso(), "user_id": user_id}})
     await db.notifications.insert_one({
         "id": new_id(), "user_id": user_id, "company_id": company_id,
@@ -543,9 +545,7 @@ class BrandingIn(BaseModel):
 
 @api.get("/branding")
 async def get_branding(
-    user: dict = Depends(
-        require_roles("CONTRACTOR")
-    )
+    user: dict = Depends(get_current_user)
 ):
 
     company = await db.companies.find_one(
@@ -584,23 +584,60 @@ async def save_branding(
         "success": True
     }
     
+class FloorRequirementIn(BaseModel):
+    """A concise, floor-specific brief for the architectural planner."""
+
+    floor_number: int
+    bedrooms: int = 2
+    bathrooms: int = 2
+    living: bool = True
+    dining: bool = True
+    kitchen: bool = True
+    staircase: bool = True
+    parking: bool = False
+    balcony: bool = False
+    pooja_room: bool = False
+    study_room: bool = False
+    store_room: bool = False
+    utility_room: bool = False
+    lift: bool = False
+
+
 class MapRequestIn(BaseModel):
 
     site_id: str
 
-    plot_width: float
+    project_name: str = "Untitled Project"
 
+    plot_width: float
     plot_length: float
 
     facing: str
 
     bedrooms: int
-
     bathrooms: int
-
-    floors: int
+    floors: int = 1
 
     type: str = "2D"
+    variation: int = 0
+
+    parking: bool = False
+    balcony: bool = False
+    living: bool = True
+    dining: bool = True
+    kitchen: bool = True
+    pooja_room: bool = False
+    study_room: bool = False
+    store_room: bool = False
+    utility_room: bool = False
+    lift: bool = False
+    staircase: bool = True
+    garden: bool = False
+    floor_requirements: list[FloorRequirementIn] = []
+
+    @property
+    def design_type(self):
+        return self.type
     
 
 @api.get("/maps")
@@ -647,58 +684,70 @@ async def test_openai():
         media_type="image/png"
     )
     
-@api.post("/maps/generate")
+@app.post("/api/maps/generate")
 async def generate_map(
     body: MapRequestIn,
-    user: dict = Depends(require_roles("CONTRACTOR"))
+    user: dict = Depends(get_current_user),
 ):
 
-    subscription = await db.subscriptions.find_one({
-        "company_id": user["company_id"]
-    })
-
-    current_plan = (
-        subscription or {}
-    ).get(
-        "plan",
-        "FREE"
-    )
-
-    if current_plan == "FREE":
-        raise HTTPException(
-            403,
-            "Upgrade required"
+    try:
+        design = await design_service.create(
+            user,
+            body,
         )
-
-    if body.type == "3D" and current_plan != "ENTERPRISE":
-        raise HTTPException(
-            403,
-            "3D available only in Pro Plus"
-        )
-
-    
-
-    site = await db.sites.find_one(
-        {
-            "id": body.site_id
-        },
-        {
-            "_id": 0
-        }
-    )
-
-    if not site:
-        raise HTTPException(
-            404,
-            "Site not found"
-        )
-
-    design = await design_service.create(
-    user,
-    body,
-    )
+    except InsufficientCreditsError as error:
+        raise HTTPException(status_code=402, detail=str(error))
 
     return design
+
+@app.post("/api/maps/{design_id}/3d/{floor_number}")
+async def generate_3d_map(design_id: str, floor_number: int, user: dict = Depends(get_current_user)):
+    try:
+        return await design_service.generate_3d(user, design_id, floor_number)
+    except InsufficientCreditsError as error:
+        raise HTTPException(status_code=402, detail=str(error))
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error))
+
+
+@app.post("/api/maps/{design_id}/technical/{drawing_type}")
+async def generate_technical_map(
+    design_id: str,
+    drawing_type: str,
+    user: dict = Depends(get_current_user),
+):
+    """Generate a billable technical overlay from an approved 2D plan."""
+    try:
+        return await design_service.create_technical_drawing(
+            user,
+            design_id,
+            drawing_type,
+        )
+    except InsufficientCreditsError as error:
+        raise HTTPException(status_code=402, detail=str(error))
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error))
+
+
+@app.get("/api/maps/{design_id}/download/{drawing_type}.pdf")
+async def download_pdf_drawing(
+    design_id: str,
+    drawing_type: str,
+    floor_number: int = 1,
+    user: dict = Depends(get_current_user),
+):
+    try:
+        pdf = await design_service.get_pdf_drawing(user, design_id, drawing_type, floor_number)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error))
+
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="siteseva-{drawing_type.lower()}-floor-{floor_number}-{design_id}.pdf"',
+        },
+    )
     
 @api.get("/plans/{plan_id}")
 async def get_plan(
@@ -749,14 +798,84 @@ async def get_all_plans(
 
 
 # ---------- SUBSCRIPTIONS ----------
+SUBSCRIPTION_CATALOG = (
+    {
+        "code": "FREE",
+        "name": "Free",
+        "price": 0,
+        "currency": "INR",
+        "billing_cycle": "MONTHLY",
+        "description": "Get started with your SiteSeva workspace.",
+    },
+    {
+        "code": "PREMIUM",
+        "name": "Premium",
+        "price": 2999,
+        "currency": "INR",
+        "billing_cycle": "MONTHLY",
+        "description": "For growing construction teams managing active sites.",
+    },
+    {
+        "code": "ENTERPRISE",
+        "name": "Enterprise",
+        "price": 4999,
+        "currency": "INR",
+        "billing_cycle": "MONTHLY",
+        "description": "For companies that need advanced AI and operational controls.",
+    },
+)
+
+
+@api.get("/subscription/plans")
+async def subscription_plans(_: dict = Depends(get_current_user)):
+    """Return the commercial subscription catalog, not customer floor plans."""
+    return SUBSCRIPTION_CATALOG
+
+
 @api.get("/subscription")
-async def my_subscription(user: dict = Depends(require_roles("CONTRACTOR"))):
+async def my_subscription(user: dict = Depends(get_current_user)):
     sub = await db.subscriptions.find_one({"company_id": user["company_id"]}, {"_id": 0})
     return sub or {"plan": "FREE", "status": "ACTIVE"}
 
+@api.get("/subscription/current")
+async def current_subscription(user: dict = Depends(get_current_user)):
+    """Canonical mobile subscription payload without guessed renewal values."""
+    sub = await db.subscriptions.find_one({"company_id": user["company_id"]}, {"_id": 0})
+    if not sub:
+        return {"plan": user.get("plan", "FREE"), "status": "ACTIVE"}
+    return {
+        "plan": sub.get("plan", user.get("plan", "FREE")),
+        "status": sub.get("status", "ACTIVE"),
+        "renews_at": sub.get("expires_at"),
+        "started_at": sub.get("started_at"),
+    }
+
+@api.post("/subscription/renewal/request")
+async def request_subscription_renewal(user: dict = Depends(require_roles("CONTRACTOR"))):
+    """Creates one verifiable renewal request; payment approval remains server-admin controlled."""
+    existing = await db.subscription_renewal_requests.find_one({
+        "company_id": user["company_id"], "status": "PENDING"
+    }, {"_id": 0})
+    if existing:
+        return existing
+    subscription = await db.subscriptions.find_one({"company_id": user["company_id"]}, {"_id": 0}) or {}
+    request = {
+        "id": new_id(), "company_id": user["company_id"], "user_id": user["id"],
+        "plan": subscription.get("plan", user.get("plan", "FREE")),
+        "status": "PENDING", "created_at": now_iso(),
+    }
+    await db.subscription_renewal_requests.insert_one(dict(request))
+    await db.notifications.insert_one({
+        "id": new_id(), "company_id": user["company_id"], "user_id": user["id"],
+        "title": "Subscription renewal requested",
+        "body": "Your renewal request is pending payment verification.",
+        "type": "SUBSCRIPTION", "read": False, "created_at": now_iso(),
+    })
+    return request
+
 @api.post("/subscription/upgrade")
 async def upgrade_subscription(plan: Plan, user: dict = Depends(require_roles("CONTRACTOR"))):
-    amounts = {"FREE": 0, "PREMIUM": 899, "ENTERPRISE": 1899}
+    amounts = {"FREE": 0, "PREMIUM": 2999, "ENTERPRISE": 4999}
     amount = amounts.get(plan, 0)
     expires = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
     await db.subscriptions.update_one(
@@ -768,6 +887,10 @@ async def upgrade_subscription(plan: Plan, user: dict = Depends(require_roles("C
         upsert=True,
     )
     await db.users.update_one({"id": user["id"]}, {"$set": {"plan": plan}})
+    if plan in ("PREMIUM", "PRO", "ENTERPRISE"):
+        credits = ENTERPRISE_MONTHLY_CREDITS if plan == "ENTERPRISE" else PRO_MONTHLY_CREDITS
+        await design_wallet_service.balance(user["company_id"])
+        await design_wallet_service.add(user["company_id"], credits, f"{plan} subscription credits")
     if amount > 0:
         await db.payments.insert_one({
             "id": new_id(), "company_id": user["company_id"], "site_id": None,
@@ -806,6 +929,10 @@ async def cloudinary_signature(
 # ---------- AI INSIGHTS ----------
 @api.post("/ai/insight")
 async def ai_insight(body: AIInsightIn, user: dict = Depends(require_roles("CONTRACTOR", "SUPER_ADMIN"))):
+    if user["role"] == "CONTRACTOR":
+        subscription = await db.subscriptions.find_one({"company_id": user["company_id"], "status": "ACTIVE"}, {"_id": 0, "plan": 1})
+        if (subscription or {}).get("plan") != "ENTERPRISE":
+            raise HTTPException(403, "AI Insights are available on the Enterprise plan.")
     try:
         from emergentintegrations.llm.chat import LlmChat, UserMessage
     except ImportError:
@@ -901,6 +1028,10 @@ app.include_router(
 
 app.include_router(
     design_wallet_router
+)
+
+app.include_router(
+    launch_router
 )
 
 @app.on_event("startup")

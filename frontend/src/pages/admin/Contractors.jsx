@@ -38,7 +38,7 @@ export default function Contractors() {
                   <td>{u.full_name}</td>
                   <td>{u.email}</td>
                   <td className="font-mono text-xs">{u.username}</td>
-                  <td><Chip className="bg-orange-100 text-orange-700">{u.plan}</Chip></td>
+                  <td><Chip className="bg-blue-100 text-blue-700">{u.plan}</Chip></td>
                   <td>{u.blocked ? <Chip className="bg-red-100 text-red-700">Blocked</Chip> : <Chip className="bg-emerald-100 text-emerald-700">Active</Chip>}</td>
                   <td className="text-gray-500">{fmtDate(u.created_at)}</td>
                   <td className="text-right">

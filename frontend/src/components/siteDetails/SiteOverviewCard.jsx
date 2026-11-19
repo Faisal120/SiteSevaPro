@@ -65,7 +65,7 @@ export default function SiteOverviewCards({ site }) {
 
             color: site?.payment_pending
 
-                ? "orange"
+                ? "blue"
 
                 : "green"
 
@@ -81,7 +81,7 @@ export default function SiteOverviewCards({ site }) {
 
         violet: "bg-violet-50 text-violet-600",
 
-        orange: "bg-orange-50 text-orange-600",
+        blue: "bg-blue-50 text-blue-600",
 
         green: "bg-green-50 text-green-600"
 
@@ -153,7 +153,7 @@ export default function SiteOverviewCards({ site }) {
 
                                 {
 
-                                    card.color==="orange"
+                                    card.color==="blue"
 
                                     ?
 
@@ -161,7 +161,7 @@ export default function SiteOverviewCards({ site }) {
 
                                         size={16}
 
-                                        className="text-orange-500"
+                                        className="text-blue-500"
 
                                     />
 

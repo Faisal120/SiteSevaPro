@@ -17,6 +17,7 @@ import {
   Shield,
   Activity,
   Map,
+  Palette,
 } from "lucide-react";
 
 /* ===========================================
@@ -132,6 +133,11 @@ export const contractorMenu = [
         label: "Subscription",
         path: "/app/subscription",
         icon: CreditCard,
+      },
+      {
+        label: "Company Branding",
+        path: "/app/branding",
+        icon: Palette,
       },
       {
         label: "Settings",
@@ -290,6 +296,11 @@ export const adminMenu = [
         label: "UPI Payments",
         path: "/app/admin/payments",
         icon: BadgeIndianRupee,
+      },
+      {
+        label: "Design Credits",
+        path: "/app/admin/design-credits",
+        icon: Map,
       },
       {
         label: "Analytics",
