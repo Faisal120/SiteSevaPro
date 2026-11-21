@@ -21,7 +21,7 @@ from typing import Optional
 import bcrypt
 import jwt
 from dotenv import load_dotenv
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -75,7 +75,10 @@ def decode_jwt(token: str) -> dict:
 # -------- Auth dependencies --------
 bearer = HTTPBearer(auto_error=False)
 
-async def get_current_user(creds: Optional[HTTPAuthorizationCredentials] = Depends(bearer)) -> dict:
+async def get_current_user(
+    request: Request,
+    creds: Optional[HTTPAuthorizationCredentials] = Depends(bearer),
+) -> dict:
     if not creds:
         raise HTTPException(401, "Missing token")
     try:
@@ -87,6 +90,14 @@ async def get_current_user(creds: Optional[HTTPAuthorizationCredentials] = Depen
         raise HTTPException(401, "User not found")
     if user.get("blocked"):
         raise HTTPException(403, "Account blocked")
+    if int(payload.get("pwdv", 0)) != int(user.get("password_version", 0)):
+        raise HTTPException(401, "Session expired after password change")
+    force_change_allowed = {
+        "/api/auth/me",
+        "/api/auth/password",
+    }
+    if user.get("must_change_password") and request.url.path not in force_change_allowed:
+        raise HTTPException(428, "Password change required before using the workspace")
     return user
 
 def require_roles(*roles: str):

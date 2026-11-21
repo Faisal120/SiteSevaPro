@@ -39,11 +39,13 @@ class ReportRepository:
         self,
         site_id: str,
         progress: int,
+        company_id: str,
     ):
 
         await db.sites.update_one(
             {
-                "id": site_id
+                "id": site_id,
+                "company_id": company_id,
             },
             {
                 "$set": {

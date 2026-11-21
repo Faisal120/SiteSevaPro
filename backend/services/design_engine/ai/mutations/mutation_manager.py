@@ -76,3 +76,6 @@ class MutationManager:
             )
 
         return cloned
+
+
+mutation_manager = MutationManager()

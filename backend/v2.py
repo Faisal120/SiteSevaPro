@@ -16,6 +16,8 @@ from pydantic import BaseModel, Field
 from core import db, get_current_user, require_roles, new_id, now_iso
 from services.design_wallet_service import design_wallet_service
 from design_core.design_constants import PRO_MONTHLY_CREDITS, ENTERPRISE_MONTHLY_CREDITS
+from services.access_control import require_site_access
+from services.outbound_notification_service import outbound_notification_service
 
 v2_router = APIRouter(prefix="/api")
 
@@ -35,7 +37,13 @@ async def log_audit(user: dict, action: str, entity: str, entity_id: str, meta: 
     })
 
 # ---------- LABOUR WALLET ----------
-ATTENDANCE_RATE = {"PRESENT": 1.0, "HALF": 0.5, "ABSENT": 0.0}
+ATTENDANCE_RATE = {
+    "PRESENT": 1.0,
+    "HALF": 0.5,
+    "HALF_DAY": 0.5,
+    "ABSENT": 0.0,
+    "LEAVE": 0.0,
+}
 
 async def recompute_wallet(labour_id: str) -> dict:
     """Recompute wallet snapshot from ledger entries."""
@@ -43,18 +51,37 @@ async def recompute_wallet(labour_id: str) -> dict:
         {"$match": {"labour_id": labour_id}},
         {"$group": {
             "_id": None,
-            "earned": {"$sum": {"$cond": [{"$in": ["$type", ["EARNING", "BONUS"]]}, "$amount", 0]}},
-            "paid": {"$sum": {"$cond": [{"$in": ["$type", ["PAYMENT", "ADVANCE"]]}, "$amount", 0]}},
+            "earned": {"$sum": {"$cond": [{"$eq": ["$type", "EARNING"]}, "$amount", 0]}},
+            "advance": {"$sum": {"$cond": [{"$eq": ["$type", "ADVANCE"]}, "$amount", 0]}},
+            "paid": {"$sum": {"$cond": [{"$eq": ["$type", "PAYMENT"]}, "$amount", 0]}},
+            "bonus": {"$sum": {"$cond": [{"$eq": ["$type", "BONUS"]}, "$amount", 0]}},
+            "deduction": {"$sum": {"$cond": [{"$eq": ["$type", "DEDUCTION"]}, "$amount", 0]}},
         }}
     ]
     res = await db.labour_ledger.aggregate(pipeline).to_list(1)
-    earned = res[0]["earned"] if res else 0
-    paid = res[0]["paid"] if res else 0
+    totals = res[0] if res else {}
+    earned = float(totals.get("earned", 0))
+    advance = float(totals.get("advance", 0))
+    paid = float(totals.get("paid", 0))
+    bonus = float(totals.get("bonus", 0))
+    deduction = float(totals.get("deduction", 0))
+    total_earned = earned + bonus
+    total_paid = advance + paid + deduction
+    labour = await db.labour.find_one({"id": labour_id}, {"_id": 0}) or {}
+    company_id = labour.get("company_id")
     snap = {
+        "id": (await db.labour_wallet.find_one({"labour_id": labour_id}, {"_id": 0, "id": 1}) or {}).get("id", new_id()),
+        "company_id": company_id,
         "labour_id": labour_id,
-        "total_earned": earned,
-        "total_paid": paid,
-        "balance": earned - paid,
+        "site_id": labour.get("site_id"),
+        "earned": earned,
+        "advance": advance,
+        "paid": paid,
+        "bonus": bonus,
+        "deduction": deduction,
+        "total_earned": total_earned,
+        "total_paid": total_paid,
+        "balance": total_earned - total_paid,
         "updated_at": now_iso(),
     }
     await db.labour_wallet.update_one({"labour_id": labour_id}, {"$set": snap}, upsert=True)
@@ -71,6 +98,7 @@ class LabourPaymentIn(BaseModel):
 async def wallet_summary(site_id: Optional[str] = None, user: dict = Depends(require_roles("CONTRACTOR", "SUPERVISOR"))):
     q: dict = {"company_id": user["company_id"]}
     if site_id:
+        await require_site_access(site_id, user)
         q["site_id"] = site_id
     elif user["role"] == "SUPERVISOR":
         q["site_id"] = {"$in": user.get("site_ids", [])}
@@ -130,8 +158,8 @@ async def wallet_pay(body: LabourPaymentIn, user: dict = Depends(require_roles("
         await db.payments.insert_one({
             "id": new_id(), "company_id": user["company_id"], "site_id": labour["site_id"],
             "type": "LABOUR", "amount": body.amount,
-            "description": f"{body.type.title()} to {labour['name']}",
-            "date": entry["date"], "party": labour["name"], "created_at": now_iso(),
+            "description": f"{body.type.title()} to {labour.get('full_name') or labour.get('name') or 'Labour'}",
+            "date": entry["date"], "party": labour.get("full_name") or labour.get("name"), "created_at": now_iso(),
         })
     return {"entry": entry, "wallet": snap}
 
@@ -146,11 +174,12 @@ class ExpenseIn(BaseModel):
     receipt_url: Optional[str] = None
 
 @v2_router.get("/expenses")
-async def list_expenses(site_id: Optional[str] = None, period: Optional[str] = None, user: dict = Depends(get_current_user)):
+async def list_expenses(site_id: Optional[str] = None, period: Optional[str] = None, user: dict = Depends(require_roles("CONTRACTOR", "SUPERVISOR"))):
     q: dict = {"company_id": user["company_id"]}
     if user["role"] == "SUPERVISOR":
         q["site_id"] = {"$in": user.get("site_ids", [])}
     if site_id:
+        await require_site_access(site_id, user)
         q["site_id"] = site_id
     if period == "month":
         first = datetime.now(timezone.utc).replace(day=1).strftime("%Y-%m-%d")
@@ -162,6 +191,7 @@ async def list_expenses(site_id: Optional[str] = None, period: Optional[str] = N
 
 @v2_router.post("/expenses")
 async def create_expense(body: ExpenseIn, user: dict = Depends(require_roles("CONTRACTOR", "SUPERVISOR"))):
+    await require_site_access(body.site_id, user, write=True)
     doc = {
         "id": new_id(),
         "company_id": user["company_id"],
@@ -184,6 +214,7 @@ async def create_expense(body: ExpenseIn, user: dict = Depends(require_roles("CO
 async def expense_report(site_id: Optional[str] = None, user: dict = Depends(require_roles("CONTRACTOR"))):
     q: dict = {"company_id": user["company_id"]}
     if site_id:
+        await require_site_access(site_id, user)
         q["site_id"] = site_id
     pipeline = [
         {"$match": q},
@@ -252,6 +283,8 @@ async def create_estimate(body: EstimateIn, user: dict = Depends(require_roles("
         raise HTTPException(400, "Budget must be greater than 0")
     if body.plot_area_sqft <= 0 or body.floors <= 0:
         raise HTTPException(400, "Plot area and floors must be > 0")
+    if body.site_id:
+        await require_site_access(body.site_id, user, write=True)
 
     # Basement counts as ~0.85 floor (excavation + waterproofing offset reduces effective rate slightly)
     effective_floors = body.floors + (0.85 if body.basement else 0)
@@ -311,12 +344,14 @@ async def list_estimates(user: dict = Depends(require_roles("CONTRACTOR"))):
 
 @v2_router.get("/estimates/{est_id}")
 async def get_estimate(est_id: str, user: dict = Depends(require_roles("CONTRACTOR", "CLIENT"))):
-    q = {"id": est_id}
-    if user["role"] == "CONTRACTOR":
-        q["company_id"] = user["company_id"]
+    q = {"id": est_id, "company_id": user["company_id"]}
     e = await db.estimates.find_one(q, {"_id": 0})
     if not e:
         raise HTTPException(404, "Not found")
+    if user["role"] == "CLIENT":
+        if not e.get("site_id"):
+            raise HTTPException(403, "This estimate is not assigned to a client site")
+        await require_site_access(e["site_id"], user)
     return e
 
 # ---------- BOQ ----------
@@ -366,6 +401,8 @@ async def generate_boq(body: BOQGenerateIn, user: dict = Depends(require_roles("
         builtup = est["builtup_sqft"]
     if not builtup or builtup <= 0:
         raise HTTPException(400, "builtup_sqft or estimate_id required")
+    if body.site_id:
+        await require_site_access(body.site_id, user, write=True)
     sqm = builtup / 10.764
     sections = []
     grand = 0
@@ -402,12 +439,14 @@ async def list_boqs(user: dict = Depends(require_roles("CONTRACTOR"))):
 
 @v2_router.get("/boq/{boq_id}")
 async def get_boq(boq_id: str, user: dict = Depends(require_roles("CONTRACTOR", "CLIENT"))):
-    q = {"id": boq_id}
-    if user["role"] == "CONTRACTOR":
-        q["company_id"] = user["company_id"]
+    q = {"id": boq_id, "company_id": user["company_id"]}
     b = await db.boqs.find_one(q, {"_id": 0})
     if not b:
         raise HTTPException(404, "Not found")
+    if user["role"] == "CLIENT":
+        if not b.get("site_id"):
+            raise HTTPException(403, "This BOQ is not assigned to a client site")
+        await require_site_access(b["site_id"], user)
     return b
 
 # ---------- QR PAYMENT FLOW (UPI) ----------
@@ -502,7 +541,14 @@ async def approve_payment(pid: str, admin: dict = Depends(require_roles("SUPER_A
         "type": "SUBSCRIPTION", "read": False, "created_at": now_iso(),
     })
     await log_audit(admin, "APPROVE", "payment_request", pid, {"plan": p["plan"], "amount": p["amount"]})
-    return {"ok": True}
+    contractor = await db.users.find_one({"id": p["user_id"]}, {"_id": 0}) or {}
+    delivery = await outbound_notification_service.send_approval(
+        contractor,
+        "Subscription payment approved",
+        f"Your {p['plan']} plan is active until {expires[:10]}.",
+        event="SUBSCRIPTION_PAYMENT_APPROVED",
+    )
+    return {"ok": True, "whatsapp_delivery": delivery}
 
 @v2_router.post("/admin/payments/{pid}/reject")
 async def reject_payment(pid: str, reason: str = Query(""), admin: dict = Depends(require_roles("SUPER_ADMIN"))):

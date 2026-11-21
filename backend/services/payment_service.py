@@ -10,6 +10,7 @@ from core import (
 from services.notification_service import (
     notification_service,
 )
+from services.access_control import require_site_access
 
 class PaymentService:
 
@@ -19,11 +20,11 @@ class PaymentService:
         user,
     ):
 
-        query = {}
+        query = {"company_id": user.get("company_id")}
 
         if user["role"] == "CONTRACTOR":
 
-            query["company_id"] = user["company_id"]
+            pass
 
         elif user["role"] == "CLIENT":
 
@@ -49,7 +50,12 @@ class PaymentService:
                 )
             }
 
+        else:
+            raise HTTPException(status_code=403, detail="Forbidden")
+
         if site_id:
+
+            await require_site_access(site_id, user)
 
             query["site_id"] = site_id
 
@@ -63,6 +69,8 @@ class PaymentService:
         body,
         user,
     ):
+
+        await require_site_access(body.site_id, user, write=True)
 
         document = {
 

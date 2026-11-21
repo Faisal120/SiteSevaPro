@@ -4,6 +4,7 @@ from core import (
     new_id,
     now_iso,
 )
+from services.access_control import require_site_access
 
 
 class ReportService:
@@ -14,11 +15,11 @@ class ReportService:
         user,
     ):
 
-        query = {}
+        query = {"company_id": user["company_id"]}
 
         if user["role"] == "CONTRACTOR":
 
-            query["company_id"] = user["company_id"]
+            pass
 
         elif user["role"] == "SUPERVISOR":
 
@@ -40,6 +41,8 @@ class ReportService:
 
         if site_id:
 
+            await require_site_access(site_id, user)
+
             query["site_id"] = site_id
 
         return await report_repository.list(
@@ -52,6 +55,8 @@ class ReportService:
         body,
         user,
     ):
+
+        await require_site_access(body.site_id, user, write=True)
 
         document = {
 
@@ -76,6 +81,8 @@ class ReportService:
             body.site_id,
 
             body.progress,
+
+            user["company_id"],
 
         )
 

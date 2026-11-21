@@ -6,6 +6,7 @@ from services.notification_service import (
 from repositories.material_repository import material_repository
 
 from core import new_id, now_iso
+from services.access_control import require_site_access
 
 
 class MaterialService:
@@ -16,11 +17,11 @@ class MaterialService:
         user,
     ):
 
-        query = {}
+        query = {"company_id": user["company_id"]}
 
         if user["role"] == "CONTRACTOR":
 
-            query["company_id"] = user["company_id"]
+            pass
 
         elif user["role"] == "SUPERVISOR":
 
@@ -40,6 +41,8 @@ class MaterialService:
 
         if site_id:
 
+            await require_site_access(site_id, user)
+
             query["site_id"] = site_id
 
         return await material_repository.list(
@@ -52,6 +55,8 @@ class MaterialService:
         body,
         user,
     ):
+
+        await require_site_access(body.site_id, user, write=True)
 
         document = {
 
@@ -99,9 +104,17 @@ class MaterialService:
 
         )
 
+        if new_stock < 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Insufficient stock for this outward transaction",
+            )
+
         await material_repository.update_stock(
 
             material["id"],
+
+            material["company_id"],
 
             new_stock,
 
@@ -245,9 +258,13 @@ class MaterialService:
 
     ):
 
+        await require_site_access(body.site_id, user, write=True)
+
         material = await material_repository.get(
 
-            body.material_id
+            body.material_id,
+
+            user["company_id"],
 
         )
 
@@ -259,6 +276,12 @@ class MaterialService:
 
                 "Material not found",
 
+            )
+
+        if material.get("site_id") != body.site_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Material does not belong to the selected site",
             )
 
         stock = await self._update_stock(
@@ -316,13 +339,11 @@ class MaterialService:
 
     ):
 
-        query = {}
-
-        if user["role"] != "SUPER_ADMIN":
-
-            query["company_id"] = user["company_id"]
+        query = {"company_id": user["company_id"]}
 
         if site_id:
+
+            await require_site_access(site_id, user)
 
             query["site_id"] = site_id
 

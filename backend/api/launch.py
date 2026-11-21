@@ -13,6 +13,8 @@ from pydantic import BaseModel, Field
 from starlette.responses import RedirectResponse
 
 from core import db, get_current_user, hash_password, new_id, now_iso, require_roles, verify_password
+from services.access_control import require_site_access
+from services.account_security import validate_password_strength
 
 router = APIRouter(prefix="/api", tags=["Mobile Launch"])
 
@@ -23,7 +25,7 @@ class ProfileIn(BaseModel):
 
 class PasswordIn(BaseModel):
     current_password: str = Field(min_length=8, max_length=256)
-    new_password: str = Field(min_length=8, max_length=256)
+    new_password: str = Field(min_length=12, max_length=256)
 
 
 class CompanyProfileIn(BaseModel):
@@ -115,11 +117,7 @@ def _record(doc: dict) -> dict:
 async def _verify_site(user: dict, site_id: Optional[str]) -> None:
     if not site_id:
         return
-    site = await db.sites.find_one({"id": site_id, "company_id": user["company_id"]}, {"_id": 0})
-    if not site:
-        raise HTTPException(404, "Site not found")
-    if user["role"] != "CONTRACTOR" and user["id"] not in user.get("site_ids", []):
-        raise HTTPException(403, "You are not assigned to this site")
+    await require_site_access(site_id, user)
 
 
 @router.patch("/auth/profile")
@@ -135,7 +133,22 @@ async def change_password(body: PasswordIn, user: dict = Depends(get_current_use
         raise HTTPException(400, "Current password is incorrect")
     if body.current_password == body.new_password:
         raise HTTPException(400, "Choose a new password")
-    await db.users.update_one({"id": user["id"]}, {"$set": {"password_hash": hash_password(body.new_password), "password_changed_at": now_iso()}})
+    validate_password_strength(body.new_password)
+    await db.users.update_one(
+        {"id": user["id"]},
+        {
+            "$set": {
+                "password_hash": hash_password(body.new_password),
+                "password_changed_at": now_iso(),
+                "must_change_password": False,
+            },
+            "$inc": {"password_version": 1},
+        },
+    )
+    await db.password_reset_codes.update_many(
+        {"user_id": user["id"], "status": "PENDING"},
+        {"$set": {"status": "SUPERSEDED", "updated_at": now_iso()}},
+    )
     return {"ok": True}
 
 
@@ -176,10 +189,12 @@ async def list_documents(site_id: Optional[str] = None, kind: Optional[str] = No
         query["site_id"] = site_id
     elif user["role"] != "CONTRACTOR":
         query["site_id"] = {"$in": user.get("site_ids", [])}
+    if user["role"] == "CLIENT":
+        query["shared_with_client"] = True
     if kind:
         query["kind"] = kind.upper()
     if q and q.strip():
-        query["title"] = {"$regex": q.strip(), "$options": "i"}
+        query["name"] = {"$regex": q.strip(), "$options": "i"}
     return await db.documents.find(query, {"_id": 0}).sort("created_at", -1).limit(500).to_list(500)
 
 
@@ -222,6 +237,8 @@ async def document_download(document_id: str, user: dict = Depends(get_current_u
     existing = await db.documents.find_one({"id": document_id, **_company_query(user)}, {"_id": 0})
     if not existing:
         raise HTTPException(404, "Document not found")
+    if user["role"] == "CLIENT" and not existing.get("shared_with_client"):
+        raise HTTPException(403, "This document has not been shared with the client")
     await _verify_site(user, existing.get("site_id"))
     return RedirectResponse(existing.get("asset_url") or existing["url"], status_code=307)
 
@@ -231,7 +248,7 @@ async def _crm_list(name: str, user: dict) -> list[dict]:
 
 
 @router.get("/crm/overview")
-async def crm_overview(user: dict = Depends(get_current_user)):
+async def crm_overview(user: dict = Depends(require_roles("CONTRACTOR", "SUPERVISOR"))):
     leads, contacts, activities, quotations = await _crm_list("crm_leads", user), await _crm_list("crm_contacts", user), await _crm_list("crm_activities", user), await _crm_list("crm_quotations", user)
     clients = [item for item in contacts if item.get("kind") == "CLIENT"]
     vendors = [item for item in contacts if item.get("kind") == "VENDOR"]

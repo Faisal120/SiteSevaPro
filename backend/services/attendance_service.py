@@ -13,6 +13,7 @@ from v2 import (
 from services.notification_service import (
     notification_service,
 )
+from services.access_control import require_site_access
 
 
 class AttendanceService:
@@ -85,7 +86,7 @@ class AttendanceService:
 
             marked_by=user["id"],
 
-            total_labours=len(norm_entries),
+            total_labours=len(entries),
 
         )
 
@@ -97,6 +98,8 @@ class AttendanceService:
     body,
     user,
 ):
+
+        await require_site_access(body.site_id, user, write=True)
 
         # -----------------------------------
         # Normalize Entries
@@ -190,7 +193,8 @@ class AttendanceService:
 ):
 
         site = await attendance_repository.get_site(
-            site_id
+            site_id,
+            user["company_id"],
         )
 
         if not site:
@@ -199,40 +203,14 @@ class AttendanceService:
                 "Site not found",
             )
 
-        if user["role"] == "CONTRACTOR":
-
-            if site["company_id"] != user["company_id"]:
-                raise HTTPException(
-                    403,
-                    "Forbidden",
-                )
-
-        elif user["role"] == "SUPERVISOR":
-
-            if site_id not in user.get(
-                "site_ids",
-                [],
-            ):
-                raise HTTPException(
-                    403,
-                    "Forbidden",
-                )
-
-        elif user["role"] == "CLIENT":
-
-            if site.get(
-                "client_email"
-            ) != user["email"]:
-                raise HTTPException(
-                    403,
-                    "Forbidden",
-                )
+        await require_site_access(site_id, user)
 
         if date:
 
             attendance = await attendance_repository.get(
                 site_id,
                 date,
+                user["company_id"],
             )
 
             if attendance:
@@ -246,7 +224,8 @@ class AttendanceService:
             }
 
         return await attendance_repository.history(
-            site_id
+            site_id,
+            user["company_id"],
         )
 
 
@@ -263,6 +242,8 @@ class AttendanceService:
 
             attendance["date"],
 
+            user["company_id"],
+
         )
 
         labour_ids = [
@@ -275,7 +256,9 @@ class AttendanceService:
 
         labours = await attendance_repository.get_labours(
 
-            labour_ids
+            labour_ids,
+
+            user["company_id"],
 
         )
 

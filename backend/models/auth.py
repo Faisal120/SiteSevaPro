@@ -8,7 +8,9 @@ SiteSeva Pro
 
 from typing import List, Literal, Optional
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
+from services.account_security import normalize_phone
 
 
 # ==========================================================
@@ -34,7 +36,8 @@ Plan = Literal[
 
 class LoginIn(BaseModel):
 
-    email: EmailStr
+    # Kept as ``email`` for backward compatibility. Usernames are accepted too.
+    email: str = Field(min_length=3, max_length=160)
 
     password: str
 
@@ -61,9 +64,17 @@ class UserOut(BaseModel):
 
     plan: Optional[Plan] = "FREE"
 
-    site_ids: List[str] = []
+    site_ids: List[str] = Field(default_factory=list)
 
     blocked: bool = False
+
+    phone: Optional[str] = None
+
+    whatsapp: Optional[str] = None
+
+    must_change_password: bool = False
+
+    password_version: int = 0
 
     created_at: str
 
@@ -105,6 +116,25 @@ class RegisterApplicationIn(BaseModel):
 
     employee_count: int = 0
 
+    @field_validator("mobile")
+    @classmethod
+    def valid_mobile(cls, value: str) -> str:
+        return normalize_phone(value)
+
+
+class ForgotPasswordIn(BaseModel):
+
+    identifier: str = Field(min_length=3, max_length=160)
+
+
+class ResetPasswordIn(BaseModel):
+
+    identifier: str = Field(min_length=3, max_length=160)
+
+    code: str = Field(pattern=r"^\d{6}$")
+
+    new_password: str = Field(min_length=12, max_length=256)
+
 
 # ==========================================================
 # Contractor Application
@@ -136,6 +166,7 @@ class ApplicationOut(BaseModel):
 
     status: Literal[
         "PENDING",
+        "PROCESSING",
         "APPROVED",
         "REJECTED",
     ]

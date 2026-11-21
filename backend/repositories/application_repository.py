@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 
 from core import db
+from pymongo import ReturnDocument
 
 
 class ApplicationRepository:
@@ -175,6 +176,62 @@ class ApplicationRepository:
 
             },
 
+        )
+
+    async def claim_for_approval(
+        self,
+        application_id: str,
+        reviewed_by: str | None = None,
+    ):
+        return await db.applications.find_one_and_update(
+            {"id": application_id, "status": "PENDING"},
+            {
+                "$set": {
+                    "status": "PROCESSING",
+                    "reviewed_by": reviewed_by,
+                    "updated_at": datetime.utcnow().isoformat(),
+                }
+            },
+            projection={"_id": 0},
+            return_document=ReturnDocument.AFTER,
+        )
+
+    async def release_approval(self, application_id: str, reason: str):
+        await db.applications.update_one(
+            {"id": application_id, "status": "PROCESSING"},
+            {
+                "$set": {
+                    "status": "PENDING",
+                    "provisioning_error": reason[:500],
+                    "updated_at": datetime.utcnow().isoformat(),
+                }
+            },
+        )
+
+    async def complete_approval(
+        self,
+        application_id: str,
+        *,
+        reviewed_by: str | None,
+        user_id: str,
+        company_id: str,
+        delivery_status: str,
+    ):
+        await db.applications.update_one(
+            {"id": application_id, "status": "PROCESSING"},
+            {
+                "$set": {
+                    "status": "APPROVED",
+                    "reviewed_by": reviewed_by,
+                    "reviewed_at": datetime.utcnow().isoformat(),
+                    "approved_at": datetime.utcnow().isoformat(),
+                    "user_id": user_id,
+                    "company_id": company_id,
+                    "credential_delivery_status": delivery_status,
+                    "updated_at": datetime.utcnow().isoformat(),
+                },
+                "$unset": {"provisioning_error": ""},
+            },
         )
 
     # =====================================================

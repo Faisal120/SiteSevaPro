@@ -28,3 +28,6 @@ cloudinary==1.41.0
 reportlab==4.2.2
 google-generativeai
 openai>=1.40.0
+firebase-admin>=6.5.0,<7.0.0
+protobuf<6.0.0
+websockets>=15.0.0

@@ -1,8 +1,5 @@
 from core import db
-from services.notification_service import (
-    notification_service,
-)
-
+from repositories.notification_repository import notification_repository
 class MaterialRepository:
 
     # -------------------------------
@@ -43,12 +40,15 @@ class MaterialRepository:
     async def get(
         self,
         material_id: str,
+        company_id: str | None = None,
     ):
 
+        query = {"id": material_id}
+        if company_id:
+            query["company_id"] = company_id
+
         return await db.materials.find_one(
-            {
-                "id": material_id
-            },
+            query,
             {
                 "_id": 0
             }
@@ -58,12 +58,14 @@ class MaterialRepository:
     async def update_stock(
         self,
         material_id: str,
+        company_id: str,
         stock: float,
     ):
 
         await db.materials.update_one(
             {
-                "id": material_id
+                "id": material_id,
+                "company_id": company_id,
             },
             {
                 "$set": {
@@ -72,16 +74,6 @@ class MaterialRepository:
             }
         )
         
-        await notification_service.notify_low_stock(
-
-            company_id=user["company_id"],
-
-            material=material,
-
-            stock=new_stock,
-
-        )
-
     # ======================================================
     # Material Transactions
     # ======================================================
@@ -102,10 +94,7 @@ class MaterialRepository:
         self,
         document: dict,
     ):
-
-        await db.notifications.insert_one(
-            document
-        )
+        await notification_repository.create(document)
 
 
     async def create_payment(

@@ -1,7 +1,26 @@
 from core import db
+from services.notification_delivery import notification_delivery
 
 
 class NotificationRepository:
+
+    @staticmethod
+    def _user_scope(
+        company_id: str | None,
+        user_id: str | None,
+    ) -> dict:
+        # Platform administrators do not belong to a tenant.  Keep their
+        # notifications strictly user-scoped instead of querying every company.
+        if company_id is None:
+            return {"user_id": user_id} if user_id else {"user_id": "__none__"}
+
+        query = {"company_id": company_id}
+        if user_id:
+            query["$or"] = [
+                {"user_id": user_id},
+                {"user_id": None},
+            ]
+        return query
 
     # =====================================================
     # CREATE
@@ -16,7 +35,21 @@ class NotificationRepository:
 
         await db.notifications.insert_one(db_document)
 
+        await notification_delivery.deliver(document)
+
         return document
+
+    async def register_device(self, document: dict):
+        return await db.push_devices.update_one(
+            {"token": document["token"]},
+            {"$set": document},
+            upsert=True,
+        )
+
+    async def unregister_device(self, token: str, user_id: str):
+        return await db.push_devices.delete_one(
+            {"token": token, "user_id": user_id}
+        )
 
 
     # =====================================================
@@ -25,27 +58,11 @@ class NotificationRepository:
 
     async def user_notifications(
         self,
-        company_id: str,
+        company_id: str | None,
         user_id: str | None,
     ):
 
-        query = {
-            "company_id": company_id
-        }
-
-        if user_id:
-
-            query["$or"] = [
-
-                {
-                    "user_id": user_id
-                },
-
-                {
-                    "user_id": None
-                }
-
-            ]
+        query = self._user_scope(company_id, user_id)
 
         return await (
 
@@ -77,15 +94,13 @@ class NotificationRepository:
     async def mark_read(
         self,
         notification_id: str,
-        company_id: str,
+        company_id: str | None,
+        user_id: str | None,
     ):
 
         return await db.notifications.update_one(
 
-            {
-                "id": notification_id,
-                "company_id": company_id,
-            },
+            {"id": notification_id, **self._user_scope(company_id, user_id)},
 
             {
                 "$set": {
@@ -102,27 +117,11 @@ class NotificationRepository:
 
     async def mark_all_read(
         self,
-        company_id: str,
+        company_id: str | None,
         user_id: str | None,
     ):
 
-        query = {
-            "company_id": company_id
-        }
-
-        if user_id:
-
-            query["$or"] = [
-
-                {
-                    "user_id": user_id
-                },
-
-                {
-                    "user_id": None
-                }
-
-            ]
+        query = self._user_scope(company_id, user_id)
 
         return await db.notifications.update_many(
 
@@ -144,15 +143,13 @@ class NotificationRepository:
     async def delete(
         self,
         notification_id: str,
-        company_id: str,
+        company_id: str | None,
+        user_id: str | None,
     ):
 
         return await db.notifications.delete_one(
 
-            {
-                "id": notification_id,
-                "company_id": company_id,
-            }
+            {"id": notification_id, **self._user_scope(company_id, user_id)}
 
         )
 
@@ -163,31 +160,14 @@ class NotificationRepository:
 
     async def unread_count(
         self,
-        company_id: str,
+        company_id: str | None,
         user_id: str | None,
     ):
 
         query = {
-
-            "company_id": company_id,
-
+            **self._user_scope(company_id, user_id),
             "read": False,
-
         }
-
-        if user_id:
-
-            query["$or"] = [
-
-                {
-                    "user_id": user_id
-                },
-
-                {
-                    "user_id": None
-                }
-
-            ]
 
         return await db.notifications.count_documents(
             query

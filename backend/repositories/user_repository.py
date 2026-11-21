@@ -5,6 +5,8 @@ from core import db
 import uuid
 from datetime import datetime
 
+from services.account_security import normalize_phone
+
 
 class UserRepository:
 
@@ -38,6 +40,25 @@ class UserRepository:
             {
                 "_id": 0
             }
+        )
+
+    async def get_by_identifier(
+        self,
+        identifier: str,
+    ) -> Optional[dict]:
+        value = identifier.strip().lower()
+        clauses = [
+            {"email": value},
+            {"username": value},
+        ]
+        try:
+            phone = normalize_phone(identifier)
+            clauses.extend([{"phone": phone}, {"whatsapp": phone}])
+        except ValueError:
+            pass
+        return await db.users.find_one(
+            {"$or": clauses},
+            {"_id": 0},
         )
         
     
@@ -167,7 +188,8 @@ class UserRepository:
                 "company_id": company_id
             },
             {
-                "_id": 0
+                "_id": 0,
+                "password_hash": 0,
             }
         ).to_list(1000)
 

@@ -74,11 +74,27 @@ class NotificationService:
 
         return await notification_repository.user_notifications(
 
-            user["company_id"],
+            user.get("company_id"),
 
             user.get("id"),
 
         )
+
+    async def register_device(self, body, user):
+        document = {
+            "token": body.token,
+            "platform": body.platform,
+            "user_id": user["id"],
+            "company_id": user.get("company_id"),
+            "enabled": True,
+            "updated_at": now_iso(),
+        }
+        await notification_repository.register_device(document)
+        return {"success": True}
+
+    async def unregister_device(self, token: str, user):
+        await notification_repository.unregister_device(token, user["id"])
+        return {"success": True}
 
     # =====================================================
     # UNREAD COUNT
@@ -94,7 +110,7 @@ class NotificationService:
 
         total = await notification_repository.unread_count(
 
-            user["company_id"],
+            user.get("company_id"),
 
             user.get("id"),
 
@@ -124,7 +140,8 @@ class NotificationService:
 
             notification_id,
 
-            user["company_id"],
+            user.get("company_id"),
+            user.get("id"),
 
         )
 
@@ -158,7 +175,7 @@ class NotificationService:
 
         await notification_repository.mark_all_read(
 
-            user["company_id"],
+            user.get("company_id"),
 
             user.get("id"),
 
@@ -188,7 +205,8 @@ class NotificationService:
 
             notification_id,
 
-            user["company_id"],
+            user.get("company_id"),
+            user.get("id"),
 
         )
 

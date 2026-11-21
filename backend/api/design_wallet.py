@@ -137,8 +137,8 @@ async def approve_purchase(
         "body": f"{request['credits']} credits have been added to your Design Studio wallet.",
         "type": "WALLET", "read": False, "created_at": now_iso(),
     })
-    await notify_credit_approval(request["user_id"], request["credits"])
-    return {"ok": True}
+    delivery = await notify_credit_approval(request["user_id"], request["credits"])
+    return {"ok": True, "whatsapp_delivery": delivery}
 
 
 @router.post("/purchase/{request_id}/reject")

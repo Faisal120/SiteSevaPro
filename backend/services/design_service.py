@@ -145,6 +145,12 @@ class DesignService:
                 },
             )
 
+            await design_wallet_service.refund(
+                user["company_id"],
+                credits,
+                f"Refund for failed {body.design_type} design · {design['id']}",
+            )
+
             raise
 
     async def generate_3d(self, user, design_id, floor_number: int):

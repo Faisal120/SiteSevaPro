@@ -92,10 +92,11 @@ class DesignWalletRepository:
         credits: int,
     ):
 
-        await db.design_wallets.update_one(
+        return await db.design_wallets.update_one(
 
             {
                 "company_id": company_id,
+                "credits": {"$gte": credits},
             },
 
             {

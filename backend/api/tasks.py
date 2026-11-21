@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from core import db, get_current_user, new_id, now_iso, require_roles
+from services.access_control import require_site_access
 
 router = APIRouter(
     prefix="/api",
@@ -39,16 +40,7 @@ def _site_scope(user: dict) -> dict:
 
 
 async def _assert_site_access(site_id: str, user: dict, *, write: bool = False) -> dict:
-    site = await db.sites.find_one({"id": site_id, "company_id": user["company_id"]}, {"_id": 0})
-    if not site:
-        raise HTTPException(404, "Site not found")
-    if user["role"] == "CONTRACTOR":
-        return site
-    if user["id"] not in user.get("site_ids", []):
-        raise HTTPException(403, "You are not assigned to this site")
-    if write and user["role"] == "CLIENT":
-        raise HTTPException(403, "Client accounts cannot change the site plan")
-    return site
+    return await require_site_access(site_id, user, write=write)
 
 
 async def _records(collection, query: dict) -> list[dict]:

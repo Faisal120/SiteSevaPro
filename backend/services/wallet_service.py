@@ -18,7 +18,8 @@ class WalletService:
     ):
 
         labour = await wallet_repository.get_labour(
-            labour_id
+            labour_id,
+            user["company_id"],
         )
 
         if labour is None:
@@ -34,13 +35,15 @@ class WalletService:
             )
 
         wallet = await wallet_repository.get_wallet(
-            labour_id
+            labour_id,
+            user["company_id"],
         )
 
         if wallet is None:
 
             wallet = await self.recompute_wallet(
-                labour_id
+                labour_id,
+                user["company_id"],
             )
 
         return wallet
@@ -52,10 +55,16 @@ class WalletService:
     async def ledger_summary(
         self,
         labour_id: str,
+        user: dict | None = None,
     ):
 
+        company_id = user.get("company_id") if user else None
+        if user and not await wallet_repository.get_labour(labour_id, company_id):
+            raise HTTPException(status_code=404, detail="Labour not found")
+
         ledger = await wallet_repository.ledger(
-            labour_id
+            labour_id,
+            company_id,
         )
 
         earned = 0
@@ -128,10 +137,12 @@ class WalletService:
     async def recompute_wallet(
         self,
         labour_id: str,
+        company_id: str | None = None,
     ):
 
         labour = await wallet_repository.get_labour(
-            labour_id
+            labour_id,
+            company_id,
         )
 
         if labour is None:
@@ -159,7 +170,8 @@ class WalletService:
         )
 
         existing = await wallet_repository.get_wallet(
-            labour_id
+            labour_id,
+            labour["company_id"],
         )
 
         wallet = {
@@ -193,6 +205,10 @@ class WalletService:
                 2,
             ),
 
+            "total_earned": round(summary["earned"] + summary["bonus"], 2),
+
+            "total_paid": round(summary["advance"] + summary["paid"] + summary["deduction"], 2),
+
             "updated_at": now_iso(),
 
         }
@@ -219,7 +235,9 @@ class WalletService:
 
         labour = await wallet_repository.get_labour(
 
-            body.labour_id
+            body.labour_id,
+
+            user["company_id"],
 
         )
 
@@ -277,7 +295,9 @@ class WalletService:
 
         wallet = await self.recompute_wallet(
 
-            body.labour_id
+            body.labour_id,
+
+            user["company_id"],
 
         )
 
@@ -302,11 +322,15 @@ class WalletService:
 
         month,
 
+        user,
+
     ):
 
         labour = await wallet_repository.get_labour(
 
-            labour_id
+            labour_id,
+
+            user["company_id"],
 
         )
 
@@ -322,7 +346,9 @@ class WalletService:
 
         ledger = await wallet_repository.ledger(
 
-            labour_id
+            labour_id,
+
+            user["company_id"],
 
         )
 

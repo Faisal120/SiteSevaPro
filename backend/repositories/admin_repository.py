@@ -179,7 +179,7 @@ class AdminRepository:
 
                 "_id": 0,
 
-                "password": 0,
+                "password_hash": 0,
 
             }
 
@@ -213,7 +213,9 @@ class AdminRepository:
 
                 "$set": {
 
-                    "status": status
+                    "status": status,
+
+                    "blocked": status == "SUSPENDED",
 
                 }
 

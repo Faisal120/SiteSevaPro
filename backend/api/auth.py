@@ -6,15 +6,17 @@ from models.auth import (
     UserOut,
     RegisterApplicationIn,
     ApplicationOut,
+    ForgotPasswordIn,
+    ResetPasswordIn,
 )
 
 from services.auth_service import auth_service
 
 from services.application_service import application_service
 
-from core import get_current_user
+from core import get_current_user, require_roles
 
-router = APIRouter(
+router = APIRouter( 
     prefix="/api/auth",
     tags=["Authentication"],
 )
@@ -29,6 +31,20 @@ async def login(
     return await auth_service.login(
         body.email,
         body.password,
+    )
+
+
+@router.post("/password/forgot")
+async def forgot_password(body: ForgotPasswordIn):
+    return await auth_service.forgot_password(body.identifier)
+
+
+@router.post("/password/reset")
+async def reset_password(body: ResetPasswordIn):
+    return await auth_service.reset_password(
+        body.identifier,
+        body.code,
+        body.new_password,
     )
 
 
@@ -57,8 +73,9 @@ async def register_application(
 @router.get(
     "/applications",
 )
-async def pending_applications():
-
+async def pending_applications(
+    _: dict = Depends(require_roles("SUPER_ADMIN")),
+):
     return await application_service.list_pending()
 
 
@@ -67,9 +84,11 @@ async def pending_applications():
 )
 async def approve_application(
     application_id: str,
+    admin: dict = Depends(require_roles("SUPER_ADMIN")),
 ):
     return await application_service.approve(
-    application_id
+        application_id,
+        reviewed_by=admin["id"],
     )
     
 @router.post(
@@ -77,7 +96,9 @@ async def approve_application(
 )
 async def reject_application(
     application_id: str,
+    admin: dict = Depends(require_roles("SUPER_ADMIN")),
 ):
     return await application_service.reject(
-    application_id
+        application_id,
+        reviewed_by=admin["id"],
     )

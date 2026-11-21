@@ -63,7 +63,9 @@ async def ledger(
 
     return await wallet_service.ledger_summary(
 
-        labour_id
+        labour_id,
+
+        user,
 
     )
 
@@ -156,5 +158,7 @@ async def generate_payroll(
         labour_id,
 
         month,
+
+        user,
 
     )

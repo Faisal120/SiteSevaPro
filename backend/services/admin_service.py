@@ -4,6 +4,11 @@ from repositories.admin_repository import (
 
 )
 
+from fastapi import HTTPException
+
+from core import now_iso
+from services.outbound_notification_service import outbound_notification_service
+
 
 class AdminService:
 
@@ -92,7 +97,7 @@ class AdminService:
 
         subscription = await admin_repository.subscription(
 
-            contractor["id"]
+            contractor["company_id"]
 
         )
 
@@ -146,9 +151,21 @@ class AdminService:
 
         )
 
+        contractor = await admin_repository.contractor(contractor_id)
+        delivery = None
+        if contractor:
+            delivery = await outbound_notification_service.send_approval(
+                contractor,
+                "Account activated",
+                "Your SiteSeva Pro contractor account is active.",
+                event="CONTRACTOR_ACTIVATED",
+            )
+
         return {
 
-            "success": True
+            "success": True,
+
+            "whatsapp_delivery": delivery,
 
         }
         
@@ -214,6 +231,15 @@ class AdminService:
             subscription,
 
         )
+
+        deliveries = await outbound_notification_service.notify_company_approval(
+            company_id,
+            "Subscription approved",
+            f"Your {body.plan} subscription is now active.",
+            event="SUBSCRIPTION_APPROVED",
+        )
+
+        subscription["whatsapp_deliveries"] = deliveries
 
         return subscription
     

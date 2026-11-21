@@ -61,10 +61,11 @@ router as admin_router
 
 from api.design import router as design_router
 
-from api.branding import router as branding_router
-
 from api.design_wallet import router as design_wallet_router
 from api.launch import router as launch_router
+from api.ai_assistant import router as ai_assistant_router
+from api.whatsapp import router as whatsapp_router
+from services.ai_assistant_service import ai_assistant_service
 
 # Shared infra — single source of truth for db, auth, helpers
 from core import (
@@ -87,6 +88,13 @@ from core import (
 )
 
 from services.wallet_service import wallet_service
+from services.access_control import require_site_access
+from services.application_service import application_service
+from services.account_security import (
+    generate_temporary_password,
+    normalize_phone,
+)
+from services.outbound_notification_service import outbound_notification_service
 
 MAP_GENERATION_COST = 5
 
@@ -167,24 +175,31 @@ async def admin_stats(_: dict = Depends(require_roles("SUPER_ADMIN"))):
     active_sites = await db.sites.count_documents({"status": "ACTIVE"})
     pending_apps = await db.applications.count_documents({"status": "PENDING"})
     active_users = await db.users.count_documents({"blocked": {"$ne": True}})
-    # Revenue: sum of subscription payments
-    pipeline = [{"$match": {"type": "SUBSCRIPTION"}}, {"$group": {"_id": None, "total": {"$sum": "$amount"}}}]
-    rev = await db.payments.aggregate(pipeline).to_list(1)
-    monthly_revenue = rev[0]["total"] if rev else 0
+    # Revenue trend from persisted subscription payments.
+    subscription_payments = await db.payments.find(
+        {"type": "SUBSCRIPTION"},
+        {"_id": 0, "amount": 1, "date": 1, "created_at": 1},
+    ).to_list(5000)
+    revenue_by_month = {}
+    for payment in subscription_payments:
+        key = str(payment.get("date") or payment.get("created_at") or "")[:7]
+        if key:
+            revenue_by_month[key] = revenue_by_month.get(key, 0) + float(payment.get("amount") or 0)
+    today = datetime.now(timezone.utc)
+    months = []
+    for offset in range(5, -1, -1):
+        month_index = today.year * 12 + today.month - 1 - offset
+        year, month_zero = divmod(month_index, 12)
+        key = f"{year:04d}-{month_zero + 1:02d}"
+        label = datetime(year, month_zero + 1, 1).strftime("%b")
+        months.append({"month": label, "key": key, "revenue": revenue_by_month.get(key, 0)})
+    monthly_revenue = revenue_by_month.get(today.strftime("%Y-%m"), 0)
     # Expiring subs
     soon = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
-    expiring = await db.subscriptions.count_documents({"expires_at": {"$lte": soon}})
-    months = [
-    {"month":"Jan","revenue":0},
-    {"month":"Feb","revenue":0},
-    {"month":"Mar","revenue":0},
-]
-    # Revenue trend (last 6 months mocked aggregate)
-    # months = []
-    # for i in range(5, -1, -1):
-    #     dt = datetime.now(timezone.utc) - timedelta(days=30 * i)
-    #     label = dt.strftime("%b")
-    #     months.append({"month": label, "revenue": int(50000 + secrets.randbelow(80000))})
+    expiring = await db.subscriptions.count_documents({
+        "status": "ACTIVE",
+        "expires_at": {"$gte": today.isoformat(), "$lte": soon},
+    })
     return {
         "total_contractors": total_contractors,
         "active_sites": active_sites,
@@ -204,67 +219,18 @@ async def list_applications(status_filter: Optional[str] = Query(None, alias="st
     return apps
 
 @api.post("/admin/applications/{app_id}/approve")
-async def approve_application(app_id: str, _: dict = Depends(require_roles("SUPER_ADMIN"))):
-    application = await db.applications.find_one({"id": app_id}, {"_id": 0})
-    if not application:
-        raise HTTPException(404, "Application not found")
-    if application["status"] != "PENDING":
-        raise HTTPException(400, "Already processed")
-    username = gen_username(application["company_name"])
-    password = gen_password()
-    company_id = new_id()
-    user_id = new_id()
-    company = {
-        "id": company_id,
-        "name": application["company_name"],
-        "owner_id": user_id,
-        "gst_number": application.get("gst_number"),
-        "city": application["city"],
-        "state": application["state"],
-        "address": application["office_address"],
-        "created_at": now_iso(),
-    }
-    await db.companies.insert_one(dict(company))
-    user = {
-        "id": user_id,
-        "email": application["email"],
-        "username": username,
-        "password_hash": hash_password(password),
-        "role": "CONTRACTOR",
-        "full_name": application["owner_name"],
-        "company_id": company_id,
-        "company_name": application["company_name"],
-        "plan": "FREE",
-        "site_ids": [],
-        "blocked": False,
-        "created_at": now_iso(),
-    }
-    await db.users.insert_one(dict(user))
-    sub = {
-        "id": new_id(),
-        "company_id": company_id,
-        "plan": "FREE",
-        "status": "ACTIVE",
-        "started_at": now_iso(),
-        "expires_at": (datetime.now(timezone.utc) + timedelta(days=365)).isoformat(),
-    }
-    await db.subscriptions.insert_one(dict(sub))
-
-    await db.applications.update_one({"id": app_id}, {"$set": {"status": "APPROVED", "approved_at": now_iso(), "user_id": user_id}})
-    await db.notifications.insert_one({
-        "id": new_id(), "user_id": user_id, "company_id": company_id,
-        "title": "Welcome to Site Seva Pro",
-        "body": f"Your account has been approved. Username: {username}",
-        "type": "INFO", "read": False, "created_at": now_iso(),
-    })
-    return {"username": username, "password": password, "email": application["email"], "user_id": user_id}
+async def approve_application(
+    app_id: str,
+    admin: dict = Depends(require_roles("SUPER_ADMIN")),
+):
+    return await application_service.approve(app_id, reviewed_by=admin["id"])
 
 @api.post("/admin/applications/{app_id}/reject")
-async def reject_application(app_id: str, _: dict = Depends(require_roles("SUPER_ADMIN"))):
-    res = await db.applications.update_one({"id": app_id, "status": "PENDING"}, {"$set": {"status": "REJECTED", "rejected_at": now_iso()}})
-    if res.matched_count == 0:
-        raise HTTPException(404, "Application not pending")
-    return {"ok": True}
+async def reject_application(
+    app_id: str,
+    admin: dict = Depends(require_roles("SUPER_ADMIN")),
+):
+    return await application_service.reject(app_id, reviewed_by=admin["id"])
 
 @api.get("/admin/contractors")
 async def list_contractors(_: dict = Depends(require_roles("SUPER_ADMIN"))):
@@ -297,8 +263,9 @@ async def block_contractor(user_id: str, blocked: bool = True, _: dict = Depends
     return {"ok": True, "blocked": blocked}
 
 class TeamMemberIn(BaseModel):
-    full_name: str
+    full_name: str = Field(min_length=2, max_length=120)
     email: EmailStr
+    phone: str = Field(min_length=8, max_length=24)
     role: Literal["SUPERVISOR", "CLIENT"]
 
 class SiteAssignmentIn(BaseModel):
@@ -309,7 +276,8 @@ async def list_team(user: dict = Depends(require_roles("CONTRACTOR"))):
     members = await db.users.find(
         {
             "company_id": user["company_id"],
-            "role": {"$in": ["SUPERVISOR", "CLIENT"]}
+            "role": {"$in": ["SUPERVISOR", "CLIENT"]},
+            "archived_at": {"$exists": False},
         },
         {"_id": 0, "password_hash": 0}
     ).to_list(500)
@@ -329,11 +297,18 @@ async def create_team_member(
     if existing:
         raise HTTPException(400, "Email already exists")
 
-    password = gen_password()
+    try:
+        phone = normalize_phone(body.phone)
+    except ValueError as error:
+        raise HTTPException(400, str(error)) from error
+
+    password = generate_temporary_password()
 
     doc = {
         "id": new_id(),
         "email": body.email.lower(),
+        "phone": phone,
+        "whatsapp": phone,
         "username": gen_username(body.full_name),
         "password_hash": hash_password(password),
         "role": body.role,
@@ -343,26 +318,87 @@ async def create_team_member(
         "site_ids": [],
         "permissions": [],
         "blocked": False,
+        "must_change_password": True,
+        "password_version": 0,
         "created_at": now_iso(),
     }
 
     await db.users.insert_one(doc)
+    doc.pop("_id", None)
+
+    delivery = await outbound_notification_service.send_credentials(doc, password)
+    await db.users.update_one(
+        {"id": doc["id"]},
+        {
+            "$set": {
+                "credential_delivery_status": delivery.get("status"),
+                "credential_delivery_id": delivery.get("id"),
+            }
+        },
+    )
 
     return {
         "success": True,
-        "email": doc["email"],
-        "password": password
+        "member": {
+            key: value for key, value in doc.items() if key != "password_hash"
+        },
+        "whatsapp_delivery": delivery,
     }
+
+
+@api.post("/team/{user_id}/resend-credentials")
+async def resend_team_credentials(
+    user_id: str,
+    user: dict = Depends(require_roles("CONTRACTOR")),
+):
+    member = await db.users.find_one(
+        {
+            "id": user_id,
+            "company_id": user["company_id"],
+            "role": {"$in": ["SUPERVISOR", "CLIENT"]},
+            "archived_at": {"$exists": False},
+        },
+        {"_id": 0},
+    )
+    if not member:
+        raise HTTPException(404, "Team member not found")
+    password = generate_temporary_password()
+    await db.users.update_one(
+        {"id": member["id"]},
+        {
+            "$set": {
+                "password_hash": hash_password(password),
+                "must_change_password": True,
+                "credentials_resent_at": now_iso(),
+            },
+            "$inc": {"password_version": 1},
+        },
+    )
+    delivery = await outbound_notification_service.send_credentials(member, password)
+    await db.users.update_one(
+        {"id": member["id"]},
+        {
+            "$set": {
+                "credential_delivery_status": delivery.get("status"),
+                "credential_delivery_id": delivery.get("id"),
+            }
+        },
+    )
+    return {"success": True, "whatsapp_delivery": delivery}
 
 @api.delete("/team/{user_id}")
 async def delete_team_member(
     user_id: str,
     user: dict = Depends(require_roles("CONTRACTOR"))
 ):
-    await db.users.delete_one({
+    result = await db.users.update_one({
         "id": user_id,
-        "company_id": user["company_id"]
-    })
+        "company_id": user["company_id"],
+        "role": {"$in": ["SUPERVISOR", "CLIENT"]},
+    }, {"$set": {"blocked": True, "archived_at": now_iso()}})
+
+    if result.matched_count == 0:
+        raise HTTPException(404, "Team member not found")
 
     return {"success": True}
 
@@ -373,10 +409,11 @@ async def toggle_team_member(
     user: dict = Depends(require_roles("CONTRACTOR"))
 ):
 
-    await db.users.update_one(
+    result = await db.users.update_one(
         {
             "id": user_id,
-            "company_id": user["company_id"]
+            "company_id": user["company_id"],
+            "role": {"$in": ["SUPERVISOR", "CLIENT"]},
         },
         {
             "$set": {
@@ -384,6 +421,9 @@ async def toggle_team_member(
             }
         }
     )
+
+    if result.matched_count == 0:
+        raise HTTPException(404, "Team member not found")
 
     return {
         "success": True,
@@ -402,8 +442,10 @@ async def get_site_tasks(
     user: dict = Depends(get_current_user)
 ):
 
+    await require_site_access(site_id, user)
+
     return await db.site_tasks.find(
-        {"site_id": site_id},
+        {"site_id": site_id, "company_id": user["company_id"]},
         {"_id": 0}
     ).to_list(500)
     
@@ -453,7 +495,7 @@ async def complete_task(
     print("CURRENT USER =", user)
 
     task = await db.site_tasks.find_one(
-        {"id": task_id}
+        {"id": task_id, "company_id": user["company_id"]}
     )
 
     if not task:
@@ -462,8 +504,10 @@ async def complete_task(
             detail="Task not found"
         )
 
+    await require_site_access(task["site_id"], user, write=True)
+
     await db.site_tasks.update_one(
-        {"id": task_id},
+        {"id": task_id, "company_id": user["company_id"]},
         {
             "$set": {
                 "completed": True
@@ -473,30 +517,12 @@ async def complete_task(
 
     site_id = task["site_id"]
 
-    completed = await db.site_tasks.count_documents({
-        "site_id": site_id,
-        "completed": True
-    })
-
-    total = await db.site_tasks.count_documents({
-        "site_id": site_id
-    })
-
-    progress = 0
-
-    if total > 0:
-        progress = round(
-            (completed / total) * 100
-        )
-
-    await db.sites.update_one(
-        {"id": site_id},
-        {
-            "$set": {
-                "progress": progress
-            }
-        }
+    await recalculate_site_progress(site_id)
+    updated_site = await db.sites.find_one(
+        {"id": site_id, "company_id": user["company_id"]},
+        {"_id": 0, "progress": 1},
     )
+    progress = (updated_site or {}).get("progress", 0)
 
     return {
         "success": True,
@@ -548,13 +574,20 @@ async def get_branding(
     user: dict = Depends(get_current_user)
 ):
 
+    company_id = user.get("company_id")
+    if not company_id:
+        return {
+            "company_name": "SiteSeva Pro",
+            "email": user.get("email", ""),
+        }
+
     company = await db.companies.find_one(
         {
-            "id": user["company_id"]
+            "id": company_id
         }
     )
 
-    return company.get(
+    return (company or {}).get(
         "branding",
         {}
     )
@@ -875,6 +908,11 @@ async def request_subscription_renewal(user: dict = Depends(require_roles("CONTR
 
 @api.post("/subscription/upgrade")
 async def upgrade_subscription(plan: Plan, user: dict = Depends(require_roles("CONTRACTOR"))):
+    if plan != "FREE":
+        raise HTTPException(
+            status_code=400,
+            detail="Paid plans must be activated through /api/payment/request and admin verification.",
+        )
     amounts = {"FREE": 0, "PREMIUM": 2999, "ENTERPRISE": 4999}
     amount = amounts.get(plan, 0)
     expires = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
@@ -933,31 +971,11 @@ async def ai_insight(body: AIInsightIn, user: dict = Depends(require_roles("CONT
         subscription = await db.subscriptions.find_one({"company_id": user["company_id"], "status": "ACTIVE"}, {"_id": 0, "plan": 1})
         if (subscription or {}).get("plan") != "ENTERPRISE":
             raise HTTPException(403, "AI Insights are available on the Enterprise plan.")
-    try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
-    except ImportError:
-        raise HTTPException(500, "AI library not installed")
-    if not EMERGENT_LLM_KEY:
-        raise HTTPException(500, "AI key not configured")
-    prompts = {
-        "material_estimate": "You are a construction quantity surveyor. Given the site context, estimate required materials with quantities (cement bags, steel kg, sand cft, bricks count, tiles sqft). Be concise and use bullet points.",
-        "progress_summary": "You are a construction project manager. Summarize site progress, milestones reached, blockers, and next 7-day plan in clear bullets.",
-        "delay_prediction": "You are a project risk analyst. Predict potential delays for this construction site based on the context. List top 3 risks with likelihood and mitigation.",
-        "expense_analysis": "You are a construction CFO. Analyze the expense breakdown and suggest 3 cost optimization tactics. Use bullets and concrete numbers when possible.",
-    }
-    system = prompts[body.kind]
-    chat = LlmChat(
-        api_key=EMERGENT_LLM_KEY,
-        session_id=f"siteseva-{body.kind}-{user['id']}",
-        system_message=system,
-    ).with_model("anthropic", "claude-sonnet-4-5-20250929")
-    msg = UserMessage(text=f"Context:\n{body.context}\n\nProvide your insight now.")
-    reply: str = ""
-    try:
-        reply = await chat.send_message(msg)
-    except Exception as e:
-        logger.exception("AI error")
-        raise HTTPException(502, f"AI service error: {e}") from e
+    reply = await ai_assistant_service.generate_insight(
+        body.kind,
+        body.context,
+        user,
+    )
     return {"kind": body.kind, "insight": reply, "generated_at": now_iso()}
 
 # ---------- MOUNT ----------
@@ -966,7 +984,6 @@ app.include_router(api)
 from api.auth import router as auth_router
 from api.site import router as sites_router
 from api.tasks import router as tasks_router
-from api.reports import router as reports_router
 from api.materials import router as materials_router
 from api.payments import router as payments_router
 
@@ -1011,19 +1028,11 @@ app.include_router(
 )
 
 app.include_router(
-    reports_router
-)
-
-app.include_router(
     labour_router
 )
 
 app.include_router(
     design_router
-)
-
-app.include_router(
-    branding_router
 )
 
 app.include_router(
@@ -1034,12 +1043,59 @@ app.include_router(
     launch_router
 )
 
+app.include_router(ai_assistant_router)
+app.include_router(whatsapp_router)
+
 @app.on_event("startup")
 async def on_start():
     try:
-        pass
+        admin_email = SUPER_ADMIN_EMAIL.lower().strip()
+        existing = await db.users.find_one({"email": admin_email}, {"_id": 0, "id": 1})
+        if not existing:
+            await db.users.insert_one({
+                "id": new_id(),
+                "email": admin_email,
+                "username": "superadmin",
+                "password_hash": hash_password(SUPER_ADMIN_PASSWORD),
+                "role": "SUPER_ADMIN",
+                "full_name": "SiteSeva Super Admin",
+                "company_id": None,
+                "company_name": "SiteSeva Pro",
+                "plan": "ENTERPRISE",
+                "site_ids": [],
+                "blocked": False,
+                "must_change_password": False,
+                "password_version": 0,
+                "phone": os.getenv("SUPER_ADMIN_PHONE") or None,
+                "whatsapp": os.getenv("SUPER_ADMIN_PHONE") or None,
+                "created_at": now_iso(),
+            })
+            logger.info("Super admin account provisioned")
+        await db.users.create_index("email", unique=True)
+        await db.users.create_index("id", unique=True)
+        await db.sites.create_index([("company_id", 1), ("id", 1)], unique=True)
+        await db.push_devices.create_index("token", unique=True)
+        await db.push_devices.create_index([("company_id", 1), ("user_id", 1)])
+        await db.notifications.create_index([("company_id", 1), ("created_at", -1)])
+        await db.applications.create_index("id", unique=True)
+        await db.outbound_notifications.create_index(
+            "id",
+            unique=True,
+            partialFilterExpression={"id": {"$type": "string"}},
+        )
+        await db.outbound_notifications.create_index(
+            "provider_message_id",
+            sparse=True,
+        )
+        await db.password_reset_codes.create_index(
+            [("user_id", 1), ("created_epoch", -1)]
+        )
+        await db.password_reset_codes.create_index(
+            "purge_at",
+            expireAfterSeconds=0,
+        )
     except Exception:
-        logger.exception("Seed failed")
+        logger.exception("Startup provisioning failed")
 
 @app.on_event("shutdown")
 async def on_stop():

@@ -1,8 +1,4 @@
 from core import db
-from services.notification_service import (
-    notification_service,
-)
-
 class AttendanceRepository:
 
     async def save(
@@ -13,6 +9,7 @@ class AttendanceRepository:
         await db.attendance.update_one(
 
             {
+                "company_id": document["company_id"],
                 "site_id": document["site_id"],
                 "date": document["date"],
             },
@@ -32,11 +29,13 @@ class AttendanceRepository:
         self,
         site_id: str,
         date: str,
+        company_id: str,
     ):
 
         return await db.attendance.find_one(
 
             {
+                "company_id": company_id,
                 "site_id": site_id,
                 "date": date,
             },
@@ -51,6 +50,7 @@ class AttendanceRepository:
     async def history(
         self,
         site_id: str,
+        company_id: str,
     ):
 
         return await (
@@ -60,6 +60,7 @@ class AttendanceRepository:
             .find(
 
                 {
+                    "company_id": company_id,
                     "site_id": site_id
                 },
 
@@ -87,10 +88,12 @@ class AttendanceRepository:
     async def get_labours(
         self,
         labour_ids: list[str],
+        company_id: str,
     ):
 
         cursor = db.labour.find(
             {
+                "company_id": company_id,
                 "id": {
                     "$in": labour_ids
                 }
@@ -110,10 +113,12 @@ class AttendanceRepository:
         self,
         site_id: str,
         date: str,
+        company_id: str,
     ):
 
         await db.labour_ledger.delete_many(
             {
+                "company_id": company_id,
                 "ref_type": "ATTENDANCE",
                 "ref_date": date,
                 "site_id": site_id,
@@ -133,11 +138,13 @@ class AttendanceRepository:
     async def get_site(
         self,
         site_id: str,
+        company_id: str,
     ):
 
         return await db.sites.find_one(
             {
-                "id": site_id
+                "id": site_id,
+                "company_id": company_id,
             },
             {
                 "_id": 0

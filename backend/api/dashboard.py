@@ -1,9 +1,10 @@
 from fastapi import APIRouter
 from fastapi import Depends
 
-from core import get_current_user
+from core import get_current_user, require_roles
 
 from services.dashboard import dashboard_dispatcher
+from services.dashboard.contractor_dashboard_service import contractor_dashboard_service
 
 router = APIRouter(
     prefix="/api/dashboard",
@@ -27,9 +28,9 @@ async def bootstrap(
 
 @router.get("/contractor")
 async def contractor_dashboard(
-    user=Depends(get_current_user),
+    user=Depends(require_roles("CONTRACTOR")),
 ):
-    return await dashboard_service.contractor_dashboard(
+    return await contractor_dashboard_service.dashboard(
         user
     )
     

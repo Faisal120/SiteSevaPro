@@ -10,12 +10,15 @@ class WalletRepository:
     async def get_wallet(
         self,
         labour_id: str,
+        company_id: str | None = None,
     ):
 
+        query = {"labour_id": labour_id}
+        if company_id:
+            query["company_id"] = company_id
+
         return await db.labour_wallet.find_one(
-            {
-                "labour_id": labour_id
-            },
+            query,
             {
                 "_id": 0
             }
@@ -51,16 +54,19 @@ class WalletRepository:
     async def ledger(
         self,
         labour_id: str,
+        company_id: str | None = None,
     ):
+
+        query = {"labour_id": labour_id}
+        if company_id:
+            query["company_id"] = company_id
 
         return await (
 
             db.labour_ledger
 
             .find(
-                {
-                    "labour_id": labour_id
-                },
+                query,
                 {
                     "_id": 0
                 }
@@ -95,13 +101,16 @@ class WalletRepository:
     async def get_labour(
         self,
         labour_id: str,
+        company_id: str | None = None,
     ):
+
+        query = {"id": labour_id}
+        if company_id:
+            query["company_id"] = company_id
 
         return await db.labour.find_one(
 
-            {
-                "id": labour_id
-            },
+            query,
 
             {
                 "_id": 0

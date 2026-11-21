@@ -109,16 +109,15 @@ class DesignWalletService:
                 plan,
             )
 
-        if wallet["credits"] < credits:
-
-            raise InsufficientCreditsError(
-                "Insufficient credits."
-            )
-
-        await design_wallet_repository.deduct_credits(
+        result = await design_wallet_repository.deduct_credits(
             company_id,
             credits,
         )
+
+        if result.modified_count == 0:
+            raise InsufficientCreditsError(
+                "Insufficient credits."
+            )
 
         await design_transaction_repository.create(
             {
@@ -148,6 +147,22 @@ class DesignWalletService:
                 "company_id": company_id,
                 "credits": credits,
                 "type": "PURCHASE",
+                "description": reason,
+            }
+        )
+
+    async def refund(
+        self,
+        company_id: str,
+        credits: int,
+        reason: str,
+    ):
+        await design_wallet_repository.add_credits(company_id, credits)
+        await design_transaction_repository.create(
+            {
+                "company_id": company_id,
+                "credits": credits,
+                "type": "REFUND",
                 "description": reason,
             }
         )

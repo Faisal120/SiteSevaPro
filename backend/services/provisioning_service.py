@@ -1,5 +1,4 @@
 import secrets
-import string
 import uuid
 
 from datetime import datetime
@@ -12,6 +11,7 @@ from repositories.subscription_repository import subscription_repository
 from repositories.company_wallet_repository import company_wallet_repository
 from repositories.notification_repository import notification_repository
 from repositories.audit_repository import audit_repository
+from services.account_security import generate_temporary_password, normalize_phone
 
 
 class ProvisioningService:
@@ -38,22 +38,7 @@ class ProvisioningService:
     # --------------------------------------------------
 
     def generate_password(self):
-
-        chars = (
-
-            string.ascii_letters
-
-            + string.digits
-
-        )
-
-        return "".join(
-
-            secrets.choice(chars)
-
-            for _ in range(10)
-
-        )
+        return generate_temporary_password()
 
     # --------------------------------------------------
     
@@ -68,6 +53,8 @@ class ProvisioningService:
             "id": company_id,
 
             "name": application["company_name"],
+
+            "application_id": application.get("id"),
 
             "owner_id": "",
 
@@ -127,6 +114,10 @@ class ProvisioningService:
 
             "email": application["email"],
 
+            "phone": normalize_phone(application["mobile"]),
+
+            "whatsapp": normalize_phone(application["mobile"]),
+
             "username": username,
 
             "password_hash": hash_password(
@@ -149,6 +140,10 @@ class ProvisioningService:
 
             "must_change_password": True,
 
+            "password_version": 0,
+
+            "application_id": application.get("id"),
+
             "site_ids": [],
 
             "created_at": datetime.utcnow().isoformat()
@@ -161,16 +156,9 @@ class ProvisioningService:
 
         )
 
-        await company_repository.update(
-
+        await company_repository.update_owner(
             company["id"],
-
-            {
-
-                "owner_id": contractor["id"]
-
-            }
-
+            contractor["id"],
         )
 
         return contractor, username, password
@@ -197,6 +185,7 @@ class ProvisioningService:
         )
         
     async def create_notification(
+    self,
     company,
 ):
         try:
