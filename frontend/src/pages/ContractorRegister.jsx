@@ -41,7 +41,7 @@ export default function ContractorRegister() {
             <CheckCircle2 className="h-7 w-7" />
           </div>
           <h2 className="mt-4 font-display text-2xl font-extrabold">Application Received</h2>
-          <p className="mt-2 text-gray-600">Our admin team will review your application and email you your login credentials within 24 hours.</p>
+          <p className="mt-2 text-gray-600">Our admin team will review your application. Once approved, your one-time login credentials will be sent to your registered WhatsApp number.</p>
           <Link to="/" className="ss-btn-ink mt-6 inline-flex">Back to Home</Link>
         </div>
       </div>
@@ -56,7 +56,7 @@ export default function ContractorRegister() {
           <span className="font-display text-lg font-extrabold">Site Seva <span className="text-[#3B82F6]">Pro</span></span>
         </Link>
         <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">Contractor Registration</h1>
-        <p className="mt-2 text-gray-600">Fill the form below. Our admin reviews and emails you your credentials.</p>
+        <p className="mt-2 text-gray-600">Fill the form below. After approval, secure one-time credentials will be sent on WhatsApp.</p>
 
         <form onSubmit={submit} className="mt-8 ss-card p-6 grid gap-5 md:grid-cols-2" data-testid="register-form">
           {[
@@ -80,6 +80,7 @@ export default function ContractorRegister() {
                 onChange={set(k)}
                 required={!["gst_number", "active_projects", "employee_count"].includes(k)}
                 data-testid={`register-${k}`}
+                placeholder={k === "mobile" ? "+91 98765 43210" : undefined}
               />
             </div>
           ))}

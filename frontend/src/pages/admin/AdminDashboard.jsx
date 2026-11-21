@@ -4,10 +4,20 @@ import { api } from "@/lib/api";
 import { StatCard, SectionTitle } from "@/components/dashboard/Primitives";
 import { inr } from "@/lib/constants";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
+import ErrorState from "@/components/common/ErrorState";
 
 export default function AdminDashboard() {
   const [s, setS] = React.useState(null);
-  React.useEffect(() => { api.get("/admin/dashboard").then((r) => setS(r.data)); }, []);
+  const [error, setError] = React.useState(false);
+  const load = React.useCallback(() => {
+    setError(false);
+    setS(null);
+    api.get("/admin/dashboard")
+      .then((r) => setS(r.data))
+      .catch(() => setError(true));
+  }, []);
+  React.useEffect(() => { load(); }, [load]);
+  if (error) return <ErrorState title="Dashboard unavailable" description="Backend se admin dashboard load nahi ho paaya." onRetry={load} />;
   if (!s) return <div className="p-10 text-center text-gray-500">Loading…</div>;
   return (
     <div className="space-y-6 ss-fade-in">

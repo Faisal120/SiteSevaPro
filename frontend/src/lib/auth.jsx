@@ -12,11 +12,11 @@ export function AuthProvider({ children }) {
       return null;
     }
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => Boolean(localStorage.getItem("access_token")));
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
-    if (token && !user) {
+    if (token) {
       setLoading(true);
       api.get("/auth/me")
         .then((r) => {
@@ -28,6 +28,8 @@ export function AuthProvider({ children }) {
           localStorage.removeItem("user");
         })
         .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

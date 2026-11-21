@@ -1,23 +1,44 @@
 import React from "react";
-import { Users, Ban, CheckCircle2 } from "lucide-react";
+import { Users, Ban, CheckCircle2, MessageCircle, RefreshCw } from "lucide-react";
 import { api } from "@/lib/api";
 import { Chip, EmptyState } from "@/components/dashboard/Primitives";
 import { fmtDate } from "@/lib/constants";
 import { toast } from "sonner";
+import ErrorState from "@/components/common/ErrorState";
 
 export default function Contractors() {
   const [list, setList] = React.useState([]);
-  React.useEffect(() => {
-    const load = async () => { const { data } = await api.get("/admin/contractors"); setList(data); };
-    load();
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(false);
+  const load = React.useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      const { data } = await api.get("/admin/contractors");
+      setList(data);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+  React.useEffect(() => { load(); }, [load]);
   const toggleBlock = async (u) => {
     try {
       await api.post(`/admin/contractors/${u.id}/block?blocked=${!u.blocked}`);
       toast.success(u.blocked ? "Unblocked" : "Blocked");
-      const { data } = await api.get("/admin/contractors");
-      setList(data);
+      await load();
     } catch { toast.error("Failed"); }
+  };
+  const resendCredentials = async (u) => {
+    if (!window.confirm(`Generate a new password for ${u.email} and send it on WhatsApp?`)) return;
+    try {
+      const { data } = await api.post(`/admin/contractors/${u.id}/resend-credentials`);
+      const status = data.whatsapp_delivery?.status;
+      if (["ACCEPTED", "SENT", "DELIVERED", "READ"].includes(status)) toast.success("New credentials accepted by WhatsApp");
+      else toast.warning(`Password regenerated; WhatsApp status: ${status || "UNKNOWN"}`);
+      await load();
+    } catch (error) { toast.error(error?.response?.data?.detail || "Unable to resend credentials"); }
   };
   return (
     <div className="space-y-6 ss-fade-in">
@@ -25,26 +46,30 @@ export default function Contractors() {
         <h1 className="font-display text-3xl font-extrabold tracking-tight">Contractors</h1>
         <p className="text-sm text-gray-500 mt-1">Manage all contractor accounts on the platform.</p>
       </div>
-      {list.length === 0 ? (
+      {error ? (
+        <ErrorState title="Contractors unavailable" description="Contractor accounts load nahi ho paaye." onRetry={load} />
+      ) : loading ? (
+        <div className="p-10 text-center text-gray-500">Loading…</div>
+      ) : list.length === 0 ? (
         <EmptyState icon={Users} title="No contractors yet" />
       ) : (
         <div className="ss-card p-5 overflow-x-auto">
           <table className="ss-table">
-            <thead><tr><th>Company</th><th>Owner</th><th>Email</th><th>Username</th><th>Plan</th><th>Status</th><th>Joined</th><th className="text-right">Action</th></tr></thead>
+            <thead><tr><th>Company</th><th>Owner</th><th>Email</th><th>WhatsApp</th><th>Plan</th><th>Status</th><th>Joined</th><th className="text-right">Action</th></tr></thead>
             <tbody>
               {list.map((u) => (
                 <tr key={u.id} data-testid={`con-row-${u.id}`}>
                   <td className="font-semibold">{u.company_name}</td>
                   <td>{u.full_name}</td>
                   <td>{u.email}</td>
-                  <td className="font-mono text-xs">{u.username}</td>
+                  <td><p className="flex items-center gap-1.5 text-xs"><MessageCircle className="h-3.5 w-3.5 text-emerald-500"/>{u.phone || u.whatsapp || "—"}</p><p className="mt-1 text-[10px] text-gray-500">{u.credential_delivery_status || "NOT SENT"}</p></td>
                   <td><Chip className="bg-blue-100 text-blue-700">{u.plan}</Chip></td>
                   <td>{u.blocked ? <Chip className="bg-red-100 text-red-700">Blocked</Chip> : <Chip className="bg-emerald-100 text-emerald-700">Active</Chip>}</td>
                   <td className="text-gray-500">{fmtDate(u.created_at)}</td>
                   <td className="text-right">
-                    <button onClick={() => toggleBlock(u)} className={`ss-chip ${u.blocked ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`} data-testid={`con-toggle-${u.id}`}>
+                    <div className="flex justify-end gap-2"><button onClick={() => resendCredentials(u)} className="ss-chip bg-blue-100 text-blue-700"><RefreshCw className="h-3.5 w-3.5"/>Resend</button><button onClick={() => toggleBlock(u)} className={`ss-chip ${u.blocked ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`} data-testid={`con-toggle-${u.id}`}>
                       {u.blocked ? <><CheckCircle2 className="h-3.5 w-3.5" /> Unblock</> : <><Ban className="h-3.5 w-3.5" /> Block</>}
-                    </button>
+                    </button></div>
                   </td>
                 </tr>
               ))}

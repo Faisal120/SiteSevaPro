@@ -1,0 +1,54 @@
+{
+  "slideCount": 28,
+  "masters": [
+    {
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "name": "",
+      "placeholderSummary": []
+    }
+  ],
+  "layouts": [
+    {
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "name": "",
+      "placeholderSummary": []
+    },
+    {
+      "id": "/ppt/slideLayouts/slideLayout1.xml",
+      "name": "DEFAULT",
+      "placeholderSummary": []
+    },
+    {
+      "id": "/ppt/slideLayouts/slideLayout2.xml",
+      "name": "STORY",
+      "placeholderSummary": []
+    },
+    {
+      "id": "/ppt/slideLayouts/slideLayout3.xml",
+      "name": "TITLE_STRIP",
+      "placeholderSummary": [
+        {
+          "name": "title",
+          "type": "title",
+          "text": ""
+        },
+        {
+          "name": "body",
+          "type": "body",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "id": "/ppt/slideLayouts/slideLayout4.xml",
+      "name": "CARD",
+      "placeholderSummary": [
+        {
+          "name": "title",
+          "type": "title",
+          "text": ""
+        }
+      ]
+    }
+  ]
+}

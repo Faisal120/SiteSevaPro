@@ -1,0 +1,6 @@
+# Copy to android/key.properties and keep the real file private.
+# Paths are resolved from the android directory.
+storeFile=../keystore/siteseva-upload.jks
+storePassword=CHANGE_ME
+keyAlias=siteseva-upload
+keyPassword=CHANGE_ME

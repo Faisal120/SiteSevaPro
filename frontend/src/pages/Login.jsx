@@ -23,7 +23,7 @@ export default function Login() {
     try {
       const u = await login(email, password);
       toast.success(`Welcome back, ${u.full_name || u.email}`);
-      const redirect = u.role === "SUPER_ADMIN" ? "/app/admin" : "/app/dashboard";
+      const redirect = u.must_change_password ? "/change-password" : u.role === "SUPER_ADMIN" ? "/app/admin" : "/app/dashboard";
       nav(loc.state?.from || redirect, { replace: true });
     } catch (err) {
       toast.error(err?.response?.data?.detail || "Login failed");
@@ -63,9 +63,9 @@ export default function Login() {
 
           <form onSubmit={submit} className="mt-8 space-y-4" data-testid="login-form">
             <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Email</label>
+              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Email or username</label>
               <input
-                type="email"
+                type="text"
                 className="ss-input mt-1"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -74,7 +74,7 @@ export default function Login() {
               />
             </div>
             <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Password</label>
+              <div className="flex items-center justify-between"><label className="text-xs font-bold uppercase tracking-wider text-gray-500">Password</label><Link to="/forgot-password" className="text-xs font-semibold text-blue-500 hover:underline">Forgot password?</Link></div>
               <div className="relative mt-1">
                 <input
                   type={showPw ? "text" : "password"}

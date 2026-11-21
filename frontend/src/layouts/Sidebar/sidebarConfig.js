@@ -18,6 +18,7 @@ import {
   Activity,
   Map,
   Palette,
+  MessageCircle,
 } from "lucide-react";
 
 /* ===========================================
@@ -301,6 +302,11 @@ export const adminMenu = [
         label: "Design Credits",
         path: "/app/admin/design-credits",
         icon: Map,
+      },
+      {
+        label: "WhatsApp",
+        path: "/app/admin/whatsapp",
+        icon: MessageCircle,
       },
       {
         label: "Analytics",

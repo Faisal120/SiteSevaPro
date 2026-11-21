@@ -4,10 +4,20 @@ import { StatCard, SectionTitle } from "@/components/dashboard/Primitives";
 import { TrendingUp, CreditCard, Users, Calendar } from "lucide-react";
 import { inr } from "@/lib/constants";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
+import ErrorState from "@/components/common/ErrorState";
 
 export default function Revenue() {
   const [s, setS] = React.useState(null);
-  React.useEffect(() => { api.get("/admin/dashboard").then((r) => setS(r.data)); }, []);
+  const [error, setError] = React.useState(false);
+  const load = React.useCallback(() => {
+    setError(false);
+    setS(null);
+    api.get("/admin/dashboard")
+      .then((r) => setS(r.data))
+      .catch(() => setError(true));
+  }, []);
+  React.useEffect(() => { load(); }, [load]);
+  if (error) return <ErrorState title="Revenue unavailable" description="Revenue data abhi load nahi ho paaya." onRetry={load} />;
   if (!s) return <div className="p-10 text-center text-gray-500">Loading…</div>;
   return (
     <div className="space-y-6 ss-fade-in">

@@ -21,7 +21,7 @@ export default function Expenses() {
   const [filter, setFilter] = React.useState({ site: "ALL", period: "ALL" });
   const [open, setOpen] = React.useState(false);
 
-  const load = async () => {
+  const load = React.useCallback(async () => {
     const params = new URLSearchParams();
     if (filter.site !== "ALL") params.set("site_id", filter.site);
     if (filter.period !== "ALL") params.set("period", filter.period);
@@ -34,8 +34,8 @@ export default function Expenses() {
       const r = await api.get("/expenses/report" + (filter.site !== "ALL" ? `?site_id=${filter.site}` : ""));
       setReport(r.data);
     }
-  };
-  React.useEffect(() => { load(); /* eslint-disable-next-line */ }, [filter]);
+  }, [filter, user.role]);
+  React.useEffect(() => { load(); }, [load]);
 
   const total = list.reduce((a, b) => a + b.amount, 0);
   const today = list.filter(e => e.date === new Date().toISOString().slice(0,10)).reduce((a,b)=>a+b.amount,0);

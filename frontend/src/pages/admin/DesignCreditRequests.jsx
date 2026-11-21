@@ -20,7 +20,7 @@ export default function DesignCreditRequests() {
   }, [status]);
   React.useEffect(() => { load().catch(() => toast.error("Unable to load credit requests")); }, [load]);
   const act = async (id, action) => {
-    try { await api.post(`/design-wallet/purchase/${id}/${action}`); toast.success(action === "approve" ? "Credits added to wallet" : "Request rejected"); load(); }
+    try { const { data } = await api.post(`/design-wallet/purchase/${id}/${action}`); if (action === "approve") { const status = data.whatsapp_delivery?.status; if (["ACCEPTED", "SENT", "DELIVERED", "READ"].includes(status)) toast.success("Credits added and WhatsApp notification submitted"); else toast.warning(`Credits added; WhatsApp status: ${status || "UNKNOWN"}`); } else toast.success("Request rejected"); load(); }
     catch (error) { toast.error(error?.response?.data?.detail || "Unable to process request"); }
   };
 

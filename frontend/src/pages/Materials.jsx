@@ -17,12 +17,12 @@ export default function Materials() {
   const [openMat, setOpenMat] = React.useState(false);
   const [openTxn, setOpenTxn] = React.useState({ open: false, material: null });
 
-  const load = async () => {
-    const sts = await api.get("/sites");
-    setSites(sts.data);
-    if (!siteId && sts.data[0]) setSiteId(sts.data[0].id);
-  };
-  React.useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  React.useEffect(() => {
+    api.get("/sites").then((sts) => {
+      setSites(sts.data);
+      setSiteId((current) => current || sts.data[0]?.id || "");
+    });
+  }, []);
   React.useEffect(() => {
     if (siteId) api.get(`/materials?site_id=${siteId}`).then((r) => setItems(r.data));
   }, [siteId, openMat, openTxn.open]);

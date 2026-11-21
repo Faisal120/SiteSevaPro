@@ -1,5 +1,5 @@
 import React from "react";
-import { Briefcase, CheckCircle2, XCircle, Copy, RefreshCw } from "lucide-react";
+import { AlertTriangle, Briefcase, CheckCircle2, MessageCircle, XCircle, RefreshCw } from "lucide-react";
 import { api } from "@/lib/api";
 import { Chip, EmptyState } from "@/components/dashboard/Primitives";
 import { fmtDate } from "@/lib/constants";
@@ -41,6 +41,9 @@ export default function Applications() {
     try {
       const { data } = await api.post(`/admin/applications/${id}/approve`);
       setCreds(data);
+      const delivery = data.whatsapp_delivery?.status;
+      if (["ACCEPTED", "SENT", "DELIVERED", "READ"].includes(delivery)) toast.success("Contractor approved and WhatsApp credentials submitted");
+      else toast.warning(`Contractor approved; WhatsApp status: ${delivery || "UNKNOWN"}`);
       load();
     } catch { toast.error("Approve failed"); }
   };
@@ -125,19 +128,9 @@ export default function Applications() {
           <DialogHeader><DialogTitle>Contractor Approved 🎉</DialogTitle></DialogHeader>
           {creds && (
             <div className="space-y-3">
-              <p className="text-sm text-gray-600">Share these credentials with the contractor via email:</p>
-              <div className="bg-gray-50 rounded-lg p-4 space-y-2 font-mono text-sm">
-                <div><span className="text-gray-500">Email:</span> {creds.email}</div>
-                <div><span className="text-gray-500">Username:</span> {creds.username}</div>
-                <div><span className="text-gray-500">Password:</span> {creds.password}</div>
-              </div>
-              <button
-                onClick={() => { navigator.clipboard.writeText(`Email: ${creds.email}\nUsername: ${creds.username}\nPassword: ${creds.password}`); toast.success("Copied"); }}
-                className="ss-btn-accent w-full"
-                data-testid="creds-copy"
-              >
-                <Copy className="h-4 w-4" /> Copy Credentials
-              </button>
+              <p className="text-sm text-gray-600">A contractor workspace and one-time password were created. The password is never exposed in the admin panel.</p>
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm"><div><span className="text-gray-500">Email:</span> {creds.email}</div><div><span className="text-gray-500">Username:</span> {creds.username}</div><div className="flex items-center gap-2"><MessageCircle className="h-4 w-4 text-emerald-500"/><span className="text-gray-500">WhatsApp:</span><b>{creds.whatsapp_delivery?.status || "UNKNOWN"}</b></div>{creds.whatsapp_delivery?.recipient && <div><span className="text-gray-500">Recipient:</span> {creds.whatsapp_delivery.recipient}</div>}</div>
+              {!['ACCEPTED', 'SENT', 'DELIVERED', 'READ'].includes(creds.whatsapp_delivery?.status) && <div className="flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0"/><p>The account is active, but WhatsApp did not accept the message. Configure Meta Cloud API, then regenerate credentials from contractor management.</p></div>}
             </div>
           )}
         </DialogContent>

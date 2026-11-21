@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "57501235498",
+    "project_id": "trainer-app-a047a",
+    "storage_bucket": "trainer-app-a047a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:57501235498:android:643fc5c4f1f19ed938c653",
+        "android_client_info": {
+          "package_name": "com.nexa.siteseva"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCjt3URByG-qFcRb9U-RlXpf_wc3wYIwn8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

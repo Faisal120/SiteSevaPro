@@ -1,6 +1,6 @@
 import React from "react";
 import "@/App.css";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { ThemeProvider } from "@/lib/theme";
@@ -11,6 +11,8 @@ import Pricing from "@/pages/Pricing";
 import About from "@/pages/About";
 import Contact from "@/pages/Contact";
 import Login from "@/pages/Login";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ChangePassword from "@/pages/ChangePassword";
 import ContractorRegister from "@/pages/ContractorRegister";
 
 import DashboardLayout from "@/layouts/DashboardLayout";
@@ -44,6 +46,7 @@ import Revenue from "@/pages/admin/Revenue";
 import AdminPayments from "@/pages/admin/AdminPayments";
 import AuditLogs from "@/pages/admin/AuditLogs";
 import DesignCreditRequests from "@/pages/admin/DesignCreditRequests";
+import WhatsAppDeliveries from "@/pages/admin/WhatsAppDeliveries";
 import Branding from "@/pages/Branding";
 import DesignStudio from "@/pages/DesignStudio";
 import { BootstrapProvider } from "@/context/BootstrapContext";
@@ -51,8 +54,12 @@ import PublicRoute from "@/components/PublicRoute";
 
 function Protected({ children, roles }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) return <div className="p-10 text-center text-gray-500">Loading…</div>;
   if (!user) return <Navigate to="/login" replace />;
+  if (user.must_change_password && location.pathname !== "/change-password") {
+    return <Navigate to="/change-password" replace />;
+  }
   if (roles && !roles.includes(user.role)) return <Navigate to="/app/dashboard" replace />;
   return children;
 }
@@ -78,7 +85,9 @@ function App() {
                 <Route path="/about" element={<About />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/register" element={<ContractorRegister />} />
+                <Route path="/change-password" element={<Protected><ChangePassword /></Protected>} />
 
                 <Route
                   path="/app"
@@ -142,6 +151,7 @@ function App() {
                   <Route path="admin/revenue" element={<Protected roles={["SUPER_ADMIN"]}><Revenue /></Protected>} />
                   <Route path="admin/payments" element={<Protected roles={["SUPER_ADMIN"]}><AdminPayments /></Protected>} />
                   <Route path="admin/design-credits" element={<Protected roles={["SUPER_ADMIN"]}><DesignCreditRequests /></Protected>} />
+                  <Route path="admin/whatsapp" element={<Protected roles={["SUPER_ADMIN"]}><WhatsAppDeliveries /></Protected>} />
                   <Route path="admin/audit" element={<Protected roles={["SUPER_ADMIN"]}><AuditLogs /></Protected>} />
                 </Route>
 

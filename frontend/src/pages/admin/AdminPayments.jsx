@@ -1,9 +1,10 @@
 import React from "react";
 import { api } from "@/lib/api";
-import { SectionTitle, Chip, EmptyState } from "@/components/dashboard/Primitives";
+import { Chip, EmptyState } from "@/components/dashboard/Primitives";
 import { inr, fmtDate } from "@/lib/constants";
 import { toast } from "sonner";
 import { Wallet, CheckCircle2, XCircle, ExternalLink } from "lucide-react";
+import ErrorState from "@/components/common/ErrorState";
 
 const STATUS = {
   PENDING: "bg-yellow-100 text-yellow-800",
@@ -14,13 +15,42 @@ const STATUS = {
 export default function AdminPayments() {
   const [list, setList] = React.useState([]);
   const [filter, setFilter] = React.useState("PENDING");
-  const load = async () => { const { data } = await api.get(`/admin/payments?status=${filter}`); setList(data); };
-  React.useEffect(() => { load(); /* eslint-disable-next-line */ }, [filter]);
-  const approve = async (id) => { await api.post(`/admin/payments/${id}/approve`); toast.success("Approved"); load(); };
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(false);
+  const load = React.useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      const { data } = await api.get(`/admin/payments?status=${filter}`);
+      setList(data);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [filter]);
+  React.useEffect(() => { load(); }, [load]);
+  const approve = async (id) => {
+    try {
+      const { data } = await api.post(`/admin/payments/${id}/approve`);
+      const status = data.whatsapp_delivery?.status;
+      if (["ACCEPTED", "SENT", "DELIVERED", "READ"].includes(status)) toast.success("Approved and WhatsApp notification submitted");
+      else toast.warning(`Approved; WhatsApp status: ${status || "UNKNOWN"}`);
+      load();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Approval failed");
+    }
+  };
   const reject = async (id) => {
-    const reason = prompt("Rejection reason?") || "";
-    await api.post(`/admin/payments/${id}/reject?reason=${encodeURIComponent(reason)}`);
-    toast.success("Rejected"); load();
+    const reason = prompt("Rejection reason?");
+    if (reason === null) return;
+    try {
+      await api.post(`/admin/payments/${id}/reject?reason=${encodeURIComponent(reason)}`);
+      toast.success("Rejected");
+      load();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Rejection failed");
+    }
   };
   return (
     <div className="space-y-6 ss-fade-in">
@@ -35,7 +65,11 @@ export default function AdminPayments() {
           ))}
         </div>
       </div>
-      {list.length === 0 ? (
+      {error ? (
+        <ErrorState title="Payments unavailable" description="Payment requests load nahi ho paayi." onRetry={load} />
+      ) : loading ? (
+        <div className="p-10 text-center text-gray-500">Loading…</div>
+      ) : list.length === 0 ? (
         <EmptyState icon={Wallet} title={`No ${filter.toLowerCase()} payments`} />
       ) : (
         <div className="ss-card p-5 overflow-x-auto">

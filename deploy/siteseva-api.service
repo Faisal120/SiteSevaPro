@@ -1,0 +1,20 @@
+[Unit]
+Description=SiteSeva Pro FastAPI service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=siteseva
+Group=siteseva
+WorkingDirectory=/opt/siteseva/backend
+EnvironmentFile=/etc/siteseva/backend.env
+ExecStart=/opt/siteseva/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --workers 1 --proxy-headers --forwarded-allow-ips=127.0.0.1
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

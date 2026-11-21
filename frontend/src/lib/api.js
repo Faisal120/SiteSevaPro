@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const BACKEND_URL = (process.env.REACT_APP_BACKEND_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 export const API_BASE = `${BACKEND_URL}/api`;
 
 export const api = axios.create({ baseURL: API_BASE });
@@ -14,6 +14,10 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (r) => r,
   (err) => {
+    if (err?.response?.status === 428 && window.location.pathname !== "/change-password") {
+      window.location.href = "/change-password";
+      return Promise.reject(err);
+    }
     if (err?.response?.status === 401 && window.location.pathname.startsWith("/app")) {
       localStorage.removeItem("access_token");
       localStorage.removeItem("user");

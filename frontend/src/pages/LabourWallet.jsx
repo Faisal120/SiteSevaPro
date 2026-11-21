@@ -15,12 +15,12 @@ export default function LabourWallet() {
   const [siteId, setSiteId] = React.useState("ALL");
   const [payOpen, setPayOpen] = React.useState({ open: false, row: null });
 
-  const load = async () => {
+  const load = React.useCallback(async () => {
     const params = siteId !== "ALL" ? `?site_id=${siteId}` : "";
     const [w, s] = await Promise.all([api.get(`/wallet/summary${params}`), api.get("/sites")]);
     setData(w.data); setSites(s.data);
-  };
-  React.useEffect(() => { load(); /* eslint-disable-next-line */ }, [siteId]);
+  }, [siteId]);
+  React.useEffect(() => { load(); }, [load]);
 
   if (!data) return <div className="p-10 text-center text-gray-500">Loading…</div>;
 
