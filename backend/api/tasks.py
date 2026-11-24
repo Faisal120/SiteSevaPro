@@ -90,5 +90,8 @@ async def decide_approval(approval_id: str, body: ApprovalDecisionIn, user: dict
         raise HTTPException(404, "Approval not found")
     await _assert_site_access(approval["site_id"], user)
     patch = {"status": body.decision, "decision_note": body.note, "decided_by": user["id"], "decided_at": now_iso()}
-    await db.site_approvals.update_one({"id": approval_id}, {"$set": patch})
+    await db.site_approvals.update_one(
+        {"id": approval_id, "company_id": user["company_id"]},
+        {"$set": patch},
+    )
     return {**approval, **patch}

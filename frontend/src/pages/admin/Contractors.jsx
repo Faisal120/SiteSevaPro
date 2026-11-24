@@ -40,6 +40,15 @@ export default function Contractors() {
       await load();
     } catch (error) { toast.error(error?.response?.data?.detail || "Unable to resend credentials"); }
   };
+  const updatePhone = async (u) => {
+    const phone = window.prompt("WhatsApp number with country code", u.phone || u.whatsapp || "+91");
+    if (!phone) return;
+    try {
+      await api.patch(`/admin/contractors/${u.id}/whatsapp`, { phone });
+      toast.success("WhatsApp number updated");
+      await load();
+    } catch (error) { toast.error(error?.response?.data?.detail || "Unable to update number"); }
+  };
   return (
     <div className="space-y-6 ss-fade-in">
       <div>
@@ -67,7 +76,7 @@ export default function Contractors() {
                   <td>{u.blocked ? <Chip className="bg-red-100 text-red-700">Blocked</Chip> : <Chip className="bg-emerald-100 text-emerald-700">Active</Chip>}</td>
                   <td className="text-gray-500">{fmtDate(u.created_at)}</td>
                   <td className="text-right">
-                    <div className="flex justify-end gap-2"><button onClick={() => resendCredentials(u)} className="ss-chip bg-blue-100 text-blue-700"><RefreshCw className="h-3.5 w-3.5"/>Resend</button><button onClick={() => toggleBlock(u)} className={`ss-chip ${u.blocked ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`} data-testid={`con-toggle-${u.id}`}>
+                    <div className="flex justify-end gap-2"><button onClick={() => updatePhone(u)} className="ss-chip bg-gray-100 text-gray-700">Edit no.</button><button onClick={() => resendCredentials(u)} className="ss-chip bg-blue-100 text-blue-700"><RefreshCw className="h-3.5 w-3.5"/>Resend</button><button onClick={() => toggleBlock(u)} className={`ss-chip ${u.blocked ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`} data-testid={`con-toggle-${u.id}`}>
                       {u.blocked ? <><CheckCircle2 className="h-3.5 w-3.5" /> Unblock</> : <><Ban className="h-3.5 w-3.5" /> Block</>}
                     </button></div>
                   </td>

@@ -5,15 +5,20 @@ This router intentionally contains only non-overlapping detail/update routes.
 """
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 
 from core import db, hash_password, now_iso, require_roles
 from models.subscription import SubscriptionUpdate
 from services.admin_service import admin_service
-from services.account_security import generate_temporary_password
+from services.account_security import generate_temporary_password, normalize_phone
 from services.outbound_notification_service import outbound_notification_service
 
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
+
+
+class WhatsAppNumberIn(BaseModel):
+    phone: str = Field(min_length=8, max_length=24)
 
 
 @router.get("/contractors/{contractor_id}")
@@ -61,6 +66,25 @@ async def resend_contractor_credentials(
         },
     )
     return {"success": True, "whatsapp_delivery": delivery}
+
+
+@router.patch("/contractors/{contractor_id}/whatsapp")
+async def update_contractor_whatsapp(
+    contractor_id: str,
+    body: WhatsAppNumberIn,
+    _: dict = Depends(require_roles("SUPER_ADMIN")),
+):
+    try:
+        phone = normalize_phone(body.phone)
+    except ValueError as error:
+        raise HTTPException(400, str(error)) from error
+    result = await db.users.update_one(
+        {"id": contractor_id, "role": "CONTRACTOR"},
+        {"$set": {"phone": phone, "whatsapp": phone, "updated_at": now_iso()}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(404, "Contractor not found")
+    return {"success": True, "phone": phone}
 
 
 @router.put("/contractors/{contractor_id}/suspend")

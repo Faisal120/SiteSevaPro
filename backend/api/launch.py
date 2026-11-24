@@ -218,7 +218,10 @@ async def update_document(document_id: str, body: DocumentPatchIn, user: dict = 
     if "kind" in patch and patch["kind"] is not None:
         patch["kind"] = patch["kind"].upper()
     patch["updated_at"] = now_iso()
-    await db.documents.update_one({"id": document_id}, {"$set": patch})
+    await db.documents.update_one(
+        {"id": document_id, **_company_query(user)},
+        {"$set": patch},
+    )
     return {**existing, **patch}
 
 
@@ -228,7 +231,7 @@ async def delete_document(document_id: str, user: dict = Depends(require_roles("
     if not existing:
         raise HTTPException(404, "Document not found")
     await _verify_site(user, existing.get("site_id"))
-    await db.documents.delete_one({"id": document_id})
+    await db.documents.delete_one({"id": document_id, **_company_query(user)})
     return {"ok": True}
 
 
@@ -291,7 +294,10 @@ async def update_crm_activity(activity_id: str, patch: dict, user: dict = Depend
     allowed = {"status", "title", "description", "scheduled_at"}
     update = {key: value for key, value in patch.items() if key in allowed}
     update["updated_at"] = now_iso()
-    await db.crm_activities.update_one({"id": activity_id}, {"$set": update})
+    await db.crm_activities.update_one(
+        {"id": activity_id, **_company_query(user)},
+        {"$set": update},
+    )
     return {**existing, **update}
 
 

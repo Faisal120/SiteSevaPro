@@ -3,14 +3,12 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import os
 import re
 import secrets
 import string
 
 from fastapi import HTTPException
-
-from core import JWT_SECRET
-
 
 PASSWORD_MIN_LENGTH = 12
 
@@ -72,8 +70,11 @@ def generate_reset_code() -> str:
 
 
 def hash_reset_code(code: str) -> str:
+    secret = os.getenv("PASSWORD_RESET_SECRET") or os.getenv("JWT_SECRET")
+    if not secret:
+        raise RuntimeError("JWT_SECRET or PASSWORD_RESET_SECRET is required")
     return hmac.new(
-        JWT_SECRET.encode(),
+        secret.encode(),
         code.encode(),
         hashlib.sha256,
     ).hexdigest()

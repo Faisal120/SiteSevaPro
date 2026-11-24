@@ -29,7 +29,8 @@ class PaymentService:
         elif user["role"] == "CLIENT":
 
             sites = await payment_repository.get_client_sites(
-                user["email"]
+                user["email"],
+                user["company_id"],
             )
 
             query["site_id"] = {

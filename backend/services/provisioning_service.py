@@ -3,7 +3,7 @@ import uuid
 
 from datetime import datetime
 
-from core import hash_password
+from core import db, hash_password
 
 from repositories.company_repository import company_repository
 from repositories.user_repository import user_repository
@@ -243,35 +243,29 @@ class ProvisioningService:
 
 ):
 
-        company = await self.create_company(
-            application
-        )
-
-        contractor, username, password = await self.create_contractor(
-
-            application,
-
-            company,
-
-        )
-
-        await self.create_subscription(
-            company["id"]
-        )
-
-        await self.create_wallet(
-            company["id"]
-        )
-
-        await self.create_notification(
-
-            company,
-
-        )
-
-        await self.create_audit(
-            company
-        )
+        company = None
+        try:
+            company = await self.create_company(application)
+            contractor, username, password = await self.create_contractor(
+                application,
+                company,
+            )
+            await self.create_subscription(company["id"])
+            await self.create_wallet(company["id"])
+            await self.create_notification(company)
+            await self.create_audit(company)
+        except Exception:
+            # Compensate only records created for this new application. This
+            # keeps a failed approval retryable without leaving an orphaned
+            # company, account, subscription, or wallet behind.
+            if company:
+                company_id = company["id"]
+                await db.notifications.delete_many({"company_id": company_id})
+                await db.wallets.delete_many({"company_id": company_id})
+                await db.subscriptions.delete_many({"company_id": company_id})
+                await db.users.delete_many({"company_id": company_id, "application_id": application.get("id")})
+                await db.companies.delete_one({"id": company_id, "application_id": application.get("id")})
+            raise
 
         return {
 

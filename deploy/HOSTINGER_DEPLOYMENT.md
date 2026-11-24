@@ -13,10 +13,9 @@ enough for this backend.
 - MongoDB Atlas connection string, with the VPS IP allowed in Network Access.
 - Cloudinary credentials used by reports, documents, branding, and receipts.
 - A long random JWT secret and final super-admin credentials.
-- Firebase service-account JSON from the same Firebase project as
-  `android/app/google-services.json`. Never commit this JSON.
+- Meta WhatsApp Business account, approved message templates, permanent system
+  user token, phone-number ID, app secret, and webhook verification token.
 - AI provider key if AI insights and design generation must be enabled.
-- Android upload keystore plus its passwords for the Play Store bundle.
 
 ## DNS
 
@@ -34,7 +33,7 @@ Wait for DNS propagation before requesting TLS certificates.
 
 ```bash
 sudo apt update
-sudo apt install -y python3-venv python3-pip nginx certbot python3-certbot-nginx
+sudo apt install -y git python3-venv python3-pip nginx certbot python3-certbot-nginx
 sudo adduser --system --group --home /opt/siteseva siteseva
 sudo mkdir -p /opt/siteseva /var/www/siteseva/frontend /etc/siteseva
 sudo chown -R siteseva:siteseva /opt/siteseva
@@ -47,8 +46,6 @@ sudo -u siteseva python3 -m venv /opt/siteseva/venv
 sudo -u siteseva /opt/siteseva/venv/bin/pip install -r /opt/siteseva/backend/requirements.txt
 sudo cp deploy/siteseva.env.example /etc/siteseva/backend.env
 sudo chmod 600 /etc/siteseva/backend.env
-sudo cp FIREBASE_SERVICE_ACCOUNT.json /etc/siteseva/firebase-service-account.json
-sudo chmod 600 /etc/siteseva/firebase-service-account.json
 ```
 
 Fill `/etc/siteseva/backend.env`, then install the service and Nginx config:
@@ -62,11 +59,13 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now siteseva-api nginx
 ```
 
-Build the website/admin panel with the production API and publish it:
+Install Node.js 20 LTS or newer, then build the website/admin panel with the
+production API and publish it:
 
 ```bash
 cd /opt/siteseva/frontend
-REACT_APP_BACKEND_URL=https://api.sitesevapro.in yarn build
+sudo -u siteseva npm ci
+sudo -u siteseva env REACT_APP_BACKEND_URL=https://api.sitesevapro.in npm run build
 sudo rsync -a --delete build/ /var/www/siteseva/frontend/
 ```
 
@@ -77,20 +76,12 @@ sudo certbot --nginx -d sitesevapro.in -d www.sitesevapro.in
 sudo certbot --nginx -d api.sitesevapro.in
 ```
 
-## Android production build
+## WhatsApp production setup
 
-The release app defaults to `https://api.sitesevapro.in/api`. It can be
-overridden for staging without editing code:
-
-```bash
-flutter build appbundle --release \
-  --dart-define=API_BASE_URL=https://api.sitesevapro.in
-```
-
-Create `android/key.properties` from `android/key.properties.example` or set
-the four `SITESEVA_KEYSTORE_*` environment variables before producing the Play
-Store AAB. A build without them is only a local smoke-test build signed with
-the debug key and must not be uploaded.
+Complete `deploy/WHATSAPP_SETUP.md` before approving the first real contractor.
+The webhook URL is `https://api.sitesevapro.in/api/whatsapp/webhook`. Subscribe
+the Meta app to the WhatsApp `messages` webhook field so delivery receipts move
+from `ACCEPTED` to `SENT`, `DELIVERED`, or `READ` in the super-admin panel.
 
 ## Verification
 
@@ -101,6 +92,5 @@ sudo systemctl status siteseva-api --no-pager
 sudo journalctl -u siteseva-api -n 100 --no-pager
 ```
 
-Then sign in on Android, allow notification permission, create a payment or
-attendance entry, and verify that the notification appears in the in-app inbox
-and as a device push alert.
+Then test all four web roles, approve a sandbox contractor/payment, and confirm
+the WhatsApp delivery log in Super Admin → WhatsApp.

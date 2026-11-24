@@ -201,6 +201,7 @@ class DashboardRepository:
                 {
                     "_id": 0,
                     "password": 0,
+                    "password_hash": 0,
                 },
             )
             .sort(

@@ -136,6 +136,8 @@ class AdminRepository:
 
                     "password": 0,
 
+                    "password_hash": 0,
+
                 }
 
             )

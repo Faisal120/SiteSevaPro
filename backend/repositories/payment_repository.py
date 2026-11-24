@@ -48,12 +48,14 @@ class PaymentRepository:
     async def get_client_sites(
         self,
         email: str,
+        company_id: str,
     ):
 
         return await db.sites.find(
 
             {
-                "client_email": email
+                "client_email": email,
+                "company_id": company_id,
             },
 
             {

@@ -60,7 +60,25 @@ class OutboundNotificationService:
         company_id: str | None = None,
         language: str | None = None,
     ) -> dict:
-        normalized = normalize_phone(phone)
+        try:
+            normalized = normalize_phone(phone)
+        except ValueError as error:
+            delivery = {
+                "id": new_id(),
+                "channel": "WHATSAPP",
+                "event": event,
+                "user_id": user_id,
+                "company_id": company_id,
+                "to": str(phone or ""),
+                "template_name": template_name,
+                "status": "INVALID_PHONE",
+                "attempts": 0,
+                "last_error": str(error),
+                "created_at": now_iso(),
+                "updated_at": now_iso(),
+            }
+            await db.outbound_notifications.insert_one(dict(delivery))
+            return _public_delivery(delivery)
         delivery = {
             "id": new_id(),
             "channel": "WHATSAPP",
@@ -154,23 +172,27 @@ class OutboundNotificationService:
                 "error": "No WhatsApp number is stored for this account",
             }
         login_url = os.getenv("FRONTEND_URL", "https://sitesevapro.in").rstrip("/") + "/login"
-        return await self.send_template(
-            event="ACCOUNT_CREDENTIALS",
-            phone=phone,
-            template_name=os.getenv(
-                "WHATSAPP_CREDENTIALS_TEMPLATE",
-                "siteseva_account_credentials",
-            ),
-            values=[
-                user.get("full_name") or "SiteSeva user",
-                user.get("role", "USER").replace("_", " ").title(),
-                user.get("email", ""),
-                temporary_password,
-                login_url,
-            ],
-            user_id=user.get("id"),
-            company_id=user.get("company_id"),
-        )
+        try:
+            return await self.send_template(
+                event="ACCOUNT_CREDENTIALS",
+                phone=phone,
+                template_name=os.getenv(
+                    "WHATSAPP_CREDENTIALS_TEMPLATE",
+                    "siteseva_account_credentials",
+                ),
+                values=[
+                    user.get("full_name") or "SiteSeva user",
+                    user.get("role", "USER").replace("_", " ").title(),
+                    user.get("email", ""),
+                    temporary_password,
+                    login_url,
+                ],
+                user_id=user.get("id"),
+                company_id=user.get("company_id"),
+            )
+        except Exception as error:
+            logger.exception("Credential notification persistence failed")
+            return {"channel": "WHATSAPP", "event": "ACCOUNT_CREDENTIALS", "status": "FAILED", "error": str(error)[:500]}
 
     async def send_password_reset(self, user: dict, code: str) -> dict:
         phone = user.get("whatsapp") or user.get("phone")
@@ -181,17 +203,21 @@ class OutboundNotificationService:
                 "status": "NO_PHONE",
                 "error": "No WhatsApp number is stored for this account",
             }
-        return await self.send_template(
-            event="PASSWORD_RESET",
-            phone=phone,
-            template_name=os.getenv(
-                "WHATSAPP_PASSWORD_RESET_TEMPLATE",
-                "siteseva_password_reset",
-            ),
-            values=[code],
-            user_id=user.get("id"),
-            company_id=user.get("company_id"),
-        )
+        try:
+            return await self.send_template(
+                event="PASSWORD_RESET",
+                phone=phone,
+                template_name=os.getenv(
+                    "WHATSAPP_PASSWORD_RESET_TEMPLATE",
+                    "siteseva_password_reset",
+                ),
+                values=[code],
+                user_id=user.get("id"),
+                company_id=user.get("company_id"),
+            )
+        except Exception as error:
+            logger.exception("Password-reset notification persistence failed")
+            return {"channel": "WHATSAPP", "event": "PASSWORD_RESET", "status": "FAILED", "error": str(error)[:500]}
 
     async def send_approval(
         self,
@@ -209,17 +235,21 @@ class OutboundNotificationService:
                 "status": "NO_PHONE",
                 "error": "No WhatsApp number is stored for this account",
             }
-        return await self.send_template(
-            event=event,
-            phone=phone,
-            template_name=os.getenv(
-                "WHATSAPP_APPROVAL_TEMPLATE",
-                "siteseva_approval_update",
-            ),
-            values=[user.get("full_name") or "SiteSeva user", title, detail],
-            user_id=user.get("id"),
-            company_id=user.get("company_id"),
-        )
+        try:
+            return await self.send_template(
+                event=event,
+                phone=phone,
+                template_name=os.getenv(
+                    "WHATSAPP_APPROVAL_TEMPLATE",
+                    "siteseva_approval_update",
+                ),
+                values=[user.get("full_name") or "SiteSeva user", title, detail],
+                user_id=user.get("id"),
+                company_id=user.get("company_id"),
+            )
+        except Exception as error:
+            logger.exception("Approval notification persistence failed")
+            return {"channel": "WHATSAPP", "event": event, "status": "FAILED", "error": str(error)[:500]}
 
     async def notify_company_approval(
         self,

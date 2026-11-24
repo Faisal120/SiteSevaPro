@@ -512,52 +512,69 @@ async def approve_payment(pid: str, admin: dict = Depends(require_roles("SUPER_A
         raise HTTPException(404, "Not found")
     if p["status"] != "PENDING":
         raise HTTPException(400, "Already processed")
-    expires = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
-    await db.subscriptions.update_one(
-        {"company_id": p["company_id"]},
-        {"$set": {
-            "id": new_id(), "company_id": p["company_id"], "plan": p["plan"], "status": "ACTIVE",
-            "started_at": now_iso(), "expires_at": expires, "amount": p["amount"],
-        }},
-        upsert=True,
+    claim = await db.payment_requests.update_one(
+        {"id": pid, "status": "PENDING"},
+        {"$set": {"status": "PROCESSING", "processing_at": now_iso(), "processed_by": admin["id"]}},
     )
-    await db.users.update_one({"id": p["user_id"]}, {"$set": {"plan": p["plan"]}})
-    credits = ENTERPRISE_MONTHLY_CREDITS if p["plan"] == "ENTERPRISE" else PRO_MONTHLY_CREDITS
-    await design_wallet_service.balance(p["company_id"])
-    await design_wallet_service.add(p["company_id"], credits, f"{p['plan']} subscription credits · UTR {p['utr']}")
-    await db.payments.insert_one({
-        "id": new_id(), "company_id": p["company_id"], "site_id": None,
-        "type": "SUBSCRIPTION", "amount": p["amount"],
-        "description": f"{p['plan']} plan via UPI · UTR {p['utr']}",
-        "date": now_iso()[:10], "created_at": now_iso(),
-    })
-    await db.payment_requests.update_one({"id": pid}, {"$set": {
-        "status": "APPROVED", "approved_at": now_iso(), "approved_by": admin["id"],
-    }})
-    await db.notifications.insert_one({
-        "id": new_id(), "user_id": p["user_id"], "company_id": p["company_id"],
-        "title": "Subscription activated",
-        "body": f"Your {p['plan']} plan is now active. Expires {expires[:10]}.",
-        "type": "SUBSCRIPTION", "read": False, "created_at": now_iso(),
-    })
-    await log_audit(admin, "APPROVE", "payment_request", pid, {"plan": p["plan"], "amount": p["amount"]})
-    contractor = await db.users.find_one({"id": p["user_id"]}, {"_id": 0}) or {}
-    delivery = await outbound_notification_service.send_approval(
-        contractor,
-        "Subscription payment approved",
-        f"Your {p['plan']} plan is active until {expires[:10]}.",
-        event="SUBSCRIPTION_PAYMENT_APPROVED",
-    )
-    return {"ok": True, "whatsapp_delivery": delivery}
+    if claim.modified_count == 0:
+        raise HTTPException(409, "Payment is already being processed")
+    try:
+        expires = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+        await db.subscriptions.update_one(
+            {"company_id": p["company_id"]},
+            {"$set": {
+                "id": new_id(), "company_id": p["company_id"], "plan": p["plan"], "status": "ACTIVE",
+                "started_at": now_iso(), "expires_at": expires, "amount": p["amount"],
+            }},
+            upsert=True,
+        )
+        await db.users.update_one({"id": p["user_id"]}, {"$set": {"plan": p["plan"]}})
+        credits = ENTERPRISE_MONTHLY_CREDITS if p["plan"] == "ENTERPRISE" else PRO_MONTHLY_CREDITS
+        await design_wallet_service.balance(p["company_id"])
+        await design_wallet_service.add(p["company_id"], credits, f"{p['plan']} subscription credits · UTR {p['utr']}")
+        await db.payments.insert_one({
+            "id": new_id(), "company_id": p["company_id"], "site_id": None,
+            "type": "SUBSCRIPTION", "amount": p["amount"],
+            "description": f"{p['plan']} plan via UPI · UTR {p['utr']}",
+            "date": now_iso()[:10], "created_at": now_iso(),
+        })
+        await db.payment_requests.update_one({"id": pid, "status": "PROCESSING"}, {"$set": {
+            "status": "APPROVED", "approved_at": now_iso(), "approved_by": admin["id"],
+        }})
+        await db.notifications.insert_one({
+            "id": new_id(), "user_id": p["user_id"], "company_id": p["company_id"],
+            "title": "Subscription activated",
+            "body": f"Your {p['plan']} plan is now active. Expires {expires[:10]}.",
+            "type": "SUBSCRIPTION", "read": False, "created_at": now_iso(),
+        })
+        await log_audit(admin, "APPROVE", "payment_request", pid, {"plan": p["plan"], "amount": p["amount"]})
+        contractor = await db.users.find_one({"id": p["user_id"]}, {"_id": 0}) or {}
+        delivery = await outbound_notification_service.send_approval(
+            contractor,
+            "Subscription payment approved",
+            f"Your {p['plan']} plan is active until {expires[:10]}.",
+            event="SUBSCRIPTION_PAYMENT_APPROVED",
+        )
+        return {"ok": True, "whatsapp_delivery": delivery}
+    except Exception as error:
+        await db.payment_requests.update_one(
+            {"id": pid, "status": "PROCESSING"},
+            {"$set": {"status": "FAILED", "processing_error": str(error)[:500], "failed_at": now_iso()}},
+        )
+        raise HTTPException(500, "Payment approval failed and was locked for admin review") from error
 
 @v2_router.post("/admin/payments/{pid}/reject")
 async def reject_payment(pid: str, reason: str = Query(""), admin: dict = Depends(require_roles("SUPER_ADMIN"))):
     p = await db.payment_requests.find_one({"id": pid}, {"_id": 0})
     if not p:
         raise HTTPException(404, "Not found")
-    await db.payment_requests.update_one({"id": pid}, {"$set": {
+    if p.get("status") != "PENDING":
+        raise HTTPException(409, "Payment has already been processed")
+    result = await db.payment_requests.update_one({"id": pid, "status": "PENDING"}, {"$set": {
         "status": "REJECTED", "rejected_at": now_iso(), "rejected_by": admin["id"], "reject_reason": reason,
     }})
+    if result.modified_count == 0:
+        raise HTTPException(409, "Payment has already been processed")
     await db.notifications.insert_one({
         "id": new_id(), "user_id": p["user_id"], "company_id": p["company_id"],
         "title": "Payment rejected",

@@ -257,10 +257,27 @@ async def list_subscriptions(_: dict = Depends(require_roles("SUPER_ADMIN"))):
 
 @api.post("/admin/contractors/{user_id}/block")
 async def block_contractor(user_id: str, blocked: bool = True, _: dict = Depends(require_roles("SUPER_ADMIN"))):
-    res = await db.users.update_one({"id": user_id}, {"$set": {"blocked": blocked}})
+    contractor = await db.users.find_one(
+        {"id": user_id, "role": "CONTRACTOR"},
+        {"_id": 0},
+    )
+    if not contractor:
+        raise HTTPException(404, "Contractor not found")
+    res = await db.users.update_one(
+        {"id": user_id, "role": "CONTRACTOR"},
+        {"$set": {"blocked": blocked, "status": "SUSPENDED" if blocked else "ACTIVE"}},
+    )
     if res.matched_count == 0:
         raise HTTPException(404, "User not found")
-    return {"ok": True, "blocked": blocked}
+    delivery = None
+    if not blocked:
+        delivery = await outbound_notification_service.send_approval(
+            contractor,
+            "Account activated",
+            "Your SiteSeva Pro contractor account is active again.",
+            event="CONTRACTOR_ACTIVATED",
+        )
+    return {"ok": True, "blocked": blocked, "whatsapp_delivery": delivery}
 
 class TeamMemberIn(BaseModel):
     full_name: str = Field(min_length=2, max_length=120)
@@ -270,6 +287,9 @@ class TeamMemberIn(BaseModel):
 
 class SiteAssignmentIn(BaseModel):
     user_id: str
+
+class WhatsAppNumberIn(BaseModel):
+    phone: str = Field(min_length=8, max_length=24)
 
 @api.get("/team")
 async def list_team(user: dict = Depends(require_roles("CONTRACTOR"))):
@@ -385,6 +405,30 @@ async def resend_team_credentials(
         },
     )
     return {"success": True, "whatsapp_delivery": delivery}
+
+
+@api.patch("/team/{user_id}/whatsapp")
+async def update_team_whatsapp(
+    user_id: str,
+    body: WhatsAppNumberIn,
+    user: dict = Depends(require_roles("CONTRACTOR")),
+):
+    try:
+        phone = normalize_phone(body.phone)
+    except ValueError as error:
+        raise HTTPException(400, str(error)) from error
+    result = await db.users.update_one(
+        {
+            "id": user_id,
+            "company_id": user["company_id"],
+            "role": {"$in": ["SUPERVISOR", "CLIENT"]},
+            "archived_at": {"$exists": False},
+        },
+        {"$set": {"phone": phone, "whatsapp": phone, "updated_at": now_iso()}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(404, "Team member not found")
+    return {"success": True, "phone": phone}
 
 @api.delete("/team/{user_id}")
 async def delete_team_member(
@@ -1050,6 +1094,12 @@ app.include_router(whatsapp_router)
 async def on_start():
     try:
         admin_email = SUPER_ADMIN_EMAIL.lower().strip()
+        admin_phone = None
+        if os.getenv("SUPER_ADMIN_PHONE"):
+            try:
+                admin_phone = normalize_phone(os.environ["SUPER_ADMIN_PHONE"])
+            except ValueError:
+                logger.warning("SUPER_ADMIN_PHONE is not a valid WhatsApp number")
         existing = await db.users.find_one({"email": admin_email}, {"_id": 0, "id": 1})
         if not existing:
             await db.users.insert_one({
@@ -1066,11 +1116,16 @@ async def on_start():
                 "blocked": False,
                 "must_change_password": False,
                 "password_version": 0,
-                "phone": os.getenv("SUPER_ADMIN_PHONE") or None,
-                "whatsapp": os.getenv("SUPER_ADMIN_PHONE") or None,
+                "phone": admin_phone,
+                "whatsapp": admin_phone,
                 "created_at": now_iso(),
             })
             logger.info("Super admin account provisioned")
+        elif admin_phone:
+            await db.users.update_one(
+                {"id": existing["id"]},
+                {"$set": {"phone": admin_phone, "whatsapp": admin_phone}},
+            )
         await db.users.create_index("email", unique=True)
         await db.users.create_index("id", unique=True)
         await db.sites.create_index([("company_id", 1), ("id", 1)], unique=True)

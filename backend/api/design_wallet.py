@@ -128,17 +128,33 @@ async def approve_purchase(
         raise HTTPException(404, "Credit request not found")
     if request["status"] != "PENDING":
         raise HTTPException(400, "Request has already been processed")
-    await design_wallet_service.balance(request["company_id"])
-    await design_wallet_service.add(request["company_id"], request["credits"], f"{request['pack']} UPI credit pack · UTR {request['utr']}")
-    await db.design_credit_requests.update_one({"id": request_id}, {"$set": {"status": "APPROVED", "approved_at": now_iso(), "approved_by": user["id"]}})
-    await db.notifications.insert_one({
-        "id": new_id(), "user_id": request["user_id"], "company_id": request["company_id"],
-        "title": "Design credits added",
-        "body": f"{request['credits']} credits have been added to your Design Studio wallet.",
-        "type": "WALLET", "read": False, "created_at": now_iso(),
-    })
-    delivery = await notify_credit_approval(request["user_id"], request["credits"])
-    return {"ok": True, "whatsapp_delivery": delivery}
+    claim = await db.design_credit_requests.update_one(
+        {"id": request_id, "status": "PENDING"},
+        {"$set": {"status": "PROCESSING", "processing_at": now_iso(), "processed_by": user["id"]}},
+    )
+    if claim.modified_count == 0:
+        raise HTTPException(409, "Request is already being processed")
+    try:
+        await design_wallet_service.balance(request["company_id"])
+        await design_wallet_service.add(request["company_id"], request["credits"], f"{request['pack']} UPI credit pack · UTR {request['utr']}")
+        await db.design_credit_requests.update_one(
+            {"id": request_id, "status": "PROCESSING"},
+            {"$set": {"status": "APPROVED", "approved_at": now_iso(), "approved_by": user["id"]}},
+        )
+        await db.notifications.insert_one({
+            "id": new_id(), "user_id": request["user_id"], "company_id": request["company_id"],
+            "title": "Design credits added",
+            "body": f"{request['credits']} credits have been added to your Design Studio wallet.",
+            "type": "WALLET", "read": False, "created_at": now_iso(),
+        })
+        delivery = await notify_credit_approval(request["user_id"], request["credits"])
+        return {"ok": True, "whatsapp_delivery": delivery}
+    except Exception as error:
+        await db.design_credit_requests.update_one(
+            {"id": request_id, "status": "PROCESSING"},
+            {"$set": {"status": "FAILED", "processing_error": str(error)[:500], "failed_at": now_iso()}},
+        )
+        raise HTTPException(500, "Credit approval failed and was locked for admin review") from error
 
 
 @router.post("/purchase/{request_id}/reject")
@@ -151,7 +167,12 @@ async def reject_purchase(
         raise HTTPException(404, "Credit request not found")
     if request["status"] != "PENDING":
         raise HTTPException(400, "Request has already been processed")
-    await db.design_credit_requests.update_one({"id": request_id}, {"$set": {"status": "REJECTED", "rejected_at": now_iso(), "rejected_by": user["id"]}})
+    result = await db.design_credit_requests.update_one(
+        {"id": request_id, "status": "PENDING"},
+        {"$set": {"status": "REJECTED", "rejected_at": now_iso(), "rejected_by": user["id"]}},
+    )
+    if result.modified_count == 0:
+        raise HTTPException(409, "Request has already been processed")
     await db.notifications.insert_one({
         "id": new_id(), "user_id": request["user_id"], "company_id": request["company_id"],
         "title": "Credit purchase needs attention",

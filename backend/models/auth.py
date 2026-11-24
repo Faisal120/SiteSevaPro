@@ -26,6 +26,7 @@ Role = Literal[
 
 Plan = Literal[
     "FREE",
+    "PRO",
     "PREMIUM",
     "ENTERPRISE",
 ]

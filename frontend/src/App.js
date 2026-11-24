@@ -118,19 +118,19 @@ function App() {
                       </Protected>
                     }
                   />
-                  <Route path="labour" element={<Labour />} />
+                  <Route path="labour" element={<Protected roles={["CONTRACTOR", "SUPERVISOR"]}><Labour /></Protected>} />
                   <Route path="labour/wallet" element={<Protected roles={["CONTRACTOR", "SUPERVISOR"]}><LabourWallet /></Protected>} />
                   <Route path="labour/wallet/:labourId" element={<Protected roles={["CONTRACTOR", "SUPERVISOR"]}><LabourWalletDetail /></Protected>} />
-                  <Route path="materials" element={<Materials />} />
+                  <Route path="materials" element={<Protected roles={["CONTRACTOR", "SUPERVISOR"]}><Materials /></Protected>} />
                   <Route path="vendors" element={<Protected roles={["CONTRACTOR"]}><Vendors /></Protected>} />
                   <Route path="payments" element={<Payments />} />
-                  <Route path="expenses" element={<Expenses />} />
+                  <Route path="expenses" element={<Protected roles={["CONTRACTOR", "SUPERVISOR"]}><Expenses /></Protected>} />
                   <Route path="estimates" element={<Protected roles={["CONTRACTOR"]}><Estimates /></Protected>} />
                   <Route path="boq" element={<Protected roles={["CONTRACTOR"]}><BOQ /></Protected>} />
                   <Route path="boq/:boqId" element={<Protected roles={["CONTRACTOR", "CLIENT"]}><BOQ /></Protected>} />
                   <Route path="reports" element={<DailyReports />} />
                   <Route path="notifications" element={<Notifications />} />
-                  <Route path="subscription" element={<Subscription />} />
+                  <Route path="subscription" element={<Protected roles={["CONTRACTOR"]}><Subscription /></Protected>} />
                   <Route
                     path="branding"
                     element={
