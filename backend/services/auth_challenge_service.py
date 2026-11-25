@@ -15,6 +15,7 @@ from repositories.audit_repository import audit_repository
 from repositories.user_repository import user_repository
 from services.account_security import generate_otp, hash_otp, validate_password_strength, verify_otp
 from services.outbound_notification_service import outbound_notification_service
+from services.account_status import account_is_denied
 
 
 ACTIVATION = "ACTIVATION"
@@ -46,8 +47,8 @@ class AuthChallengeService:
         )
 
     @staticmethod
-    def _eligible(user: dict, purpose: str) -> bool:
-        if user.get("blocked") or user.get("status") in {"BLOCKED", "SUSPENDED", "REJECTED"}:
+    def _basic_eligible(user: dict, purpose: str) -> bool:
+        if account_is_denied(user):
             return False
         if not (user.get("whatsapp") or user.get("phone")):
             return False
@@ -55,10 +56,26 @@ class AuthChallengeService:
             return bool(user.get("password_setup_required"))
         return bool(user.get("password_hash")) and not user.get("password_setup_required")
 
+    async def _eligible(self, user: dict, purpose: str) -> bool:
+        if not self._basic_eligible(user, purpose):
+            return False
+        if purpose != ACTIVATION or user.get("role") != "CONTRACTOR":
+            return True
+        # Contractors originate from an approved application. Re-checking the
+        # linkage protects migrated legacy records from an accidental flag set.
+        application = None
+        if user.get("application_id"):
+            application = await db.applications.find_one({"id": user["application_id"]}, {"_id": 0, "status": 1})
+        if application is None:
+            application = await db.applications.find_one({"user_id": user["id"]}, {"_id": 0, "status": 1})
+        if application is None and user.get("email"):
+            application = await db.applications.find_one({"email": user["email"].lower()}, {"_id": 0, "status": 1})
+        return bool(application and str(application.get("status", "")).upper() == "APPROVED")
+
     async def request(self, identifier: str, purpose: str) -> dict:
         """Issue at most one active challenge. The response never reveals identity state."""
         user = await user_repository.get_by_identifier(identifier)
-        if user is None or not self._eligible(user, purpose):
+        if user is None or not await self._eligible(user, purpose):
             return dict(_GENERIC_REQUEST)
 
         expiry, cooldown, max_attempts, max_requests = self._settings()
@@ -115,7 +132,7 @@ class AuthChallengeService:
 
     async def verify(self, identifier: str, code: str, purpose: str) -> dict:
         user = await user_repository.get_by_identifier(identifier)
-        if user is None or not self._eligible(user, purpose):
+        if user is None or not await self._eligible(user, purpose):
             raise HTTPException(400, {"status": "OTP_INVALID", "message": "Invalid or expired OTP"})
         challenge = await db.auth_challenges.find_one(
             {"user_id": user["id"], "purpose": purpose, "status": "PENDING"}, sort=[("created_epoch", -1)]
@@ -171,7 +188,7 @@ class AuthChallengeService:
         if purpose == ACTIVATION:
             updates.update({"password_setup_required": False, "password_setup_completed": True, "password_setup_completed_at": now_iso(), "account_status": "ACTIVE", "status": "ACTIVE"})
         result = await db.users.update_one(
-            {"id": claims["sub"], "blocked": {"$ne": True}, "status": {"$nin": ["BLOCKED", "SUSPENDED", "REJECTED"]}},
+            {"id": claims["sub"], "blocked": {"$ne": True}, "suspended": {"$ne": True}, "disabled": {"$ne": True}, "is_disabled": {"$ne": True}, "status": {"$nin": ["BLOCKED", "SUSPENDED", "REJECTED", "DISABLED", "INACTIVE", "UNAPPROVED"]}, "account_status": {"$nin": ["BLOCKED", "SUSPENDED", "REJECTED", "DISABLED", "INACTIVE", "UNAPPROVED"]}},
             {"$set": updates, "$inc": {"password_version": 1}},
         )
         if result.modified_count != 1:

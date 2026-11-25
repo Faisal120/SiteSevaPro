@@ -24,6 +24,7 @@ from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from motor.motor_asyncio import AsyncIOMotorClient
+from services.account_status import account_is_denied
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -88,8 +89,12 @@ async def get_current_user(
     user = await db.users.find_one({"id": payload.get("sub")}, {"_id": 0})
     if not user:
         raise HTTPException(401, "User not found")
-    if user.get("blocked"):
+    if account_is_denied(user):
         raise HTTPException(403, "Account blocked")
+    if user.get("password_setup_required"):
+        # This also denies previously issued legacy JWTs. Password setup uses
+        # purpose-bound public OTP endpoints, never an existing session.
+        raise HTTPException(428, "Complete secure password setup before using the workspace")
     if int(payload.get("pwdv", 0)) != int(user.get("password_version", 0)):
         raise HTTPException(401, "Session expired after password change")
     force_change_allowed = {

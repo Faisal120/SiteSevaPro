@@ -7,6 +7,7 @@ from core import (
     verify_password,
     )
 from services.auth_challenge_service import ACTIVATION, PASSWORD_RESET, auth_challenge_service
+from services.account_status import account_is_denied
 from services.rate_limit import rate_limit_account
 
 class AuthService:
@@ -27,6 +28,8 @@ class AuthService:
                 detail="Invalid credentials",
             )
 
+        if account_is_denied(user):
+            raise HTTPException(status_code=403, detail="Account blocked")
         if user.get("password_setup_required"):
             raise HTTPException(status_code=403, detail={"status": "PASSWORD_SETUP_REQUIRED", "message": "Complete password setup before signing in"})
         if not user.get("password_hash") or not verify_password(
@@ -36,12 +39,6 @@ class AuthService:
             raise HTTPException(
                 status_code=401,
                 detail="Invalid credentials",
-            )
-
-        if user.get("blocked"):
-            raise HTTPException(
-                status_code=403,
-                detail="Account blocked",
             )
 
         token = create_jwt(
