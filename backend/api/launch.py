@@ -23,6 +23,19 @@ class ProfileIn(BaseModel):
     full_name: str = Field(min_length=2, max_length=120)
 
 
+class ProfileOut(BaseModel):
+    id: str
+    email: str
+    full_name: str
+    username: Optional[str] = None
+    role: str
+    company_id: Optional[str] = None
+    company_name: Optional[str] = None
+    phone: Optional[str] = None
+    whatsapp: Optional[str] = None
+    must_change_password: bool = False
+
+
 class PasswordIn(BaseModel):
     current_password: str = Field(min_length=8, max_length=256)
     new_password: str = Field(min_length=12, max_length=256)
@@ -120,11 +133,14 @@ async def _verify_site(user: dict, site_id: Optional[str]) -> None:
     await require_site_access(site_id, user)
 
 
-@router.patch("/auth/profile")
+@router.patch("/auth/profile", response_model=ProfileOut)
 async def update_profile(body: ProfileIn, user: dict = Depends(get_current_user)):
     full_name = body.full_name.strip()
     await db.users.update_one({"id": user["id"]}, {"$set": {"full_name": full_name}})
-    return {**_record(user), "full_name": full_name}
+    safe_fields = ProfileOut.model_fields.keys()
+    updated = {key: user.get(key) for key in safe_fields}
+    updated["full_name"] = full_name
+    return updated
 
 
 @router.patch("/auth/password")
@@ -147,6 +163,10 @@ async def change_password(body: PasswordIn, user: dict = Depends(get_current_use
     )
     await db.password_reset_codes.update_many(
         {"user_id": user["id"], "status": "PENDING"},
+        {"$set": {"status": "SUPERSEDED", "updated_at": now_iso()}},
+    )
+    await db.auth_challenges.update_many(
+        {"user_id": user["id"], "status": {"$in": ["PENDING", "VERIFIED"]}},
         {"$set": {"status": "SUPERSEDED", "updated_at": now_iso()}},
     )
     return {"ok": True}

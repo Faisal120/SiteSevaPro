@@ -1,8 +1,9 @@
 import uuid
 
-from datetime import datetime,timedelta
+from datetime import datetime, timedelta, timezone
 
 from core import db
+from services.plan_catalog import canonical_plan, plan_details
 
 
 class SubscriptionRepository:
@@ -22,17 +23,16 @@ class SubscriptionRepository:
 
             "status":"ACTIVE",
 
-            "max_sites":1,
+            "max_sites": plan_details("FREE")["max_sites"],
 
-            "max_supervisors":2,
+            "max_supervisors": plan_details("FREE")["max_supervisors"],
 
-            "storage_gb":2,
+            "storage_gb": plan_details("FREE")["storage_gb"],
 
             "trial":True,
 
-            "trial_expiry":(
-                datetime.utcnow()+timedelta(days=30)
-            ).isoformat(),
+            "trial_expiry": (datetime.now(timezone.utc) + timedelta(days=plan_details("FREE")["trial_days"])).isoformat(),
+            "expires_at": (datetime.now(timezone.utc) + timedelta(days=plan_details("FREE")["trial_days"])).isoformat(),
 
             "created_at":datetime.utcnow().isoformat()
 
@@ -49,7 +49,7 @@ class SubscriptionRepository:
         company_id: str,
     ):
 
-        return await db.subscriptions.find_one(
+        subscription = await db.subscriptions.find_one(
 
             {
                 "company_id": company_id,
@@ -61,6 +61,17 @@ class SubscriptionRepository:
             },
 
         )
+        if not subscription:
+            return None
+        expiry = subscription.get("expires_at") or subscription.get("trial_expiry")
+        if expiry and str(expiry) <= datetime.now(timezone.utc).isoformat():
+            await db.subscriptions.update_one(
+                {"id": subscription.get("id"), "status": "ACTIVE"},
+                {"$set": {"status": "EXPIRED", "expired_at": datetime.now(timezone.utc).isoformat()}},
+            )
+            return None
+        subscription["plan"] = canonical_plan(subscription.get("plan"))
+        return subscription
 
     async def get_plan(
         self,

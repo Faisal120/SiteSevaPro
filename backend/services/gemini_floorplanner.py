@@ -2,15 +2,17 @@ import os
 import json
 import google.generativeai as genai
 
-genai.configure(
-    api_key=os.getenv("AQ.Ab8RN6Lqapl-cqL7oYNzpvwLIXuO2EG5hLUG1VEPhNaHmMAZ-g")
-)
-
-model = genai.GenerativeModel(
-    "gemini-2.5-flash"
-)
+api_key = os.getenv("GEMINI_API_KEY", "").strip()
+if api_key:
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel("gemini-2.5-flash")
+else:
+    model = None
 
 def generate_floor_plan(data):
+
+    if model is None:
+        raise RuntimeError("GEMINI_API_KEY is required to use Gemini floor planning")
 
     prompt = f"""
 You are a professional architect.

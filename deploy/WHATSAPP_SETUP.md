@@ -1,84 +1,46 @@
 # Meta WhatsApp Cloud API setup
 
-SiteSeva sends only approved template messages through Meta's Cloud API. The
-backend never logs the access token or returns temporary passwords to the admin
-browser. Every attempt is stored in `outbound_notifications` and delivery/read
-receipts are updated through the signed webhook.
+SiteSeva uses only approved templates. API acceptance is recorded as `ACCEPTED`; it is not reported as delivered until Meta sends a signed delivery webhook.
 
-## Meta assets required
+## Required Meta templates
 
-1. A verified Meta Business Portfolio and WhatsApp Business Account.
-2. A Meta developer app with the WhatsApp product enabled.
-3. A production phone number and its **Phone number ID**.
-4. A system user with `whatsapp_business_messaging` access and a permanent
-   token. Do not use the temporary dashboard token in production.
-5. The Meta app secret and a new random webhook verification token.
+Create and approve the following names and language codes in WhatsApp Manager, then put the exact names/languages in `/etc/siteseva/backend.env`.
 
-Meta sends templates through
-`https://graph.facebook.com/{version}/{phone-number-id}/messages`. Template
-names and parameter order must match the environment file exactly.
+| Name | Category | parameters | use |
+| --- | --- | --- | --- |
+| `siteseva_account_approved` | Utility | customer name, company name, login ID | approved account notification, with a static `https://sitesevapro.in/login` website button configured in Meta |
+| `siteseva_account_credentials` | Authentication / Copy Code | OTP | first-time password setup |
+| `siteseva_password_reset` | Authentication / Copy Code | OTP | password recovery |
+| `siteseva_approval_update` | Utility | customer name, application status, review details | registration application status only |
 
-## Templates to create and approve
+For each Authentication Copy Code template, configure a 10-minute expiry and its OTP button. The sender uses the body and URL-button parameter format below; it must match the approved button index and template language:
 
-Create these in WhatsApp Manager using language `en`.
-
-### `siteseva_account_credentials` — Utility
-
-Body:
-
-```text
-Hello {{1}}, your SiteSeva Pro {{2}} account is ready.
-Login email: {{3}}
-Temporary password: {{4}}
-Sign in: {{5}}
-You must change this password on first login. Do not share it with anyone.
+```json
+{
+  "messaging_product": "whatsapp",
+  "to": "919876543210",
+  "type": "template",
+  "template": {
+    "name": "siteseva_account_credentials",
+    "language": {"code": "en"},
+    "components": [
+      {"type": "body", "parameters": [{"type": "text", "text": "123456"}]},
+      {"type": "button", "sub_type": "url", "index": "0", "parameters": [{"type": "text", "text": "123456"}]}
+    ]
+  }
+}
 ```
 
-Parameter order: full name, role, email, temporary password, login URL.
-
-### `siteseva_password_reset` — Authentication
-
-Create an Authentication template with a 10-minute code expiry and the
-**No button** OTP option. It must accept one body parameter: the six-digit
-code. If Meta requires an OTP button for the selected account, the backend
-payload must be extended to match that approved button before launch.
-
-### `siteseva_approval_update` — Utility
-
-Body:
-
-```text
-Hello {{1}}, your SiteSeva Pro update is ready.
-{{2}}
-{{3}}
-```
-
-Parameter order: recipient name, approval title, approval detail.
+Meta’s template and Cloud API documentation should be checked against the approved templates before launch: [template reference](https://developers.facebook.com/docs/graph-api/reference/whats-app-business-account/message_templates/) and [Cloud API overview](https://developers.facebook.com/documentation/business-messaging/whatsapp/overview/).
 
 ## Webhook
 
-After DNS and HTTPS are active, configure this callback in the Meta app:
+Set the callback to `https://api.sitesevapro.in/api/whatsapp/webhook`, use `WHATSAPP_WEBHOOK_VERIFY_TOKEN`, and subscribe to `messages`. `WHATSAPP_APP_SECRET` is mandatory in production: missing or invalid `X-Hub-Signature-256` requests are rejected.
 
-```text
-https://api.sitesevapro.in/api/whatsapp/webhook
-```
+## Safe verification sequence
 
-Use the exact value of `WHATSAPP_WEBHOOK_VERIFY_TOKEN` during verification,
-subscribe to the `messages` field, and keep `WHATSAPP_APP_SECRET` configured so
-the backend validates `X-Hub-Signature-256` on every callback.
-
-## Environment
-
-Copy all `WHATSAPP_*` entries from `siteseva.env.example` into
-`/etc/siteseva/backend.env`. Restart the API, then check Super Admin → WhatsApp.
-Its configuration card must be green before approving a real application.
-
-## Safe launch test
-
-1. Register a test contractor with a WhatsApp number opted in to receive the
-   business's messages.
-2. Approve it from Super Admin → Applications.
-3. Confirm the delivery advances from `ACCEPTED` to `DELIVERED` or `READ`.
-4. Sign in with the temporary password and confirm all APIs except password
-   change are blocked until a new password is set.
-5. Test Forgot password and confirm the code expires after 10 minutes.
+1. Use a consented test WhatsApp number and test/sandbox credentials.
+2. Confirm account-approved messages contain Login ID only, never a password.
+3. Request activation, copy the OTP, then complete password setup.
+4. Confirm `ACCEPTED` progresses only through signed webhook receipts to `SENT`, `DELIVERED`, or `READ`.
+5. Test a failed API request and a missing configuration; both must be `FAILED` or `NOT_CONFIGURED`, not delivery success.

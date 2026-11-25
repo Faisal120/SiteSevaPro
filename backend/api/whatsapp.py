@@ -32,13 +32,12 @@ async def whatsapp_webhook(request: Request):
     raw = await request.body()
     app_secret = os.getenv("WHATSAPP_APP_SECRET", "").strip()
     signature = request.headers.get("x-hub-signature-256", "")
+    production = os.getenv("APP_ENV", "development").strip().lower() == "production"
+    if production and not app_secret:
+        raise HTTPException(503, "Webhook signature verification is not configured")
     if app_secret:
-        expected = "sha256=" + hmac.new(
-            app_secret.encode(),
-            raw,
-            hashlib.sha256,
-        ).hexdigest()
-        if not hmac.compare_digest(signature, expected):
+        expected = "sha256=" + hmac.new(app_secret.encode(), raw, hashlib.sha256).hexdigest()
+        if not signature or not hmac.compare_digest(signature, expected):
             raise HTTPException(401, "Invalid webhook signature")
 
     payload = await request.json()
@@ -76,6 +75,7 @@ async def whatsapp_status(_: dict = Depends(require_roles("SUPER_ADMIN"))):
         "requirements": required,
         "api_version": os.getenv("WHATSAPP_API_VERSION", "v27.0"),
         "templates": {
+            "account_approved": os.getenv("WHATSAPP_ACCOUNT_APPROVED_TEMPLATE", "siteseva_account_approved"),
             "credentials": os.getenv(
                 "WHATSAPP_CREDENTIALS_TEMPLATE",
                 "siteseva_account_credentials",

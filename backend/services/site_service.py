@@ -7,6 +7,8 @@ from core import new_id, now_iso
 from repositories.site_repository import site_repository
 
 from services.notification_service import notification_service
+from repositories.subscription_repository import subscription_repository
+from services.plan_catalog import plan_details
 
 
 class SiteService:
@@ -471,9 +473,9 @@ class SiteService:
         user: dict,
     ):
 
-        subscription = await site_repository.active_subscription(
-            user["company_id"]
-        )
+        subscription = await subscription_repository.get_active(user["company_id"])
+        if subscription is None:
+            raise HTTPException(status_code=402, detail="Your trial or subscription has expired. Workspace data remains read-only until renewal.")
 
         plan = (
             subscription or {}
@@ -482,17 +484,18 @@ class SiteService:
             "FREE",
         )
 
-        if plan == "FREE":
+        limit = plan_details(plan).get("max_sites")
+        if limit is not None:
 
             total_sites = await site_repository.company_site_count(
                 user["company_id"]
             )
 
-            if total_sites >= 1:
+            if total_sites >= limit:
 
                 raise HTTPException(
                     status_code=402,
-                    detail="Free plan allows only one site. Upgrade your subscription.",
+                    detail=f"{plan.title()} plan allows only {limit} site(s). Upgrade your subscription.",
                 )
 
         return plan

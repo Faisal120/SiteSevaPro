@@ -66,18 +66,49 @@ def generate_temporary_password(length: int = 16) -> str:
 
 
 def generate_reset_code() -> str:
+    """Backward-compatible name for a cryptographically secure six-digit OTP."""
     return f"{secrets.randbelow(1_000_000):06d}"
 
 
-def hash_reset_code(code: str) -> str:
-    secret = os.getenv("PASSWORD_RESET_SECRET") or os.getenv("JWT_SECRET")
+def generate_otp() -> str:
+    return generate_reset_code()
+
+
+def _challenge_secret() -> str:
+    secret = (
+        os.getenv("AUTH_CHALLENGE_SECRET")
+        or os.getenv("PASSWORD_RESET_SECRET")
+        or os.getenv("JWT_SECRET")
+    )
     if not secret:
-        raise RuntimeError("JWT_SECRET or PASSWORD_RESET_SECRET is required")
-    return hmac.new(
-        secret.encode(),
-        code.encode(),
-        hashlib.sha256,
-    ).hexdigest()
+        raise RuntimeError("AUTH_CHALLENGE_SECRET or JWT_SECRET is required")
+    return secret
+
+
+def hash_otp(code: str, *, purpose: str, user_id: str, challenge_id: str) -> str:
+    """Bind an OTP hash to exactly one account, purpose and challenge."""
+    message = f"{purpose}:{user_id}:{challenge_id}:{code}".encode()
+    return hmac.new(_challenge_secret().encode(), message, hashlib.sha256).hexdigest()
+
+
+def verify_otp(
+    code: str,
+    expected_hash: str,
+    *,
+    purpose: str,
+    user_id: str,
+    challenge_id: str,
+) -> bool:
+    return hmac.compare_digest(
+        hash_otp(code, purpose=purpose, user_id=user_id, challenge_id=challenge_id),
+        expected_hash or "",
+    )
+
+
+def hash_reset_code(code: str) -> str:
+    # Legacy password_reset_codes records were not purpose-bound. Keep this
+    # helper only for reading them during a controlled transition.
+    return hmac.new(_challenge_secret().encode(), code.encode(), hashlib.sha256).hexdigest()
 
 
 def verify_reset_code(code: str, expected_hash: str) -> bool:

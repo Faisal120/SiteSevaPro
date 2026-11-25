@@ -65,9 +65,13 @@ async def transactions(
 
 @router.get("/purchase/config")
 async def purchase_config(user=Depends(get_current_user)):
+    upi_id = os.environ.get("UPI_ID", "").strip()
+    payee_name = os.environ.get("UPI_PAYEE_NAME", "").strip()
+    if not upi_id or not payee_name:
+        raise HTTPException(503, "Payment collection is not configured")
     return {
-        "upi_id": os.environ.get("UPI_ID", "fk1571515@ybl"),
-        "payee_name": "Site Seva Pro",
+        "upi_id": upi_id,
+        "payee_name": payee_name,
         "packs": CREDIT_PACKS,
     }
 
@@ -77,7 +81,12 @@ async def request_purchase(
     body: CreditPurchaseIn,
     user=Depends(require_roles("CONTRACTOR")),
 ):
+    if not os.environ.get("UPI_ID", "").strip():
+        raise HTTPException(503, "Payment collection is not configured")
     pack = CREDIT_PACKS[body.pack]
+    existing = await db.design_credit_requests.find_one({"utr": body.utr, "status": {"$in": ["PENDING", "PROCESSING", "APPROVED"]}}, {"_id": 0, "id": 1})
+    if existing:
+        raise HTTPException(409, "This UTR has already been submitted")
     doc = {
         "id": new_id(),
         "company_id": user["company_id"],

@@ -3,7 +3,7 @@ import uuid
 
 from datetime import datetime
 
-from core import db, hash_password
+from core import db
 
 from repositories.company_repository import company_repository
 from repositories.user_repository import user_repository
@@ -11,7 +11,7 @@ from repositories.subscription_repository import subscription_repository
 from repositories.company_wallet_repository import company_wallet_repository
 from repositories.notification_repository import notification_repository
 from repositories.audit_repository import audit_repository
-from services.account_security import generate_temporary_password, normalize_phone
+from services.account_security import normalize_phone
 
 
 class ProvisioningService:
@@ -36,9 +36,6 @@ class ProvisioningService:
         return f"{prefix}{secrets.randbelow(9000)+1000}"
 
     # --------------------------------------------------
-
-    def generate_password(self):
-        return generate_temporary_password()
 
     # --------------------------------------------------
     
@@ -106,8 +103,6 @@ class ProvisioningService:
 
         )
 
-        password = self.generate_password()
-
         contractor = {
 
             "id": str(uuid.uuid4()),
@@ -120,12 +115,6 @@ class ProvisioningService:
 
             "username": username,
 
-            "password_hash": hash_password(
-
-                password
-
-            ),
-
             "full_name": application["owner_name"],
 
             "role": "CONTRACTOR",
@@ -137,8 +126,10 @@ class ProvisioningService:
             "plan": "FREE",
 
             "blocked": False,
-
             "must_change_password": True,
+            "password_setup_required": True,
+            "password_setup_completed": False,
+            "account_status": "PASSWORD_SETUP_REQUIRED",
 
             "password_version": 0,
 
@@ -161,7 +152,7 @@ class ProvisioningService:
             contractor["id"],
         )
 
-        return contractor, username, password
+        return contractor, username
     
     async def create_subscription(
     self,
@@ -246,7 +237,7 @@ class ProvisioningService:
         company = None
         try:
             company = await self.create_company(application)
-            contractor, username, password = await self.create_contractor(
+            contractor, username = await self.create_contractor(
                 application,
                 company,
             )
@@ -274,8 +265,6 @@ class ProvisioningService:
             "contractor": contractor,
 
             "username": username,
-
-            "temporary_password": password,
 
         }
 

@@ -59,6 +59,15 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now siteseva-api nginx
 ```
 
+Before the restart, run the password-state migration against a staging copy first. It defaults to dry-run and never creates passwords or deletes records:
+
+```bash
+cd /opt/siteseva
+sudo -u siteseva /opt/siteseva/venv/bin/python backend/scripts/migrate_password_setup.py
+# Review the count, take an Atlas backup, then explicitly apply in the approved window:
+sudo -u siteseva /opt/siteseva/venv/bin/python backend/scripts/migrate_password_setup.py --apply
+```
+
 Install Node.js 20 LTS or newer, then build the website/admin panel with the
 production API and publish it:
 
@@ -92,5 +101,5 @@ sudo systemctl status siteseva-api --no-pager
 sudo journalctl -u siteseva-api -n 100 --no-pager
 ```
 
-Then test all four web roles, approve a sandbox contractor/payment, and confirm
+Then test all four web roles, approve a sandbox contractor, complete activation via WhatsApp OTP, test Forgot password, and confirm
 the WhatsApp delivery log in Super Admin → WhatsApp.

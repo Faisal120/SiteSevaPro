@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 
 from core import db, get_current_user, require_roles, new_id, now_iso
 from services.design_wallet_service import design_wallet_service
-from design_core.design_constants import PRO_MONTHLY_CREDITS, ENTERPRISE_MONTHLY_CREDITS
+from services.plan_catalog import PLAN_CATALOG, canonical_plan, plan_details
 from services.access_control import require_site_access
 from services.outbound_notification_service import outbound_notification_service
 
@@ -450,8 +450,7 @@ async def get_boq(boq_id: str, user: dict = Depends(require_roles("CONTRACTOR", 
     return b
 
 # ---------- QR PAYMENT FLOW (UPI) ----------
-UPI_ID_DEFAULT = "fk1571515@ybl"
-PLAN_PRICES = {"FREE": 0, "PREMIUM": 2999, "ENTERPRISE": 4999}
+PLAN_PRICES = {code: details["price"] for code, details in PLAN_CATALOG.items()}
 
 class PaymentRequestIn(BaseModel):
     plan: Literal["PREMIUM", "ENTERPRISE"]
@@ -461,14 +460,23 @@ class PaymentRequestIn(BaseModel):
 
 @v2_router.get("/payment/config")
 async def payment_config(user: dict = Depends(get_current_user)):
+    upi_id = os.environ.get("UPI_ID", "").strip()
+    payee_name = os.environ.get("UPI_PAYEE_NAME", "").strip()
+    if not upi_id or not payee_name:
+        raise HTTPException(503, "Payment collection is not configured")
     return {
-        "upi_id": os.environ.get("UPI_ID", UPI_ID_DEFAULT),
-        "payee_name": "Site Seva Pro",
+        "upi_id": upi_id,
+        "payee_name": payee_name,
         "prices": PLAN_PRICES,
     }
 
 @v2_router.post("/payment/request")
 async def create_payment_request(body: PaymentRequestIn, user: dict = Depends(require_roles("CONTRACTOR"))):
+    if not os.environ.get("UPI_ID", "").strip():
+        raise HTTPException(503, "Payment collection is not configured")
+    duplicate = await db.payment_requests.find_one({"utr": body.utr, "status": {"$in": ["PENDING", "PROCESSING", "APPROVED"]}}, {"_id": 0, "id": 1})
+    if duplicate:
+        raise HTTPException(409, "This UTR has already been submitted")
     amount = PLAN_PRICES[body.plan]
     doc = {
         "id": new_id(),
@@ -529,7 +537,7 @@ async def approve_payment(pid: str, admin: dict = Depends(require_roles("SUPER_A
             upsert=True,
         )
         await db.users.update_one({"id": p["user_id"]}, {"$set": {"plan": p["plan"]}})
-        credits = ENTERPRISE_MONTHLY_CREDITS if p["plan"] == "ENTERPRISE" else PRO_MONTHLY_CREDITS
+        credits = plan_details(p["plan"])["monthly_design_credits"]
         await design_wallet_service.balance(p["company_id"])
         await design_wallet_service.add(p["company_id"], credits, f"{p['plan']} subscription credits · UTR {p['utr']}")
         await db.payments.insert_one({

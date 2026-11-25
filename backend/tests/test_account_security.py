@@ -4,12 +4,16 @@ import pytest
 from fastapi import HTTPException
 
 from services.account_security import (
+    generate_otp,
     generate_temporary_password,
+    hash_otp,
     hash_reset_code,
     normalize_phone,
     validate_password_strength,
     verify_reset_code,
+    verify_otp,
 )
+from services.whatsapp_templates import authentication_components
 
 
 @pytest.mark.parametrize(
@@ -56,3 +60,21 @@ def test_reset_codes_are_hashed_and_constant_time_verified(monkeypatch):
     assert digest != "123456"
     assert verify_reset_code("123456", digest)
     assert not verify_reset_code("654321", digest)
+
+
+def test_otp_hash_is_bound_to_user_purpose_and_challenge(monkeypatch):
+    monkeypatch.setenv("AUTH_CHALLENGE_SECRET", "unit-test-secret-that-is-never-used-in-production")
+    code = generate_otp()
+    digest = hash_otp(code, purpose="ACTIVATION", user_id="u1", challenge_id="c1")
+    assert digest != code
+    assert verify_otp(code, digest, purpose="ACTIVATION", user_id="u1", challenge_id="c1")
+    assert not verify_otp(code, digest, purpose="PASSWORD_RESET", user_id="u1", challenge_id="c1")
+    assert not verify_otp(code, digest, purpose="ACTIVATION", user_id="u2", challenge_id="c1")
+
+
+def test_copy_code_template_components_have_body_and_button():
+    components = authentication_components("123456")
+    assert components == [
+        {"type": "body", "parameters": [{"type": "text", "text": "123456"}]},
+        {"type": "button", "sub_type": "url", "index": "0", "parameters": [{"type": "text", "text": "123456"}]},
+    ]

@@ -7,11 +7,12 @@ This router intentionally contains only non-overlapping detail/update routes.
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from core import db, hash_password, now_iso, require_roles
+from core import db, now_iso, require_roles
 from models.subscription import SubscriptionUpdate
 from services.admin_service import admin_service
-from services.account_security import generate_temporary_password, normalize_phone
+from services.account_security import normalize_phone
 from services.outbound_notification_service import outbound_notification_service
+from repositories.audit_repository import audit_repository
 
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
@@ -40,31 +41,20 @@ async def resend_contractor_credentials(
     )
     if not contractor:
         raise HTTPException(404, "Contractor not found")
-    password = generate_temporary_password()
-    await db.users.update_one(
-        {"id": contractor_id},
-        {
-            "$set": {
-                "password_hash": hash_password(password),
-                "must_change_password": True,
-                "credentials_resent_at": now_iso(),
-            },
-            "$inc": {"password_version": 1},
-        },
-    )
-    delivery = await outbound_notification_service.send_credentials(
-        contractor,
-        password,
-    )
+    if not contractor.get("password_setup_required"):
+        return {"success": False, "status": "ACTIVE", "message": "Active accounts must use password recovery; their password was not changed."}
+    delivery = await outbound_notification_service.send_account_approved(contractor)
     await db.users.update_one(
         {"id": contractor_id},
         {
             "$set": {
                 "credential_delivery_status": delivery.get("status"),
                 "credential_delivery_id": delivery.get("id"),
+                "credentials_resent_at": now_iso(),
             }
         },
     )
+    await audit_repository.log("ADMIN_RESEND_ACTIVATION_NOTIFICATION", "Activation notification resent", account_id=contractor_id, outcome=delivery.get("status", "UNKNOWN"))
     return {"success": True, "whatsapp_delivery": delivery}
 
 

@@ -137,6 +137,21 @@ class ResetPasswordIn(BaseModel):
     new_password: str = Field(min_length=12, max_length=256)
 
 
+class OtpRequestIn(BaseModel):
+    identifier: str = Field(min_length=3, max_length=160)
+
+
+class OtpVerifyIn(BaseModel):
+    identifier: str = Field(min_length=3, max_length=160)
+    code: str = Field(pattern=r"^\d{6}$")
+
+
+class PasswordAuthorizationIn(BaseModel):
+    authorization_token: str = Field(min_length=20, max_length=4096)
+    new_password: str = Field(min_length=12, max_length=256)
+    confirm_password: str = Field(min_length=12, max_length=256)
+
+
 # ==========================================================
 # Contractor Application
 # ==========================================================

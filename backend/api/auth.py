@@ -8,6 +8,9 @@ from models.auth import (
     ApplicationOut,
     ForgotPasswordIn,
     ResetPasswordIn,
+    OtpRequestIn,
+    OtpVerifyIn,
+    PasswordAuthorizationIn,
 )
 
 from services.auth_service import auth_service
@@ -15,6 +18,7 @@ from services.auth_service import auth_service
 from services.application_service import application_service
 
 from core import get_current_user, require_roles
+from services.rate_limit import rate_limit
 
 router = APIRouter( 
     prefix="/api/auth",
@@ -27,6 +31,7 @@ router = APIRouter(
 )
 async def login(
     body: LoginIn,
+    _: None = Depends(rate_limit("login", 10, 900)),
 ):
     return await auth_service.login(
         body.email,
@@ -35,12 +40,58 @@ async def login(
 
 
 @router.post("/password/forgot")
-async def forgot_password(body: ForgotPasswordIn):
+async def forgot_password(
+    body: ForgotPasswordIn,
+    _: None = Depends(rate_limit("password-forgot", 5, 900)),
+):
     return await auth_service.forgot_password(body.identifier)
 
 
+@router.post("/activation/request-otp")
+async def request_activation_otp(
+    body: OtpRequestIn,
+    _: None = Depends(rate_limit("activation-request", 5, 3600)),
+):
+    return await auth_service.request_activation_otp(body.identifier)
+
+
+@router.post("/activation/verify-otp")
+async def verify_activation_otp(
+    body: OtpVerifyIn,
+    _: None = Depends(rate_limit("activation-verify", 10, 900)),
+):
+    return await auth_service.verify_activation_otp(body.identifier, body.code)
+
+
+@router.post("/activation/set-password")
+async def set_activation_password(
+    body: PasswordAuthorizationIn,
+    _: None = Depends(rate_limit("activation-password", 10, 900)),
+):
+    return await auth_service.set_activation_password(**body.model_dump())
+
+
+@router.post("/password/reset/verify-otp")
+async def verify_reset_otp(
+    body: OtpVerifyIn,
+    _: None = Depends(rate_limit("password-reset-verify", 10, 900)),
+):
+    return await auth_service.verify_reset_otp(body.identifier, body.code)
+
+
+@router.post("/password/reset/set-password")
+async def set_reset_password(
+    body: PasswordAuthorizationIn,
+    _: None = Depends(rate_limit("password-reset-password", 10, 900)),
+):
+    return await auth_service.set_reset_password(**body.model_dump())
+
+
 @router.post("/password/reset")
-async def reset_password(body: ResetPasswordIn):
+async def reset_password(
+    body: ResetPasswordIn,
+    _: None = Depends(rate_limit("password-reset", 10, 900)),
+):
     return await auth_service.reset_password(
         body.identifier,
         body.code,
@@ -65,6 +116,7 @@ async def me(
 )
 async def register_application(
     body: RegisterApplicationIn,
+    _: None = Depends(rate_limit("registration", 3, 3600)),
 ):
     return await application_service.submit_application(body)
 

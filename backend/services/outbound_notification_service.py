@@ -18,6 +18,7 @@ import requests
 
 from core import db, new_id, now_iso
 from services.account_security import mask_phone, normalize_phone
+from services.whatsapp_templates import authentication_components
 
 
 logger = logging.getLogger("siteseva.outbound")
@@ -59,6 +60,8 @@ class OutboundNotificationService:
         user_id: str | None = None,
         company_id: str | None = None,
         language: str | None = None,
+        components: list[dict[str, Any]] | None = None,
+        dedupe_key: str | None = None,
     ) -> dict:
         try:
             normalized = normalize_phone(phone)
@@ -79,6 +82,13 @@ class OutboundNotificationService:
             }
             await db.outbound_notifications.insert_one(dict(delivery))
             return _public_delivery(delivery)
+        if dedupe_key:
+            existing = await db.outbound_notifications.find_one(
+                {"dedupe_key": dedupe_key, "status": {"$in": ["PENDING", "ACCEPTED", "SENT", "DELIVERED", "READ"]}},
+                {"_id": 0},
+            )
+            if existing:
+                return _public_delivery(existing)
         delivery = {
             "id": new_id(),
             "channel": "WHATSAPP",
@@ -92,6 +102,8 @@ class OutboundNotificationService:
             "created_at": now_iso(),
             "updated_at": now_iso(),
         }
+        if dedupe_key:
+            delivery["dedupe_key"] = dedupe_key
         await db.outbound_notifications.insert_one(dict(delivery))
 
         token, phone_number_id, version = self._config()
@@ -114,7 +126,9 @@ class OutboundNotificationService:
                 },
             },
         }
-        if values:
+        if components:
+            payload["template"]["components"] = components
+        elif values:
             payload["template"]["components"] = [
                 {
                     "type": "body",
@@ -123,31 +137,31 @@ class OutboundNotificationService:
             ]
 
         url = f"https://graph.facebook.com/{version}/{phone_number_id}/messages"
-        delivery["attempts"] = 1
-        try:
-            response = await asyncio.to_thread(
-                requests.post,
-                url,
-                headers={
-                    "Authorization": f"Bearer {token}",
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-                timeout=20,
-            )
-            body = response.json() if response.content else {}
-            if not response.ok:
-                message = ((body.get("error") or {}).get("message") or response.text)
-                raise RuntimeError(message[:500])
-            delivery["status"] = "ACCEPTED"
-            delivery["provider_message_id"] = (
-                (body.get("messages") or [{}])[0].get("id")
-            )
-            delivery["accepted_at"] = now_iso()
-        except Exception as error:
-            delivery["status"] = "FAILED"
-            delivery["last_error"] = str(error)[:500]
-            logger.warning("WhatsApp template delivery failed for %s: %s", event, error)
+        for attempt in range(1, 4):
+            delivery["attempts"] = attempt
+            try:
+                response = await asyncio.to_thread(requests.post, url, headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"}, json=payload, timeout=20)
+                body = response.json() if response.content else {}
+                if response.ok:
+                    delivery["status"] = "ACCEPTED"
+                    delivery["provider_message_id"] = (body.get("messages") or [{}])[0].get("id")
+                    delivery["accepted_at"] = now_iso()
+                    break
+                message = ((body.get("error") or {}).get("message") or response.text)[:500]
+                if response.status_code not in {429, 500, 502, 503, 504} or attempt == 3:
+                    raise RuntimeError(message)
+            except (requests.Timeout, requests.ConnectionError) as error:
+                if attempt == 3:
+                    delivery["status"] = "FAILED"
+                    delivery["last_error"] = type(error).__name__
+                    logger.warning("WhatsApp template delivery failed for %s", event)
+                    break
+            except Exception as error:
+                delivery["status"] = "FAILED"
+                delivery["last_error"] = str(error)[:500]
+                logger.warning("WhatsApp template delivery failed for %s", event)
+                break
+            await asyncio.sleep(0.4 * attempt)
         await self._save_result(delivery)
         return _public_delivery(delivery)
 
@@ -161,63 +175,86 @@ class OutboundNotificationService:
     async def send_credentials(
         self,
         user: dict,
-        temporary_password: str,
+        temporary_password: str | None = None,
     ) -> dict:
+        # Kept only so un-upgraded callers cannot send a plaintext password.
+        # The password argument is intentionally ignored.
+        return await self.send_account_approved(user)
+
+    async def send_account_approved(self, user: dict, *, dedupe_key: str | None = None) -> dict:
         phone = user.get("whatsapp") or user.get("phone")
         if not phone:
             return {
                 "channel": "WHATSAPP",
-                "event": "ACCOUNT_CREDENTIALS",
+                "event": "ACCOUNT_APPROVED",
                 "status": "NO_PHONE",
                 "error": "No WhatsApp number is stored for this account",
             }
-        login_url = os.getenv("FRONTEND_URL", "https://sitesevapro.in").rstrip("/") + "/login"
         try:
             return await self.send_template(
-                event="ACCOUNT_CREDENTIALS",
+                event="ACCOUNT_APPROVED",
                 phone=phone,
                 template_name=os.getenv(
-                    "WHATSAPP_CREDENTIALS_TEMPLATE",
-                    "siteseva_account_credentials",
+                    "WHATSAPP_ACCOUNT_APPROVED_TEMPLATE",
+                    "siteseva_account_approved",
                 ),
                 values=[
                     user.get("full_name") or "SiteSeva user",
-                    user.get("role", "USER").replace("_", " ").title(),
-                    user.get("email", ""),
-                    temporary_password,
-                    login_url,
+                    user.get("company_name") or "SiteSeva Pro",
+                    user.get("username") or user.get("email", ""),
                 ],
                 user_id=user.get("id"),
                 company_id=user.get("company_id"),
+                language=os.getenv("WHATSAPP_ACCOUNT_APPROVED_TEMPLATE_LANGUAGE") or None,
+                dedupe_key=dedupe_key,
             )
         except Exception as error:
             logger.exception("Credential notification persistence failed")
             return {"channel": "WHATSAPP", "event": "ACCOUNT_CREDENTIALS", "status": "FAILED", "error": str(error)[:500]}
 
-    async def send_password_reset(self, user: dict, code: str) -> dict:
+    async def send_activation_otp(self, user: dict, code: str, challenge_id: str) -> dict:
+        return await self._send_authentication_otp(user, code, challenge_id, "ACTIVATION")
+
+    async def send_password_reset(self, user: dict, code: str, challenge_id: str | None = None) -> dict:
+        return await self._send_authentication_otp(user, code, challenge_id or new_id(), "PASSWORD_RESET")
+
+    async def _send_authentication_otp(self, user: dict, code: str, challenge_id: str, purpose: str) -> dict:
         phone = user.get("whatsapp") or user.get("phone")
         if not phone:
             return {
                 "channel": "WHATSAPP",
-                "event": "PASSWORD_RESET",
+                "event": f"{purpose}_OTP",
                 "status": "NO_PHONE",
                 "error": "No WhatsApp number is stored for this account",
             }
         try:
             return await self.send_template(
-                event="PASSWORD_RESET",
+                event=f"{purpose}_OTP",
                 phone=phone,
                 template_name=os.getenv(
-                    "WHATSAPP_PASSWORD_RESET_TEMPLATE",
-                    "siteseva_password_reset",
+                    "WHATSAPP_CREDENTIALS_TEMPLATE" if purpose == "ACTIVATION" else "WHATSAPP_PASSWORD_RESET_TEMPLATE",
+                    "siteseva_account_credentials" if purpose == "ACTIVATION" else "siteseva_password_reset",
                 ),
                 values=[code],
                 user_id=user.get("id"),
                 company_id=user.get("company_id"),
+                language=(os.getenv("WHATSAPP_ACTIVATION_TEMPLATE_LANGUAGE") if purpose == "ACTIVATION" else os.getenv("WHATSAPP_PASSWORD_RESET_TEMPLATE_LANGUAGE")) or None,
+                components=authentication_components(code, os.getenv("WHATSAPP_AUTH_OTP_BUTTON_INDEX", "0")),
+                dedupe_key=f"{purpose}:{challenge_id}",
             )
         except Exception as error:
-            logger.exception("Password-reset notification persistence failed")
-            return {"channel": "WHATSAPP", "event": "PASSWORD_RESET", "status": "FAILED", "error": str(error)[:500]}
+            logger.exception("Authentication notification persistence failed")
+            return {"channel": "WHATSAPP", "event": f"{purpose}_OTP", "status": "FAILED", "error": str(error)[:500]}
+
+    async def send_application_status(self, application: dict, status: str, details: str) -> dict:
+        """Template D is reserved strictly for registration status events."""
+        return await self.send_template(
+            event="APPLICATION_STATUS",
+            phone=application.get("mobile", ""),
+            template_name=os.getenv("WHATSAPP_APPROVAL_TEMPLATE", "siteseva_approval_update"),
+            values=[application.get("owner_name") or "SiteSeva user", status, details],
+            language=os.getenv("WHATSAPP_APPROVAL_TEMPLATE_LANGUAGE") or None,
+        )
 
     async def send_approval(
         self,
@@ -279,8 +316,13 @@ class OutboundNotificationService:
         timestamp: str | None = None,
         error: str | None = None,
     ) -> None:
+        normalised = status.upper()
+        current = await db.outbound_notifications.find_one({"provider_message_id": provider_message_id}, {"_id": 0, "status": 1})
+        ranks = {"PENDING": 0, "ACCEPTED": 1, "SENT": 2, "DELIVERED": 3, "READ": 4}
+        if current and ranks.get(normalised, -1) < ranks.get(current.get("status", ""), -1):
+            return
         patch = {
-            "status": status.upper(),
+            "status": normalised,
             "provider_updated_at": timestamp or now_iso(),
             "updated_at": now_iso(),
         }

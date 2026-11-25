@@ -70,6 +70,8 @@ class ApplicationService:
             existing = await application_repository.get(application_id)
             if existing is None:
                 raise HTTPException(404, "Application not found")
+            if existing.get("status") == "APPROVED" and existing.get("user_id") and existing.get("company_id"):
+                return {"success": True, "status": "PASSWORD_SETUP_REQUIRED", "idempotent": True, "company": existing.get("company_name"), "user_id": existing["user_id"]}
             raise HTTPException(409, f"Application is already {existing['status'].lower()}")
 
         if await user_repository.get_by_email(application["email"]):
@@ -85,15 +87,13 @@ class ApplicationService:
             await application_repository.release_approval(application_id, str(error))
             raise HTTPException(500, "Company provisioning failed; no approval was recorded") from error
 
-        delivery = await outbound_notification_service.send_credentials(
-            result["contractor"],
-            result["temporary_password"],
-        )
+        delivery = await outbound_notification_service.send_account_approved(result["contractor"])
         await user_repository.update(
             result["contractor"]["id"],
             {
                 "credential_delivery_status": delivery.get("status"),
                 "credential_delivery_id": delivery.get("id"),
+                "whatsapp_notification_status": delivery.get("status"),
             },
         )
         await application_repository.complete_approval(
@@ -109,7 +109,10 @@ class ApplicationService:
             action="APPLICATION_APPROVED",
 
             description=f"{application['company_name']} approved.",
-
+            actor_id=reviewed_by,
+            account_id=result["contractor"]["id"],
+            company_id=result["company"]["id"],
+            outcome="PASSWORD_SETUP_REQUIRED",
         )
 
         return {
@@ -121,6 +124,7 @@ class ApplicationService:
             "username": result["username"],
 
             "email": result["contractor"]["email"],
+            "status": "PASSWORD_SETUP_REQUIRED",
 
             "whatsapp_delivery": delivery,
 
@@ -139,7 +143,11 @@ class ApplicationService:
         if application.get("status") != "PENDING":
             raise HTTPException(409, "Only pending applications can be rejected")
         await application_repository.reject(application_id, reviewed_by, remarks)
-        return {"success": True}
+        delivery = await outbound_notification_service.send_application_status(
+            application, "REJECTED", remarks or "Your registration application was not approved."
+        )
+        await audit_repository.log("APPLICATION_REJECTED", f"{application['company_name']} rejected.", actor_id=reviewed_by, outcome=delivery.get("status", "UNKNOWN"))
+        return {"success": True, "status": "REJECTED", "whatsapp_delivery": delivery}
 
     async def get(
         self,

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from services.design_service import design_service
 from services.design_wallet_service import InsufficientCreditsError, design_wallet_service
-from design_core.design_constants import PRO_MONTHLY_CREDITS, ENTERPRISE_MONTHLY_CREDITS
+from services.plan_catalog import PLAN_CATALOG, canonical_plan, plan_details
 from models.auth import (
     Role,
     Plan,
@@ -22,12 +22,10 @@ from typing import List, Literal, Optional
 
 import cloudinary
 import cloudinary.utils
-from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, Request, UploadFile
 from pydantic import BaseModel, EmailStr, Field
 from starlette.middleware.cors import CORSMiddleware
-from services.openai_floorplanner import (
-    generate_floorplan_image
-)
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from fastapi.responses import Response
 from models.site import (
@@ -65,6 +63,7 @@ from api.design_wallet import router as design_wallet_router
 from api.launch import router as launch_router
 from api.ai_assistant import router as ai_assistant_router
 from api.whatsapp import router as whatsapp_router
+from api.public import router as public_router
 from services.ai_assistant_service import ai_assistant_service
 
 # Shared infra — single source of truth for db, auth, helpers
@@ -91,10 +90,10 @@ from services.wallet_service import wallet_service
 from services.access_control import require_site_access
 from services.application_service import application_service
 from services.account_security import (
-    generate_temporary_password,
     normalize_phone,
 )
 from services.outbound_notification_service import outbound_notification_service
+from repositories.audit_repository import audit_repository
 
 MAP_GENERATION_COST = 5
 
@@ -161,12 +160,48 @@ def scope_query(user: dict, base: Optional[dict] = None) -> dict:
     return q
 
 # -------- App --------
-app = FastAPI(title="Site Seva Pro API")
+ENVIRONMENT = os.getenv("APP_ENV", "development").strip().lower()
+app = FastAPI(
+    title="Site Seva Pro API",
+    docs_url=None if ENVIRONMENT == "production" else "/docs",
+    redoc_url=None if ENVIRONMENT == "production" else "/redoc",
+    openapi_url=None if ENVIRONMENT == "production" else "/openapi.json",
+)
 api = APIRouter(prefix="/api")
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+        if ENVIRONMENT == "production":
+            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        return response
+
+
+app.add_middleware(SecurityHeadersMiddleware)
 
 @api.get("/")
 async def root():
     return {"app": "Site Seva Pro", "status": "ok", "time": now_iso()}
+
+
+@api.get("/health/live")
+async def liveness():
+    return {"status": "ok", "time": now_iso()}
+
+
+@api.get("/health/ready")
+async def readiness():
+    try:
+        await db.command("ping")
+    except Exception as error:
+        logger.warning("Readiness database check failed: %s", error)
+        raise HTTPException(503, "Database is unavailable") from None
+    return {"status": "ready", "database": "ok", "time": now_iso()}
 
 # ---------- ADMIN ----------
 @api.get("/admin/dashboard")
@@ -322,15 +357,12 @@ async def create_team_member(
     except ValueError as error:
         raise HTTPException(400, str(error)) from error
 
-    password = generate_temporary_password()
-
     doc = {
         "id": new_id(),
         "email": body.email.lower(),
         "phone": phone,
         "whatsapp": phone,
         "username": gen_username(body.full_name),
-        "password_hash": hash_password(password),
         "role": body.role,
         "full_name": body.full_name,
         "company_id": user["company_id"],
@@ -339,6 +371,9 @@ async def create_team_member(
         "permissions": [],
         "blocked": False,
         "must_change_password": True,
+        "password_setup_required": True,
+        "password_setup_completed": False,
+        "account_status": "PASSWORD_SETUP_REQUIRED",
         "password_version": 0,
         "created_at": now_iso(),
     }
@@ -346,7 +381,7 @@ async def create_team_member(
     await db.users.insert_one(doc)
     doc.pop("_id", None)
 
-    delivery = await outbound_notification_service.send_credentials(doc, password)
+    delivery = await outbound_notification_service.send_account_approved(doc)
     await db.users.update_one(
         {"id": doc["id"]},
         {
@@ -356,6 +391,7 @@ async def create_team_member(
             }
         },
     )
+    await audit_repository.log("TEAM_ACCOUNT_CREATED", "Team member requires password setup", actor_id=user["id"], account_id=doc["id"], company_id=user["company_id"], outcome=delivery.get("status", "UNKNOWN"))
 
     return {
         "success": True,
@@ -382,28 +418,20 @@ async def resend_team_credentials(
     )
     if not member:
         raise HTTPException(404, "Team member not found")
-    password = generate_temporary_password()
-    await db.users.update_one(
-        {"id": member["id"]},
-        {
-            "$set": {
-                "password_hash": hash_password(password),
-                "must_change_password": True,
-                "credentials_resent_at": now_iso(),
-            },
-            "$inc": {"password_version": 1},
-        },
-    )
-    delivery = await outbound_notification_service.send_credentials(member, password)
+    if not member.get("password_setup_required"):
+        return {"success": False, "status": "ACTIVE", "message": "Ask the member to use Forgot password. Their password was not changed."}
+    delivery = await outbound_notification_service.send_account_approved(member)
     await db.users.update_one(
         {"id": member["id"]},
         {
             "$set": {
                 "credential_delivery_status": delivery.get("status"),
                 "credential_delivery_id": delivery.get("id"),
+                "credentials_resent_at": now_iso(),
             }
         },
     )
+    await audit_repository.log("TEAM_RESEND_ACTIVATION_NOTIFICATION", "Activation notification resent", actor_id=user["id"], account_id=member["id"], company_id=user["company_id"], outcome=delivery.get("status", "UNKNOWN"))
     return {"success": True, "whatsapp_delivery": delivery}
 
 
@@ -536,8 +564,6 @@ async def complete_task(
         )
     )
 ):
-    print("CURRENT USER =", user)
-
     task = await db.site_tasks.find_one(
         {"id": task_id, "company_id": user["company_id"]}
     )
@@ -737,30 +763,6 @@ async def get_maps(
         -1
     ).to_list(500)
 
-@api.get("/test-openai")
-async def test_openai():
-
-    image = generate_floorplan_image({
-
-        "plot_width":30,
-
-        "plot_length":50,
-
-        "bedrooms":3,
-
-        "bathrooms":2,
-
-        "floors":1,
-
-        "facing":"East"
-
-    })
-
-    return Response(
-        content=image,
-        media_type="image/png"
-    )
-    
 @app.post("/api/maps/generate")
 async def generate_map(
     body: MapRequestIn,
@@ -875,32 +877,7 @@ async def get_all_plans(
 
 
 # ---------- SUBSCRIPTIONS ----------
-SUBSCRIPTION_CATALOG = (
-    {
-        "code": "FREE",
-        "name": "Free",
-        "price": 0,
-        "currency": "INR",
-        "billing_cycle": "MONTHLY",
-        "description": "Get started with your SiteSeva workspace.",
-    },
-    {
-        "code": "PREMIUM",
-        "name": "Premium",
-        "price": 2999,
-        "currency": "INR",
-        "billing_cycle": "MONTHLY",
-        "description": "For growing construction teams managing active sites.",
-    },
-    {
-        "code": "ENTERPRISE",
-        "name": "Enterprise",
-        "price": 4999,
-        "currency": "INR",
-        "billing_cycle": "MONTHLY",
-        "description": "For companies that need advanced AI and operational controls.",
-    },
-)
+SUBSCRIPTION_CATALOG = tuple({**details, "currency": "INR", "billing_cycle": "MONTHLY"} for details in PLAN_CATALOG.values())
 
 
 @api.get("/subscription/plans")
@@ -970,7 +947,7 @@ async def upgrade_subscription(plan: Plan, user: dict = Depends(require_roles("C
     )
     await db.users.update_one({"id": user["id"]}, {"$set": {"plan": plan}})
     if plan in ("PREMIUM", "PRO", "ENTERPRISE"):
-        credits = ENTERPRISE_MONTHLY_CREDITS if plan == "ENTERPRISE" else PRO_MONTHLY_CREDITS
+        credits = plan_details(plan)["monthly_design_credits"]
         await design_wallet_service.balance(user["company_id"])
         await design_wallet_service.add(user["company_id"], credits, f"{plan} subscription credits")
     if amount > 0:
@@ -1044,7 +1021,10 @@ app.include_router(v2_router)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
+    allow_origins=[origin.strip() for origin in os.environ.get(
+        "CORS_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000,https://sitesevapro.in,https://www.sitesevapro.in",
+    ).split(",") if origin.strip()],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -1089,10 +1069,17 @@ app.include_router(
 
 app.include_router(ai_assistant_router)
 app.include_router(whatsapp_router)
+app.include_router(public_router)
 
 @app.on_event("startup")
 async def on_start():
     try:
+        if ENVIRONMENT == "production":
+            required = ["MONGO_URL", "JWT_SECRET", "SUPER_ADMIN_EMAIL", "SUPER_ADMIN_PASSWORD", "CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET", "CORS_ORIGINS", "FRONTEND_URL", "PASSWORD_RESET_SECRET"]
+            missing = [key for key in required if not os.getenv(key) or "CHANGE_" in os.getenv(key, "") or "example.com" in os.getenv(key, "")]
+            if missing:
+                raise RuntimeError(f"Production configuration is incomplete: {', '.join(missing)}")
+        await db.command("ping")
         admin_email = SUPER_ADMIN_EMAIL.lower().strip()
         admin_phone = None
         if os.getenv("SUPER_ADMIN_PHONE"):
@@ -1149,8 +1136,16 @@ async def on_start():
             "purge_at",
             expireAfterSeconds=0,
         )
+        await db.auth_challenges.create_index("id", unique=True)
+        await db.auth_challenges.create_index([("user_id", 1), ("purpose", 1), ("created_epoch", -1)])
+        await db.auth_challenges.create_index("purge_at", expireAfterSeconds=0)
+        await db.outbound_notifications.create_index("dedupe_key", unique=True, sparse=True)
+        await db.rate_limit_events.create_index("purge_at", expireAfterSeconds=0)
+        await db.rate_limit_events.create_index([("key", 1), ("created_epoch", 1)])
     except Exception:
         logger.exception("Startup provisioning failed")
+        if ENVIRONMENT == "production":
+            raise
 
 @app.on_event("shutdown")
 async def on_stop():
