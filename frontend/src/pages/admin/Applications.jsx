@@ -17,6 +17,7 @@ export default function Applications() {
   const [filter, setFilter] = React.useState("PENDING");
   const [creds, setCreds] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
+  const [busyId, setBusyId] = React.useState(null);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -38,19 +39,25 @@ export default function Applications() {
   const filtered = filter === "ALL" ? list : list.filter((a) => a.status === filter);
 
   const approve = async (id) => {
+    if (busyId) return;
+    setBusyId(id);
     try {
       const { data } = await api.post(`/admin/applications/${id}/approve`);
       setCreds(data);
       const delivery = data.whatsapp_delivery?.status;
-      if (["ACCEPTED", "SENT", "DELIVERED", "READ"].includes(delivery)) toast.success("Contractor approved and WhatsApp credentials submitted");
+      if (["ACCEPTED", "SENT", "DELIVERED", "READ"].includes(delivery)) toast.success("Contractor approved. Account setup notification accepted by WhatsApp.");
       else toast.warning(`Contractor approved; WhatsApp status: ${delivery || "UNKNOWN"}`);
       load();
-    } catch { toast.error("Approve failed"); }
+    } catch (error) { toast.error(error?.response?.data?.detail || "Approve failed"); }
+    finally { setBusyId(null); }
   };
   const reject = async (id) => {
     if (!window.confirm("Reject this application?")) return;
-    try { await api.post(`/admin/applications/${id}/reject`); toast.success("Rejected"); load(); }
-    catch { toast.error("Reject failed"); }
+    if (busyId) return;
+    setBusyId(id);
+    try { await api.post(`/admin/applications/${id}/reject`); toast.success("Application rejected"); load(); }
+    catch (error) { toast.error(error?.response?.data?.detail || "Reject failed"); }
+    finally { setBusyId(null); }
   };
 
   return (
@@ -109,8 +116,8 @@ export default function Applications() {
                   <td className="text-right">
                     {a.status === "PENDING" ? (
                       <div className="flex gap-2 justify-end">
-                        <button onClick={() => approve(a.id)} className="ss-chip bg-emerald-100 text-emerald-700 hover:bg-emerald-200" data-testid={`app-approve-${a.id}`}><CheckCircle2 className="h-3.5 w-3.5" /> Approve</button>
-                        <button onClick={() => reject(a.id)} className="ss-chip bg-red-100 text-red-700 hover:bg-red-200" data-testid={`app-reject-${a.id}`}><XCircle className="h-3.5 w-3.5" /> Reject</button>
+                        <button disabled={busyId === a.id} onClick={() => approve(a.id)} className="ss-chip bg-emerald-100 text-emerald-700 hover:bg-emerald-200 disabled:opacity-50" data-testid={`app-approve-${a.id}`}><CheckCircle2 className="h-3.5 w-3.5" /> {busyId === a.id ? "Working…" : "Approve"}</button>
+                        <button disabled={busyId === a.id} onClick={() => reject(a.id)} className="ss-chip bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50" data-testid={`app-reject-${a.id}`}><XCircle className="h-3.5 w-3.5" /> Reject</button>
                       </div>
                     ) : (
                       <span className="text-xs text-gray-400">—</span>
@@ -128,9 +135,9 @@ export default function Applications() {
           <DialogHeader><DialogTitle>Contractor Approved 🎉</DialogTitle></DialogHeader>
           {creds && (
             <div className="space-y-3">
-              <p className="text-sm text-gray-600">A contractor workspace and one-time password were created. The password is never exposed in the admin panel.</p>
+              <p className="text-sm text-gray-600">The contractor workspace is approved. The customer receives their Login ID and creates their own password through the secure WhatsApp OTP flow.</p>
               <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm"><div><span className="text-gray-500">Email:</span> {creds.email}</div><div><span className="text-gray-500">Username:</span> {creds.username}</div><div className="flex items-center gap-2"><MessageCircle className="h-4 w-4 text-emerald-500"/><span className="text-gray-500">WhatsApp:</span><b>{creds.whatsapp_delivery?.status || "UNKNOWN"}</b></div>{creds.whatsapp_delivery?.recipient && <div><span className="text-gray-500">Recipient:</span> {creds.whatsapp_delivery.recipient}</div>}</div>
-              {!['ACCEPTED', 'SENT', 'DELIVERED', 'READ'].includes(creds.whatsapp_delivery?.status) && <div className="flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0"/><p>The account is active, but WhatsApp did not accept the message. Configure Meta Cloud API, then regenerate credentials from contractor management.</p></div>}
+              {!['ACCEPTED', 'SENT', 'DELIVERED', 'READ'].includes(creds.whatsapp_delivery?.status) && <div className="flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0"/><p>The account remains approved and requires password setup, but WhatsApp did not accept the notification. Correct messaging configuration or the registered number, then resend the approval notification from contractor management. No password was created or changed.</p></div>}
             </div>
           )}
         </DialogContent>

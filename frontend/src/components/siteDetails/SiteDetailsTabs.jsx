@@ -157,7 +157,7 @@ export default function SiteDetailsTabs({
 
                 <AITab
 
-                    ai={ai}
+                    insights={ai || []}
 
                     site={site}
 

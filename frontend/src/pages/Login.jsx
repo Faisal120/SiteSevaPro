@@ -26,7 +26,14 @@ export default function Login() {
       const redirect = u.must_change_password ? "/change-password" : u.role === "SUPER_ADMIN" ? "/app/admin" : "/app/dashboard";
       nav(loc.state?.from || redirect, { replace: true });
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Login failed");
+      const detail = err?.response?.data?.detail;
+      if (detail?.status === "PASSWORD_SETUP_REQUIRED") {
+        toast.info("Create your password to activate this account.");
+        nav("/activate-account", { state: { identifier: email }, replace: false });
+        return;
+      }
+      const message = typeof detail === "object" ? detail.message || detail.status : detail;
+      toast.error(message || "Unable to sign in with those credentials.");
     } finally {
       setBusy(false);
     }
@@ -63,7 +70,7 @@ export default function Login() {
 
           <form onSubmit={submit} className="mt-8 space-y-4" data-testid="login-form">
             <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Email or username</label>
+              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Registered email or Login ID</label>
               <input
                 type="text"
                 className="ss-input mt-1"
@@ -88,6 +95,9 @@ export default function Login() {
                   {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+            </div>
+            <div className="text-right text-sm">
+              <Link to="/activate-account" className="font-semibold text-[#3B82F6] hover:underline">First time login? Create password</Link>
             </div>
             <button type="submit" disabled={busy} className="ss-btn-accent w-full" data-testid="login-submit">
               <LogIn className="h-4 w-4" /> {busy ? "Signing in…" : "Sign in"}

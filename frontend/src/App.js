@@ -15,6 +15,7 @@ import TermsOfService from "@/pages/TermsOfService";
 import DataDeletion from "@/pages/DataDeletion";
 import Login from "@/pages/Login";
 import ForgotPassword from "@/pages/ForgotPassword";
+import AccountActivation from "@/pages/AccountActivation";
 import ChangePassword from "@/pages/ChangePassword";
 import ContractorRegister from "@/pages/ContractorRegister";
 
@@ -92,6 +93,7 @@ function App() {
                 <Route path="/data-deletion" element={<DataDeletion />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/activate-account" element={<AccountActivation />} />
                 <Route path="/register" element={<ContractorRegister />} />
                 <Route path="/change-password" element={<Protected><ChangePassword /></Protected>} />
 

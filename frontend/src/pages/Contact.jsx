@@ -3,14 +3,18 @@ import PublicNav from "@/components/PublicNav";
 import PublicFooter from "@/components/PublicFooter";
 import { Mail, Send } from "lucide-react";
 import { toast } from "sonner";
+import { api } from "@/lib/api";
 
 export default function Contact() {
   const [form, setForm] = React.useState({ name: "", email: "", message: "" });
-  const submit = (e) => {
+  const [submitting, setSubmitting] = React.useState(false);
+  const submit = async (e) => {
     e.preventDefault();
     if (!form.name || !form.email || !form.message) return toast.error("Please fill all fields");
-    toast.success("Thanks! We'll get back to you within 24 hours.");
-    setForm({ name: "", email: "", message: "" });
+    setSubmitting(true);
+    try { await api.post("/public/enquiries", form); toast.success("Thanks! We'll get back to you within 24 hours."); setForm({ name: "", email: "", message: "" }); }
+    catch (error) { toast.error(error?.response?.data?.detail || "We could not send your enquiry. Please try again or email support."); }
+    finally { setSubmitting(false); }
   };
   return (
     <div className="landing-shell min-h-screen ss-mesh">
@@ -39,8 +43,8 @@ export default function Contact() {
               <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Message</label>
               <textarea className="ss-input mt-1 min-h-[120px]" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} data-testid="contact-message" />
             </div>
-            <button type="submit" className="ss-btn-accent w-full" data-testid="contact-submit">
-              <Send className="h-4 w-4" /> Send Message
+            <button type="submit" disabled={submitting} className="ss-btn-accent w-full disabled:opacity-50" data-testid="contact-submit">
+              <Send className="h-4 w-4" /> {submitting ? "Sending…" : "Send Message"}
             </button>
           </form>
         </div>

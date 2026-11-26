@@ -14,8 +14,13 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (r) => r,
   (err) => {
-    if (err?.response?.status === 428 && window.location.pathname !== "/change-password") {
-      window.location.href = "/change-password";
+    if (err?.response?.status === 428 && window.location.pathname !== "/activate-account") {
+      // A pending password setup cannot use an old/stale dashboard session.
+      // The activation UI asks for the identifier again and keeps its OTP token
+      // in component memory only.
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("user");
+      window.location.href = "/activate-account";
       return Promise.reject(err);
     }
     if (err?.response?.status === 401 && window.location.pathname.startsWith("/app")) {

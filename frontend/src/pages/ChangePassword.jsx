@@ -36,10 +36,10 @@ export default function ChangePassword() {
     <div className="w-full max-w-md ss-card p-7 sm:p-9">
       <div className="flex items-center gap-3"><div className="grid h-11 w-11 place-items-center rounded-xl bg-[#171717] text-blue-400"><HardHat className="h-5 w-5"/></div><div><p className="text-xs font-bold uppercase tracking-[.16em] text-blue-500">SiteSeva Pro</p><p className="text-sm text-gray-500">{user?.email}</p></div></div>
       <div className="mt-8 grid h-12 w-12 place-items-center rounded-xl bg-amber-500/10 text-amber-500"><KeyRound/></div>
-      <h1 className="mt-4 font-display text-3xl font-extrabold">Create your password</h1>
-      <p className="mt-2 text-sm leading-6 text-gray-500">For security, the temporary WhatsApp password can only be used to reach this page.</p>
+      <h1 className="mt-4 font-display text-3xl font-extrabold">Update your password</h1>
+      <p className="mt-2 text-sm leading-6 text-gray-500">Enter your current password and choose a new secure password. First-time account setup uses the separate WhatsApp OTP flow.</p>
       <form onSubmit={submit} className="mt-7 space-y-4">
-        <PasswordField label="Temporary password" value={currentPassword} setValue={setCurrentPassword}/>
+        <PasswordField label="Current password" value={currentPassword} setValue={setCurrentPassword}/>
         <PasswordField label="New password" value={newPassword} setValue={setNewPassword}/>
         <PasswordField label="Confirm new password" value={confirmPassword} setValue={setConfirmPassword}/>
         <p className="text-xs leading-5 text-gray-500">Minimum 12 characters, including uppercase, lowercase, number and special character.</p>

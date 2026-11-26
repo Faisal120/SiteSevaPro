@@ -6,7 +6,7 @@ export const PLAN_FEATURES = {
     features: ["1 active site", "2 supervisor accounts", "Basic estimates", "Daily reports", "Core material and labour tracking"],
   },
   PREMIUM: {
-    name: "Pro",
+    name: "Premium",
     price: 2999,
     color: "bg-white ring-2 ring-[#3B82F6]",
     features: [
@@ -14,7 +14,7 @@ export const PLAN_FEATURES = {
       "BOQ generation & PDF export",
       "Detailed estimate creation",
       "2D floor-plan generation",
-      "10 monthly design credits",
+      "250 monthly design credits",
       "Labour Wallet & Ledger",
       "Advanced Analytics",
       "Client Portal",
@@ -29,7 +29,7 @@ export const PLAN_FEATURES = {
     features: [
       "Everything in Pro",
       "Furnished 3D plan renderer",
-      "50 monthly design credits",
+      "1,000 monthly design credits",
       "Electrical, plumbing & structure overlays",
       "AI Construction Assistant",
       "AI Cost Overrun Prediction",
@@ -41,8 +41,9 @@ export const PLAN_FEATURES = {
   },
 };
 
-export const UPI_ID = "fk1571515@ybl";
-export const UPI_PAYEE_NAME = "Site Seva Pro";
+// Payment identity is returned by the authenticated server configuration.
+export const UPI_ID = null;
+export const UPI_PAYEE_NAME = null;
 
 export const SITE_STATUS_COLOR = {
   PLANNING: "bg-yellow-100 text-yellow-800 border border-yellow-200",
