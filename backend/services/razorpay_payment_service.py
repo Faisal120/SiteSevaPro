@@ -53,6 +53,7 @@ def _safe_payment(payment: dict) -> dict:
 
 class RazorpayPaymentService:
     async def create_order(self, plan: str, user: dict) -> dict:
+        razorpay_gateway.require_checkout_enabled()
         plan = canonical_plan(plan)
         if plan not in PAID_PLANS:
             raise HTTPException(400, "Select a paid subscription plan")
@@ -87,6 +88,7 @@ class RazorpayPaymentService:
         return {"payment_id": payment["id"], "order_id": order_id, "amount": payment["amount_paise"], "currency": "INR", "key_id": razorpay_gateway.public_key_id(), "plan": plan}
 
     async def verify_browser_payment(self, order_id: str, payment_id: str, signature: str, user: dict) -> dict:
+        razorpay_gateway.require_checkout_enabled()
         payment = await db.subscription_payments.find_one({"razorpay_order_id": order_id, "company_id": user["company_id"]}, {"_id": 0})
         if not payment:
             raise HTTPException(404, "Payment order not found")
@@ -383,6 +385,7 @@ class RazorpayPaymentService:
         await db.razorpay_webhook_events.update_one({"event_id": event_id, "processing_lease_id": lease_id}, {"$set": update, "$unset": {"processing_lease_id": "", "processing_lease_expires_at": ""}})
 
     async def handle_webhook(self, event_type: str, event_id: str, payload: dict) -> dict:
+        razorpay_gateway.require_checkout_enabled()
         event, lease_id = await self._claim_webhook_event(event_type, event_id)
         if event is None:
             if lease_id == "PROCESSED": return {"ok": True, "duplicate": True}

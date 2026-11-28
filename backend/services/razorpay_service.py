@@ -22,6 +22,12 @@ class _TimeoutSession(requests.Session):
 
 
 class RazorpayGateway:
+    def require_checkout_enabled(self) -> None:
+        """Fail closed until the owner explicitly enables paid collection."""
+        enabled = os.getenv("PAYMENTS_ENABLED", "").strip().lower()
+        if enabled not in {"1", "true", "yes", "on"}:
+            raise HTTPException(503, "Online payments are coming soon")
+
     def _settings(self) -> tuple[str, str, str]:
         key_id = os.getenv("RAZORPAY_KEY_ID", "").strip()
         key_secret = os.getenv("RAZORPAY_KEY_SECRET", "").strip()
@@ -38,6 +44,8 @@ class RazorpayGateway:
         if mode not in {"test", "live"}:
             raise HTTPException(503, "Online payments are not configured")
         key_id = self._settings()[0]
+        if os.getenv("APP_ENV", "development").strip().lower() == "production" and mode != "live":
+            raise HTTPException(503, "Live Razorpay credentials are required in production")
         if not key_id.startswith(f"rzp_{mode}_"):
             raise HTTPException(503, "Razorpay key does not match configured gateway mode")
         return mode

@@ -460,7 +460,7 @@ async def legacy_admin_payment_history(_: dict = Depends(require_roles("SUPER_AD
 
 @v2_router.post("/payment/request", status_code=410)
 async def retired_manual_payment_request(_: dict = Depends(require_roles("CONTRACTOR"))):
-    raise HTTPException(410, "Manual UPI payment requests have been retired. Use secure online checkout.")
+    raise HTTPException(410, "Manual UPI payment requests have been retired. Online payments are coming soon.")
 
 # ---------- AUDIT LOGS (admin) ----------
 @v2_router.get("/admin/audit")

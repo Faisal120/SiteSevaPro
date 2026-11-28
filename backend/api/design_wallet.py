@@ -46,7 +46,7 @@ async def transactions(
 @router.post("/purchase/request")
 async def request_purchase(_: dict = Depends(require_roles("CONTRACTOR"))):
     """Manual credit-pack purchases are retired; plan credits remain intact."""
-    raise HTTPException(410, "Manual credit purchases have been retired. Subscription credits are applied after secure online checkout.")
+    raise HTTPException(410, "Manual credit purchases are retired. Online credit purchases are not available.")
 
 
 @router.get("/purchase/my")
