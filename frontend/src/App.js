@@ -56,6 +56,8 @@ import Branding from "@/pages/Branding";
 import DesignStudio from "@/pages/DesignStudio";
 import { BootstrapProvider } from "@/context/BootstrapContext";
 import PublicRoute from "@/components/PublicRoute";
+import { MarketingConsentProvider } from "@/components/marketing/MarketingConsent";
+import MetaPixelTracker from "@/components/marketing/MetaPixelTracker";
 
 function Protected({ children, roles }) {
   const { user, loading } = useAuth();
@@ -76,8 +78,10 @@ function App() {
         <AuthProvider>
           <BootstrapProvider>
             <BrowserRouter>
-              <Toaster position="top-right" richColors closeButton />
-              <Routes>
+              <MarketingConsentProvider>
+                <MetaPixelTracker />
+                <Toaster position="top-right" richColors closeButton />
+                <Routes>
                 <Route
                   path="/"
                   element={
@@ -166,7 +170,8 @@ function App() {
                 </Route>
 
                 <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
+                </Routes>
+              </MarketingConsentProvider>
             </BrowserRouter>
           </BootstrapProvider>
         </AuthProvider>

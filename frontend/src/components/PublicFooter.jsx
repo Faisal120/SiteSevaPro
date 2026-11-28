@@ -1,8 +1,10 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpRight, HardHat, Mail } from "lucide-react";
+import { useMarketingConsent } from "@/components/marketing/MarketingConsent";
 
 export default function PublicFooter() {
+  const { configured, consent, withdraw, openChoices } = useMarketingConsent();
   return (
     <footer className="border-t border-white/10 bg-[#090a0c] text-gray-300">
       <div className="mx-auto grid max-w-7xl gap-10 px-6 py-14 md:grid-cols-[1.5fr_1fr_1fr_1fr] lg:px-8">
@@ -36,7 +38,7 @@ export default function PublicFooter() {
         </div>
         <div>
           <h4 className="mb-3 text-sm font-semibold text-white">Support & legal</h4>
-          <ul className="space-y-2 text-sm"><li><a href="mailto:support@sitesevapro.in" className="inline-flex items-center gap-2 font-semibold text-blue-300 hover:text-white"><Mail className="h-4 w-4" />support@sitesevapro.in</a></li><li><a href="mailto:info@sitesevapro.in" className="inline-flex items-center gap-2 text-gray-400 hover:text-white"><ArrowUpRight className="h-4 w-4" />info@sitesevapro.in</a></li><li><Link to="/privacy-policy" className="hover:text-[#3B82F6]">Privacy Policy</Link></li><li><Link to="/terms" className="hover:text-[#3B82F6]">Terms of Service</Link></li><li><Link to="/refund-cancellation" className="hover:text-[#3B82F6]">Refund &amp; Cancellation</Link></li><li><Link to="/data-deletion" className="hover:text-[#3B82F6]">Account &amp; Data Deletion</Link></li></ul>
+          <ul className="space-y-2 text-sm"><li><a href="mailto:support@sitesevapro.in" className="inline-flex items-center gap-2 font-semibold text-blue-300 hover:text-white"><Mail className="h-4 w-4" />support@sitesevapro.in</a></li><li><a href="mailto:info@sitesevapro.in" className="inline-flex items-center gap-2 text-gray-400 hover:text-white"><ArrowUpRight className="h-4 w-4" />info@sitesevapro.in</a></li><li><Link to="/privacy-policy" className="hover:text-[#3B82F6]">Privacy Policy</Link></li><li><Link to="/terms" className="hover:text-[#3B82F6]">Terms of Service</Link></li><li><Link to="/refund-cancellation" className="hover:text-[#3B82F6]">Refund &amp; Cancellation</Link></li><li><Link to="/data-deletion" className="hover:text-[#3B82F6]">Account &amp; Data Deletion</Link></li>{configured && <li><button type="button" onClick={consent === "accepted" ? withdraw : openChoices} className="text-left text-gray-400 hover:text-[#3B82F6]">{consent === "accepted" ? "Withdraw marketing consent" : "Manage marketing consent"}</button></li>}</ul>
         </div>
       </div>
       <div className="mx-auto flex max-w-7xl flex-col gap-2 border-t border-white/10 px-6 py-5 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-between lg:px-8">

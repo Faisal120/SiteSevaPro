@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { HardHat, CheckCircle2, Send } from "lucide-react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
+import { metaPixel } from "@/lib/metaPixel";
 
 export default function ContractorRegister() {
   const nav = useNavigate();
@@ -19,11 +20,14 @@ export default function ContractorRegister() {
     e.preventDefault();
     setBusy(true);
     try {
-      await api.post("/auth/applications", {
+      const response = await api.post("/auth/applications", {
         ...form,
         active_projects: Number(form.active_projects || 0),
         employee_count: Number(form.employee_count || 0),
       });
+      // This is the only registration conversion point: after the API has
+      // created the application. The Pixel service sends no application data.
+      metaPixel.trackCompleteRegistration(response?.data?.id);
       setDone(true);
       toast.success("Application submitted!");
     } catch (err) {
