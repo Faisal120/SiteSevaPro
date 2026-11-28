@@ -76,6 +76,7 @@ def mongo_db(monkeypatch, mongo_event_loop):
         run(mongo_event_loop, database.design_transactions.create_index("subscription_payment_id", unique=True, sparse=True))
         run(mongo_event_loop, database.notifications.create_index("dedupe_key", unique=True, sparse=True))
         run(mongo_event_loop, database.razorpay_webhook_events.create_index("event_id", unique=True))
+        run(mongo_event_loop, database.razorpay_refunds.create_index("razorpay_refund_id", unique=True))
 
         monkeypatch.setattr(payment_module, "db", database)
         monkeypatch.setattr(payment_module.razorpay_gateway, "mode", lambda: "test")
@@ -232,3 +233,129 @@ def test_test_live_mode_isolation(mongo_db, mongo_event_loop, monkeypatch):
     with pytest.raises(HTTPException) as error:
         run(mongo_event_loop, payment_module.RazorpayPaymentService()._validate_provider_payment(record, provider(record), record["razorpay_order_id"]))
     assert error.value.status_code == 409
+
+
+def test_duplicate_and_out_of_order_refunds_are_recorded_once(mongo_db, mongo_event_loop):
+    async def scenario():
+        record = payment("refund", status="PENDING")
+        record["razorpay_payment_id"] = "pay_refund"
+        await mongo_db.subscription_payments.insert_one(record)
+        service = payment_module.RazorpayPaymentService()
+        partial = {"id": "rfnd-partial", "payment_id": "pay_refund", "amount": 100000, "currency": "INR"}
+
+        # A refund before capture remains pending and is applied as part of
+        # durable captured-payment fulfilment instead of being dropped.
+        await service._record_refund(partial, "test")
+        assert (await mongo_db.razorpay_refunds.find_one({"razorpay_refund_id": "rfnd-partial"}))["status"] == "RECEIVED"
+        await service._record_and_fulfil(record, provider(record), "WEBHOOK")
+        after_partial = await mongo_db.subscription_payments.find_one({"id": record["id"]})
+        assert after_partial["refund_amount_paise"] == 100000
+        assert after_partial["refund_status"] == "PARTIAL"
+        assert after_partial["status"] == "CAPTURED"
+
+        # Different Razorpay webhook event ids may carry the same provider
+        # refund. The provider refund id—not the webhook event—is the durable
+        # financial dedupe boundary.
+        payload = {"payload": {"refund": {"entity": partial}}}
+        await service.handle_webhook("refund.processed", "evt-refund-duplicate-a", payload)
+        await service.handle_webhook("refund.processed", "evt-refund-duplicate-b", payload)
+        assert (await mongo_db.subscription_payments.find_one({"id": record["id"]}))["refund_amount_paise"] == 100000
+
+        full_remainder = {"id": "rfnd-remainder", "payment_id": "pay_refund", "amount": 199900, "currency": "INR"}
+        await service._record_refund(full_remainder, "test")
+        completed = await mongo_db.subscription_payments.find_one({"id": record["id"]})
+        assert completed["refund_amount_paise"] == record["amount_paise"]
+        assert completed["refund_status"] == "FULL"
+        assert completed["status"] == "REFUND_REVIEW_REQUIRED"
+        assert await mongo_db.razorpay_refunds.count_documents({"razorpay_payment_id": "pay_refund"}) == 2
+    run(mongo_event_loop, scenario())
+
+
+def test_refund_crash_after_atomic_total_is_recovered_without_second_increment(mongo_db, mongo_event_loop, monkeypatch):
+    async def scenario():
+        record = payment("refund-crash", status="CAPTURED")
+        record["razorpay_payment_id"] = "pay_refund-crash"
+        await mongo_db.subscription_payments.insert_one(record)
+        service = payment_module.RazorpayPaymentService()
+        refund = {"id": "rfnd-crash", "payment_id": record["razorpay_payment_id"], "amount": 100000, "currency": "INR"}
+        original = service._mark_refund_applied
+        calls = {"count": 0}
+
+        async def crash_once(*args):
+            calls["count"] += 1
+            if calls["count"] == 1:
+                raise RuntimeError("simulated process crash")
+            await original(*args)
+
+        monkeypatch.setattr(service, "_mark_refund_applied", crash_once)
+        with pytest.raises(RuntimeError):
+            await service._record_refund(refund, "test")
+        after_crash = await mongo_db.subscription_payments.find_one({"id": record["id"]})
+        assert after_crash["refund_amount_paise"] == 100000
+        assert after_crash["refund_count"] == 1
+        await mongo_db.razorpay_refunds.update_one(
+            {"razorpay_refund_id": refund["id"]},
+            {"$set": {"processing_lease_expires_at": datetime.now(timezone.utc) - timedelta(seconds=1)}},
+        )
+        await service._apply_pending_refunds(after_crash)
+        completed = await mongo_db.subscription_payments.find_one({"id": record["id"]})
+        refund_row = await mongo_db.razorpay_refunds.find_one({"razorpay_refund_id": refund["id"]})
+        assert completed["refund_amount_paise"] == 100000
+        assert completed["refund_count"] == 1
+        assert completed["applied_refund_ids"] == [refund["id"]]
+        assert refund_row["status"] == "APPLIED"
+    run(mongo_event_loop, scenario())
+
+
+def test_concurrent_partial_refunds_and_overflow_are_consistent(mongo_db, mongo_event_loop):
+    async def scenario():
+        record = payment("refund-concurrent", status="CAPTURED")
+        record["razorpay_payment_id"] = "pay_refund-concurrent"
+        await mongo_db.subscription_payments.insert_one(record)
+        service = payment_module.RazorpayPaymentService()
+        first = {"id": "rfnd-concurrent-a", "payment_id": record["razorpay_payment_id"], "amount": 100000, "currency": "INR"}
+        second = {"id": "rfnd-concurrent-b", "payment_id": record["razorpay_payment_id"], "amount": 100000, "currency": "INR"}
+        await asyncio.gather(service._record_refund(first, "test"), service._record_refund(second, "test"))
+        partially_refunded = await mongo_db.subscription_payments.find_one({"id": record["id"]})
+        assert partially_refunded["refund_amount_paise"] == 200000
+        assert partially_refunded["refund_count"] == 2
+        assert set(partially_refunded["applied_refund_ids"]) == {first["id"], second["id"]}
+
+        overflow = {"id": "rfnd-overflow", "payment_id": record["razorpay_payment_id"], "amount": 100000, "currency": "INR"}
+        await service._record_refund(overflow, "test")
+        final = await mongo_db.subscription_payments.find_one({"id": record["id"]})
+        overflow_row = await mongo_db.razorpay_refunds.find_one({"razorpay_refund_id": overflow["id"]})
+        assert final["refund_amount_paise"] == 200000
+        assert final["refund_amount_paise"] <= final["amount_paise"]
+        assert overflow_row["status"] == "REJECTED_OVERFLOW"
+    run(mongo_event_loop, scenario())
+
+
+def test_order_reconciliation_recovers_captured_attempt_without_browser_payment_id(mongo_db, mongo_event_loop, monkeypatch):
+    async def scenario():
+        record = payment("order-only", status="PENDING")
+        await mongo_db.subscription_payments.insert_one(record)
+        service = payment_module.RazorpayPaymentService()
+        failed_attempt = {"id": "pay_failed", "order_id": record["razorpay_order_id"], "amount": record["amount_paise"], "currency": "INR", "status": "failed"}
+        monkeypatch.setattr(payment_module.razorpay_gateway, "fetch_order_payments", lambda _order: asyncio.sleep(0, result=[failed_attempt, provider(record)]))
+        result = await service.status(record["id"], {"company_id": record["company_id"]})
+        stored = await mongo_db.subscription_payments.find_one({"id": record["id"]})
+        assert result["status"] == "CAPTURED"
+        assert stored["razorpay_payment_id"] == "pay_order-only"
+        assert stored["status"] == "CAPTURED"
+    run(mongo_event_loop, scenario())
+
+
+def test_reconciliation_is_fair_and_still_works_when_new_checkout_is_disabled(mongo_db, mongo_event_loop, monkeypatch):
+    async def scenario():
+        first, second = payment("reconcile-a"), payment("reconcile-b")
+        await mongo_db.subscription_payments.insert_many([first, second])
+        service = payment_module.RazorpayPaymentService()
+        monkeypatch.setenv("PAYMENTS_ENABLED", "false")
+        monkeypatch.setattr(payment_module.razorpay_gateway, "fetch_order_payments", lambda order: asyncio.sleep(0, result=[provider(first if order == first["razorpay_order_id"] else second)]))
+        one = await service.reconcile_pending(limit=1)
+        two = await service.reconcile_pending(limit=1)
+        assert one["recovered"] == 1
+        assert two["recovered"] == 1
+        assert await mongo_db.subscription_payments.count_documents({"status": "CAPTURED"}) == 2
+    run(mongo_event_loop, scenario())

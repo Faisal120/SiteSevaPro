@@ -22,17 +22,79 @@ class _TimeoutSession(requests.Session):
 
 
 class RazorpayGateway:
-    def require_checkout_enabled(self) -> None:
-        """Fail closed until the owner explicitly enables paid collection."""
+    def checkout_rollout(self) -> str:
+        """Return the server-side policy for *new* checkout sessions.
+
+        ``PAYMENTS_ENABLED`` remains the master emergency kill switch.  The
+        rollout setting only narrows an enabled checkout, never widens a
+        disabled one.  Keeping this decision on the server prevents a
+        modified React bundle from opening public checkout.
+        """
         enabled = os.getenv("PAYMENTS_ENABLED", "").strip().lower()
         if enabled not in {"1", "true", "yes", "on"}:
-            raise HTTPException(503, "Online payments are coming soon")
+            return "disabled"
+        configured = os.getenv("PAYMENTS_CHECKOUT_ROLLOUT", "").strip().lower()
+        # A missing rollout is deliberately fail-closed even if an operator
+        # has set PAYMENTS_ENABLED=true. Public collection needs two explicit
+        # decisions: enable payments and select the public rollout.
+        if not configured:
+            return "disabled"
+        if configured not in {"disabled", "restricted", "public"}:
+            return "disabled"
+        return configured
+
+    @staticmethod
+    def _allowlisted_user_ids() -> set[str]:
+        return {
+            value.strip()
+            for value in os.getenv("PAYMENTS_CHECKOUT_ALLOWED_USER_IDS", "").split(",")
+            if value.strip()
+        }
+
+    def checkout_availability(self, user: dict) -> dict[str, str | bool]:
+        """Safe authenticated availability response; never includes keys."""
+        rollout = self.checkout_rollout()
+        if rollout == "disabled":
+            return {"status": "DISABLED", "checkout_available": False}
+        if rollout == "restricted" and str(user.get("id") or "") not in self._allowlisted_user_ids():
+            return {"status": "RESTRICTED", "checkout_available": False}
+        try:
+            self.validate_checkout_configuration()
+        except HTTPException:
+            return {"status": "NOT_CONFIGURED", "checkout_available": False}
+        return {"status": "AVAILABLE", "checkout_available": True, "rollout": rollout}
+
+    def require_checkout_enabled(self, user: dict) -> None:
+        """Authorize a new order only; never use this for recovery flows."""
+        availability = self.checkout_availability(user)
+        if availability["checkout_available"]:
+            return
+        if availability["status"] == "RESTRICTED":
+            raise HTTPException(403, "Checkout is not enabled for this account")
+        if availability["status"] == "NOT_CONFIGURED":
+            raise HTTPException(503, "Online payments are not configured")
+        raise HTTPException(503, "Online payments are coming soon")
+
+    def validate_checkout_configuration(self) -> str:
+        """Validate every secret required before accepting a *new* payment.
+
+        Recovery and signed-webhook verification intentionally use narrower
+        checks so an operator can turn off new checkout without abandoning a
+        customer whose valid order is already in flight.
+        """
+        mode = self.mode()
+        webhook_secret = self._settings()[2]
+        placeholder = ("replace", "change_me", "your_", "example", "placeholder")
+        if not webhook_secret or any(marker in webhook_secret.lower() for marker in placeholder):
+            raise HTTPException(503, "Online payments are not configured")
+        return mode
 
     def _settings(self) -> tuple[str, str, str]:
         key_id = os.getenv("RAZORPAY_KEY_ID", "").strip()
         key_secret = os.getenv("RAZORPAY_KEY_SECRET", "").strip()
         webhook_secret = os.getenv("RAZORPAY_WEBHOOK_SECRET", "").strip()
-        if not key_id or not key_secret:
+        placeholder = ("replace", "change_me", "your_", "example", "placeholder")
+        if not key_id or not key_secret or any(marker in key_id.lower() or marker in key_secret.lower() for marker in placeholder):
             raise HTTPException(503, "Online payments are not configured")
         return key_id, key_secret, webhook_secret
 
@@ -73,6 +135,28 @@ class RazorpayGateway:
             except Exception as error:
                 if attempt:
                     raise HTTPException(502, "Could not verify payment with provider") from error
+
+    async def fetch_order_payments(self, order_id: str) -> list[dict[str, Any]]:
+        """Return provider payments for a stored order without trusting a client.
+
+        This is deliberately a recovery-only primitive: it lets a background
+        reconciler recover an order when a customer completed checkout but the
+        browser closed before its payment id reached our API.  Razorpay's SDK
+        returns an ``items`` envelope for this endpoint, but accepting a list
+        keeps the wrapper compatible with supported SDK versions.
+        """
+        client = self._client()
+        for attempt in range(2):
+            try:
+                result = await asyncio.to_thread(client.order.payments, order_id)
+                if isinstance(result, dict):
+                    items = result.get("items", [])
+                else:
+                    items = result
+                return [item for item in (items or []) if isinstance(item, dict)]
+            except Exception as error:
+                if attempt:
+                    raise HTTPException(502, "Could not reconcile payment order with provider") from error
 
     def verify_payment_signature(self, order_id: str, payment_id: str, signature: str) -> None:
         try:

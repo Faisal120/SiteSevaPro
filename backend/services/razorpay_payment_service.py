@@ -25,6 +25,7 @@ from services.razorpay_service import razorpay_gateway
 PAID_PLANS = {"PREMIUM", "ENTERPRISE"}
 LEASE_SECONDS = 300
 WEBHOOK_TTL_DAYS = 180
+RECONCILIATION_RETRY_SECONDS = 60
 
 
 def _utc_now() -> datetime:
@@ -46,14 +47,15 @@ def _safe_payment(payment: dict) -> dict:
     fields = (
         "id", "plan", "amount", "amount_paise", "currency", "status", "created_at",
         "captured_at", "refunded_at", "subscription_expires_at", "razorpay_order_id",
-        "razorpay_payment_id", "payment_method", "refund_status", "receipt_number",
+        "razorpay_payment_id", "payment_method", "refund_status", "refund_amount",
+        "refund_amount_paise", "receipt_number",
     )
     return {field: payment.get(field) for field in fields if payment.get(field) is not None}
 
 
 class RazorpayPaymentService:
     async def create_order(self, plan: str, user: dict) -> dict:
-        razorpay_gateway.require_checkout_enabled()
+        razorpay_gateway.require_checkout_enabled(user)
         plan = canonical_plan(plan)
         if plan not in PAID_PLANS:
             raise HTTPException(400, "Select a paid subscription plan")
@@ -88,7 +90,9 @@ class RazorpayPaymentService:
         return {"payment_id": payment["id"], "order_id": order_id, "amount": payment["amount_paise"], "currency": "INR", "key_id": razorpay_gateway.public_key_id(), "plan": plan}
 
     async def verify_browser_payment(self, order_id: str, payment_id: str, signature: str, user: dict) -> dict:
-        razorpay_gateway.require_checkout_enabled()
+        # Verification must remain available after an owner disables new
+        # checkout: a customer can already have a legitimately opened order.
+        razorpay_gateway.mode()
         payment = await db.subscription_payments.find_one({"razorpay_order_id": order_id, "company_id": user["company_id"]}, {"_id": 0})
         if not payment:
             raise HTTPException(404, "Payment order not found")
@@ -112,6 +116,33 @@ class RazorpayPaymentService:
             raise HTTPException(400, "Payment currency verification failed")
         if str(provider.get("status") or "").lower() != "captured":
             raise HTTPException(409, "Payment is awaiting capture")
+
+    async def checkout_availability(self, user: dict) -> dict:
+        return razorpay_gateway.checkout_availability(user)
+
+    async def _reconcile_record(self, payment: dict, *, source: str = "RECONCILIATION") -> dict | None:
+        """Find a captured provider payment for one internal order.
+
+        A browser callback is optional from a durability perspective.  The
+        provider order id is stored before checkout opens, so it is the safe
+        recovery key when the browser closed before sending a payment id.
+        Every candidate still passes the same order, amount, currency, mode,
+        capture and ownership checks as browser verification.
+        """
+        provider_rows: list[dict] = []
+        if payment.get("razorpay_payment_id"):
+            provider_rows = [await razorpay_gateway.fetch_payment(payment["razorpay_payment_id"])]
+        elif payment.get("razorpay_order_id"):
+            provider_rows = await razorpay_gateway.fetch_order_payments(payment["razorpay_order_id"])
+
+        # An order may have failed attempts before its successful attempt.
+        # Only a captured exact match can be bound and fulfilled.
+        for provider in reversed(provider_rows):
+            if str(provider.get("status") or "").lower() != "captured":
+                continue
+            await self._validate_provider_payment(payment, provider, payment["razorpay_order_id"])
+            return await self._record_and_fulfil(payment, provider, source=source)
+        return None
 
     async def _record_and_fulfil(self, payment: dict, provider: dict, source: str) -> dict:
         provider_id = str(provider.get("id") or "")
@@ -319,6 +350,9 @@ class RazorpayPaymentService:
             )
             if not final:
                 final = await db.subscription_payments.find_one({"id": payment["id"]}, {"_id": 0}) or payment
+            if final.get("razorpay_payment_id"):
+                await self._apply_pending_refunds(final)
+                final = await db.subscription_payments.find_one({"id": payment["id"]}, {"_id": 0}) or final
             return {"status": final.get("status", "FULFILLING"), "payment": _safe_payment(final), "idempotent": final.get("status") != "CAPTURED"}
         finally:
             await self._release_company_lock(payment["company_id"], lease_id)
@@ -327,6 +361,19 @@ class RazorpayPaymentService:
         payment = await db.subscription_payments.find_one({"id": payment_id, "company_id": user["company_id"]}, {"_id": 0})
         if not payment:
             raise HTTPException(404, "Payment not found")
+        # Polling is a safe reconciliation path for payments whose browser
+        # handler or webhook was interrupted. It deliberately does not depend
+        # on the new-checkout rollout state.
+        if payment.get("status") in {"CREATED", "PENDING", "AUTHORIZED", "FAILED", "FULFILLING", "FULFILLMENT_FAILED"} and payment.get("razorpay_order_id"):
+            try:
+                reconciled = await self._reconcile_record(payment)
+                if reconciled:
+                    return reconciled["payment"]
+            except HTTPException as error:
+                # A provider timeout should leave the known pending record
+                # visible for retry, not make the customer believe it failed.
+                if error.status_code not in {502, 503}:
+                    raise
         if payment.get("status") in {"FULFILLING", "FULFILLMENT_FAILED"} and payment.get("razorpay_payment_id"):
             result = await self._resume_fulfilment(payment)
             return result["payment"]
@@ -335,6 +382,43 @@ class RazorpayPaymentService:
     async def history(self, user: dict) -> list[dict]:
         rows = await db.subscription_payments.find({"company_id": user["company_id"]}, {"_id": 0}).sort("created_at", -1).limit(100).to_list(100)
         return [_safe_payment(row) for row in rows]
+
+    async def reconcile_pending(self, limit: int = 100) -> dict:
+        """Explicit, bounded recovery for captured-but-unfulfilled payments."""
+        active_mode = razorpay_gateway.mode()
+        # ``reconciliation_next_at`` is advanced after every attempt. This
+        # bounds each run while preventing a permanently pending old order
+        # from starving newer unresolved orders.
+        rows = await db.subscription_payments.find(
+            {
+                "razorpay_mode": active_mode,
+                "status": {"$in": ["CREATED", "PENDING", "AUTHORIZED", "FAILED", "FULFILLING", "FULFILLMENT_FAILED"]},
+                "razorpay_order_id": {"$exists": True},
+            },
+            {"_id": 0},
+        ).sort([("reconciliation_next_at", 1), ("created_at", 1)]).limit(max(1, min(limit, 250))).to_list(max(1, min(limit, 250)))
+        recovered = 0
+        pending = 0
+        failed = 0
+        for payment in rows:
+            try:
+                result = await self._reconcile_record(payment)
+                if not result:
+                    pending += 1
+                elif result.get("status") == "CAPTURED":
+                    recovered += 1
+                else:
+                    pending += 1
+            except HTTPException:
+                # Preserve the payment record for later retry; callers only
+                # receive aggregates, never provider details or signatures.
+                failed += 1
+            finally:
+                await db.subscription_payments.update_one(
+                    {"id": payment["id"]},
+                    {"$set": {"reconciliation_next_at": _utc_now() + timedelta(seconds=RECONCILIATION_RETRY_SECONDS)}},
+                )
+        return {"checked": len(rows), "recovered": recovered, "pending": pending, "failed": failed}
 
     async def admin_list(self, filters: dict[str, str | None]) -> dict:
         query: dict[str, Any] = {}
@@ -352,7 +436,13 @@ class RazorpayPaymentService:
         companies = await db.companies.find({"id": {"$in": company_ids}}, {"_id": 0, "id": 1, "name": 1, "company_name": 1}).to_list(len(company_ids) or 1)
         names = {company["id"]: company.get("name") or company.get("company_name") for company in companies}
         items = [{**_safe_payment(row), "company_id": row.get("company_id"), "company_name": names.get(row.get("company_id"), "—"), "user_id": row.get("user_id")} for row in rows]
-        return {"items": items, "totals": {"successful": sum(row.get("amount", 0) for row in rows if row.get("status") == "CAPTURED"), "refunded": sum(row.get("amount", 0) for row in rows if row.get("status") in {"REFUNDED", "REFUND_REVIEW_REQUIRED"}), "pending": sum(row.get("amount", 0) for row in rows if row.get("status") in {"CREATED", "PENDING", "AUTHORIZED", "FULFILLING", "FULFILLMENT_FAILED"})}}
+        return {"items": items, "totals": {
+            # Gross successful collections and provider-confirmed refunds are
+            # separate so partial refunds are not overstated as full refunds.
+            "successful": sum(row.get("amount", 0) for row in rows if row.get("status") in {"CAPTURED", "REFUNDED", "REFUND_REVIEW_REQUIRED"}),
+            "refunded": sum(row.get("refund_amount", 0) for row in rows),
+            "pending": sum(row.get("amount", 0) for row in rows if row.get("status") in {"CREATED", "PENDING", "AUTHORIZED", "FULFILLING", "FULFILLMENT_FAILED"}),
+        }}
 
     async def receipt(self, payment_id: str, user: dict) -> dict:
         payment = await db.subscription_payments.find_one({"id": payment_id, "company_id": user["company_id"]}, {"_id": 0})
@@ -384,8 +474,149 @@ class RazorpayPaymentService:
         if error: update["last_error"] = error
         await db.razorpay_webhook_events.update_one({"event_id": event_id, "processing_lease_id": lease_id}, {"$set": update, "$unset": {"processing_lease_id": "", "processing_lease_expires_at": ""}})
 
+    async def _apply_pending_refunds(self, payment: dict) -> None:
+        """Record each provider refund once without making entitlement policy.
+
+        Refunds are deliberately marked for review; this code does not revoke
+        access or design credits because the approved refund/entitlement policy
+        does not define that outcome. The per-refund claim makes duplicate and
+        out-of-order webhooks harmless.
+        """
+        while True:
+            now = _utc_now()
+            lease_id = new_id()
+            refund = await db.razorpay_refunds.find_one_and_update(
+                {
+                    "razorpay_payment_id": payment.get("razorpay_payment_id"),
+                    "razorpay_mode": payment.get("razorpay_mode"),
+                    "$or": [
+                        {"status": "RECEIVED"},
+                        {"status": "PROCESSING", "processing_lease_expires_at": {"$lte": now}},
+                    ],
+                },
+                {"$set": {"status": "PROCESSING", "processing_lease_id": lease_id, "processing_lease_expires_at": now + timedelta(seconds=LEASE_SECONDS)}},
+                return_document=ReturnDocument.AFTER,
+            )
+            if not refund:
+                return
+            amount_paise = int(refund.get("amount_paise") or 0)
+            if amount_paise <= 0 or amount_paise > int(payment.get("amount_paise") or 0):
+                await db.razorpay_refunds.update_one(
+                    {"razorpay_refund_id": refund["razorpay_refund_id"], "processing_lease_id": lease_id},
+                    {"$set": {"status": "INVALID", "invalid_at": now_iso()}, "$unset": {"processing_lease_id": "", "processing_lease_expires_at": ""}},
+                )
+                continue
+            refund_id = refund["razorpay_refund_id"]
+            timestamp = now_iso()
+            # The payment document is the durable idempotency boundary.  The
+            # array marker and monetary increment are one conditional atomic
+            # update, so a crash before the refund audit row is marked APPLIED
+            # cannot ever count the same provider refund twice.
+            updated = await db.subscription_payments.find_one_and_update(
+                {
+                    "id": payment["id"],
+                    "razorpay_mode": payment.get("razorpay_mode"),
+                    "status": {"$in": ["CAPTURED", "REFUNDED", "REFUND_REVIEW_REQUIRED"]},
+                    "applied_refund_ids": {"$ne": refund_id},
+                    "$expr": {
+                        "$lte": [
+                            {"$add": [{"$ifNull": ["$refund_amount_paise", 0]}, amount_paise]},
+                            "$amount_paise",
+                        ]
+                    },
+                },
+                [
+                    {
+                        "$set": {
+                            "refund_amount_paise": {"$add": [{"$ifNull": ["$refund_amount_paise", 0]}, amount_paise]},
+                            "refund_count": {"$add": [{"$ifNull": ["$refund_count", 0]}, 1]},
+                            "applied_refund_ids": {"$concatArrays": [{"$ifNull": ["$applied_refund_ids", []]}, [refund_id]]},
+                            "refunded_at": timestamp,
+                            "last_refund_at": timestamp,
+                            "updated_at": timestamp,
+                        }
+                    },
+                    {
+                        "$set": {
+                            "refund_amount": {"$divide": ["$refund_amount_paise", 100]},
+                            "refund_status": {"$cond": [{"$gte": ["$refund_amount_paise", "$amount_paise"]}, "FULL", "PARTIAL"]},
+                            # A refund needs review, but never automatically
+                            # changes entitlement or design-credit balances.
+                            "status": {"$cond": [{"$and": [{"$eq": ["$status", "CAPTURED"]}, {"$gte": ["$refund_amount_paise", "$amount_paise"]}]}, "REFUND_REVIEW_REQUIRED", "$status"]},
+                        }
+                    },
+                ],
+                return_document=ReturnDocument.AFTER,
+            )
+            if updated:
+                await self._mark_refund_applied(refund_id, lease_id, payment["id"])
+                continue
+
+            # If the previous worker crashed after the atomic payment update,
+            # its expired refund claim is safely repaired here without another
+            # increment. This also deduplicates webhook retries with distinct
+            # event ids for the same Razorpay refund id.
+            current = await db.subscription_payments.find_one({"id": payment["id"]}, {"_id": 0})
+            if current and refund_id in current.get("applied_refund_ids", []):
+                await self._mark_refund_applied(refund_id, lease_id, payment["id"])
+                continue
+            if current and current.get("status") in {"CAPTURED", "REFUNDED", "REFUND_REVIEW_REQUIRED"}:
+                # It is a real captured payment but this refund would exceed
+                # the captured amount; retain the event for audit, never retry
+                # it indefinitely and never corrupt financial totals.
+                await db.razorpay_refunds.update_one(
+                    {"razorpay_refund_id": refund_id, "processing_lease_id": lease_id},
+                    {"$set": {"status": "REJECTED_OVERFLOW", "rejected_at": now_iso()}, "$unset": {"processing_lease_id": "", "processing_lease_expires_at": ""}},
+                )
+                continue
+            # A refund can be delivered before its capture event. Keep its
+            # durable record for capture/reconciliation rather than dropping
+            # it, and do not let a stale payment object overwrite new state.
+            await db.razorpay_refunds.update_one(
+                {"razorpay_refund_id": refund_id, "processing_lease_id": lease_id},
+                {"$set": {"status": "RECEIVED"}, "$unset": {"processing_lease_id": "", "processing_lease_expires_at": ""}},
+            )
+            return
+
+    async def _mark_refund_applied(self, refund_id: str, lease_id: str, payment_id: str) -> None:
+        """Finish the non-financial refund audit marker after atomic apply."""
+        await db.razorpay_refunds.update_one(
+            {"razorpay_refund_id": refund_id, "processing_lease_id": lease_id},
+            {"$set": {"status": "APPLIED", "internal_payment_id": payment_id, "applied_at": now_iso()}, "$unset": {"processing_lease_id": "", "processing_lease_expires_at": ""}},
+        )
+
+    async def _record_refund(self, refund: dict, active_mode: str) -> None:
+        refund_id = str(refund.get("id") or "")
+        provider_payment_id = str(refund.get("payment_id") or "")
+        amount_paise = int(refund.get("amount") or 0)
+        currency = str(refund.get("currency") or "INR").upper()
+        if not refund_id or not provider_payment_id or amount_paise <= 0 or currency != "INR":
+            raise HTTPException(400, "Invalid refund event")
+        try:
+            await db.razorpay_refunds.insert_one({
+                "razorpay_refund_id": refund_id,
+                "razorpay_payment_id": provider_payment_id,
+                "razorpay_mode": active_mode,
+                "amount_paise": amount_paise,
+                "currency": currency,
+                "status": "RECEIVED",
+                "received_at": now_iso(),
+            })
+        except DuplicateKeyError:
+            # Different Razorpay webhook event ids may describe the same
+            # refund. The unique provider refund id is the durable dedupe key.
+            pass
+        payment = await db.subscription_payments.find_one(
+            {"razorpay_payment_id": provider_payment_id, "razorpay_mode": active_mode}, {"_id": 0}
+        )
+        if payment:
+            await self._apply_pending_refunds(payment)
+
     async def handle_webhook(self, event_type: str, event_id: str, payload: dict) -> dict:
-        razorpay_gateway.require_checkout_enabled()
+        # Signed webhook processing and recovery remain operational while new
+        # checkout is disabled. Configuration/mode validation still fails
+        # closed, especially for test keys in production.
+        active_mode = razorpay_gateway.mode()
         event, lease_id = await self._claim_webhook_event(event_type, event_id)
         if event is None:
             if lease_id == "PROCESSED": return {"ok": True, "duplicate": True}
@@ -395,7 +626,7 @@ class RazorpayPaymentService:
             entity = (entities.get("payment") or {}).get("entity") or {}
             order_id = str(entity.get("order_id") or "")
             provider_payment_id = str(entity.get("id") or "")
-            payment = await db.subscription_payments.find_one({"razorpay_order_id": order_id}, {"_id": 0}) if order_id else None
+            payment = await db.subscription_payments.find_one({"razorpay_order_id": order_id, "razorpay_mode": active_mode}, {"_id": 0}) if order_id else None
             result: dict | None = None
             if event_type == "payment.failed" and payment:
                 # Late failures never replace captured or leased fulfilment.
@@ -408,12 +639,19 @@ class RazorpayPaymentService:
                     if result.get("status") != "CAPTURED":
                         raise HTTPException(503, "Payment fulfilment is in progress")
                 else:
-                    await db.subscription_payments.update_one({"id": payment["id"], "status": {"$in": ["CREATED", "PENDING"]}}, {"$set": {"status": "AUTHORIZED", "authorized_at": now_iso(), "last_provider_status": str(provider.get("status") or "authorized")}})
+                    try:
+                        await db.subscription_payments.update_one(
+                            {
+                                "id": payment["id"], "status": {"$in": ["CREATED", "PENDING", "AUTHORIZED"]},
+                                "$or": [{"razorpay_payment_id": {"$exists": False}}, {"razorpay_payment_id": provider_payment_id}],
+                            },
+                            {"$set": {"razorpay_payment_id": provider_payment_id, "status": "AUTHORIZED", "authorized_at": now_iso(), "last_provider_status": str(provider.get("status") or "authorized")}},
+                        )
+                    except DuplicateKeyError as error:
+                        raise HTTPException(409, "Payment is already associated with another order") from error
             elif event_type == "refund.processed":
                 refund = (entities.get("refund") or {}).get("entity") or {}
-                refund_payment_id = str(refund.get("payment_id") or provider_payment_id)
-                if refund_payment_id:
-                    await db.subscription_payments.update_one({"razorpay_payment_id": refund_payment_id, "status": {"$in": ["CAPTURED", "REFUNDED", "REFUND_REVIEW_REQUIRED"]}}, {"$set": {"status": "REFUND_REVIEW_REQUIRED", "refund_status": "PROCESSED", "refunded_at": now_iso(), "razorpay_refund_id": refund.get("id")}})
+                await self._record_refund(refund, active_mode)
             await self._finish_webhook_event(event_id, lease_id, status="PROCESSED")
             return {"ok": True, "duplicate": False, "payment_status": (result or {}).get("status")}
         except Exception as error:

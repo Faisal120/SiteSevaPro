@@ -44,6 +44,14 @@ async def create_subscription_order(
     return await razorpay_payment_service.create_order(body.plan, user)
 
 
+@router.get("/subscription/checkout-availability")
+async def subscription_checkout_availability(
+    user=Depends(require_roles("CONTRACTOR")),
+):
+    """Frontend display hint; order creation still enforces this server-side."""
+    return await razorpay_payment_service.checkout_availability(user)
+
+
 @router.post("/subscription/verify")
 async def verify_subscription_payment(
     body: RazorpayVerifyIn,
@@ -98,6 +106,13 @@ async def admin_subscription_payments(
         "from": date_from,
         "to": date_to,
     })
+
+
+@router.post("/admin/subscriptions/reconcile-pending")
+async def reconcile_pending_subscription_payments(
+    _: dict = Depends(require_roles("SUPER_ADMIN")),
+):
+    return await razorpay_payment_service.reconcile_pending()
 
 
 @router.post("/razorpay/webhook", include_in_schema=False)
