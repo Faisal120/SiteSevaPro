@@ -152,7 +152,16 @@ class AuthChallengeService:
             raise HTTPException(400, {"status": "OTP_INVALID", "message": "Invalid or expired OTP"})
 
         authorization = jwt.encode(
-            {"sub": user["id"], "purpose": purpose, "challenge_id": challenge["id"], "jti": new_id(), "exp": _now() + timedelta(minutes=10), "iat": _now()},
+            {
+                "sub": user["id"],
+                "purpose": purpose,
+                "challenge_id": challenge["id"],
+                "jti": new_id(),
+                "token_type": "password_authorization",
+                "aud": "siteseva-password-setup",
+                "exp": _now() + timedelta(minutes=10),
+                "iat": _now(),
+            },
             JWT_SECRET,
             algorithm=JWT_ALGORITHM,
         )
@@ -171,10 +180,20 @@ class AuthChallengeService:
             raise HTTPException(400, "Password confirmation does not match")
         validate_password_strength(new_password)
         try:
-            claims = jwt.decode(authorization_token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+            claims = jwt.decode(
+                authorization_token,
+                JWT_SECRET,
+                algorithms=[JWT_ALGORITHM],
+                audience="siteseva-password-setup",
+            )
         except jwt.PyJWTError:
             raise HTTPException(400, "Invalid or expired password authorization") from None
-        if claims.get("purpose") != purpose or not claims.get("sub") or not claims.get("challenge_id"):
+        if (
+            claims.get("token_type") != "password_authorization"
+            or claims.get("purpose") != purpose
+            or not claims.get("sub")
+            or not claims.get("challenge_id")
+        ):
             raise HTTPException(400, "Invalid or expired password authorization")
         # A compare-and-set claim makes concurrent/replayed tokens fail closed.
         challenge = await db.auth_challenges.find_one_and_update(

@@ -65,6 +65,11 @@ def verify_password(pw: str, hashed: str) -> bool:
 def create_jwt(payload: dict) -> str:
     data = {
         **payload,
+        # Password-setup authorizations are deliberately minted elsewhere
+        # with a different token type and audience.  Mark ordinary workspace
+        # sessions explicitly, while retaining validation support for legacy
+        # access tokens that pre-date this claim.
+        "token_type": "access",
         "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRE_HOURS),
         "iat": datetime.now(timezone.utc),
     }
@@ -86,6 +91,16 @@ async def get_current_user(
         payload = decode_jwt(creds.credentials)
     except jwt.PyJWTError:
         raise HTTPException(401, "Invalid token") from None
+    # An activation/password-reset authorization has a ``sub`` claim too, so
+    # it must never be accepted as a bearer token for normal API access.
+    # Legacy access tokens did not carry token_type; they remain valid only
+    # when they also lack every password-authorisation-only claim.
+    if (
+        payload.get("token_type") not in {None, "access"}
+        or payload.get("purpose")
+        or payload.get("challenge_id")
+    ):
+        raise HTTPException(401, "Invalid access token")
     user = await db.users.find_one({"id": payload.get("sub")}, {"_id": 0})
     if not user:
         raise HTTPException(401, "User not found")

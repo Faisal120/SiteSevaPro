@@ -37,6 +37,9 @@ class RazorpayGateway:
         mode = os.getenv("RAZORPAY_MODE", "test").strip().lower()
         if mode not in {"test", "live"}:
             raise HTTPException(503, "Online payments are not configured")
+        key_id = self._settings()[0]
+        if not key_id.startswith(f"rzp_{mode}_"):
+            raise HTTPException(503, "Razorpay key does not match configured gateway mode")
         return mode
 
     def _client(self):

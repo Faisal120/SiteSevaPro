@@ -1110,9 +1110,16 @@ async def on_start():
         await db.subscription_payments.create_index("razorpay_order_id", unique=True, sparse=True)
         await db.subscription_payments.create_index("razorpay_payment_id", unique=True, sparse=True)
         await db.subscription_payments.create_index([("company_id", 1), ("created_at", -1)])
+        await db.subscriptions.create_index("id", unique=True, sparse=True)
+        # This lock serialises distinct purchases for one company.  It avoids
+        # a non-transactional read/modify/write race on subscription expiry.
+        await db.subscription_fulfilment_locks.create_index("company_id", unique=True)
+        await db.subscription_fulfilment_locks.create_index("lease_expires_at", expireAfterSeconds=0)
         await db.razorpay_webhook_events.create_index("event_id", unique=True)
-        await db.razorpay_webhook_events.create_index("received_at", expireAfterSeconds=60 * 60 * 24 * 180)
+        await db.razorpay_webhook_events.create_index("expires_at", expireAfterSeconds=0)
         await db.subscription_credit_grants.create_index("payment_id", unique=True)
+        await db.design_transactions.create_index("subscription_payment_id", unique=True, sparse=True)
+        await db.notifications.create_index("dedupe_key", unique=True, sparse=True)
     except Exception:
         logger.exception("Startup provisioning failed")
         if ENVIRONMENT == "production":

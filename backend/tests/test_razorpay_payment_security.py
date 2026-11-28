@@ -12,13 +12,15 @@ os.environ.setdefault("DB_NAME", "siteseva_razorpay_test")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret")
 os.environ.setdefault("SUPER_ADMIN_EMAIL", "admin@example.test")
 os.environ.setdefault("SUPER_ADMIN_PASSWORD", "not-a-production-password")
+os.environ.setdefault("RAZORPAY_KEY_ID", "rzp_test_key")
+os.environ.setdefault("RAZORPAY_KEY_SECRET", "test-secret")
 
 from services.razorpay_payment_service import RazorpayPaymentService, _safe_payment
 from services.razorpay_service import RazorpayGateway
 
 
 def payment_record():
-    return {"id": "internal-payment", "amount_paise": 299900, "currency": "INR"}
+    return {"id": "internal-payment", "amount_paise": 299900, "currency": "INR", "razorpay_mode": "test"}
 
 
 def provider_payment(**overrides):

@@ -97,9 +97,13 @@ async def activate(
 async def upgrade(
     company_id: str,
     body: SubscriptionUpdate,
-    _: dict = Depends(require_roles("SUPER_ADMIN")),
+    admin: dict = Depends(require_roles("SUPER_ADMIN")),
 ):
-    return await admin_service.upgrade_subscription(company_id, body)
+    # Retained as an explicit deprecation response so existing clients cannot
+    # turn an unverified request into paid access. Existing subscriptions and
+    # the separate expiry/admin operations remain unchanged.
+    _ = (company_id, body, admin)
+    raise HTTPException(410, "Manual subscription activation is retired. Paid plans activate after verified Razorpay capture.")
 
 
 @router.put("/subscriptions/{company_id}/expire")

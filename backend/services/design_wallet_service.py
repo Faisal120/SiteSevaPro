@@ -14,11 +14,6 @@ from repositories.design_transaction_repository import (
     design_transaction_repository,
 )
 
-from design_core.design_constants import (
-    FREE_CREDITS,
-    PRO_MONTHLY_CREDITS,
-    ENTERPRISE_MONTHLY_CREDITS,
-)
 from services.plan_catalog import canonical_plan, plan_details
 
 
