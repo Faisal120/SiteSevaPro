@@ -147,9 +147,13 @@ class OutboundNotificationService:
                     delivery["provider_message_id"] = (body.get("messages") or [{}])[0].get("id")
                     delivery["accepted_at"] = now_iso()
                     break
-                message = ((body.get("error") or {}).get("message") or response.text)[:500]
+                # Meta error bodies can contain provider-side diagnostics. They
+                # are not needed by the app and must not be retained or exposed.
+                message = "WhatsApp provider rejected the template request"
                 if response.status_code not in {429, 500, 502, 503, 504} or attempt == 3:
-                    raise RuntimeError(message)
+                    delivery["status"] = "RATE_LIMITED" if response.status_code == 429 else "FAILED"
+                    delivery["last_error"] = message
+                    break
             except (requests.Timeout, requests.ConnectionError) as error:
                 if attempt == 3:
                     delivery["status"] = "FAILED"
@@ -158,8 +162,8 @@ class OutboundNotificationService:
                     break
             except Exception as error:
                 delivery["status"] = "FAILED"
-                delivery["last_error"] = str(error)[:500]
-                logger.warning("WhatsApp template delivery failed for %s", event)
+                delivery["last_error"] = "WhatsApp provider request failed"
+                logger.warning("WhatsApp template delivery failed for %s (%s)", event, type(error).__name__)
                 break
             await asyncio.sleep(0.4 * attempt)
         await self._save_result(delivery)
@@ -209,8 +213,8 @@ class OutboundNotificationService:
                 dedupe_key=dedupe_key,
             )
         except Exception as error:
-            logger.exception("Credential notification persistence failed")
-            return {"channel": "WHATSAPP", "event": "ACCOUNT_CREDENTIALS", "status": "FAILED", "error": str(error)[:500]}
+            logger.warning("Account approval notification failed (%s)", type(error).__name__)
+            return {"channel": "WHATSAPP", "event": "ACCOUNT_CREDENTIALS", "status": "FAILED", "error": "Notification request failed"}
 
     async def send_activation_otp(self, user: dict, code: str, challenge_id: str) -> dict:
         return await self._send_authentication_otp(user, code, challenge_id, "ACTIVATION")
@@ -243,8 +247,8 @@ class OutboundNotificationService:
                 dedupe_key=f"{purpose}:{challenge_id}",
             )
         except Exception as error:
-            logger.exception("Authentication notification persistence failed")
-            return {"channel": "WHATSAPP", "event": f"{purpose}_OTP", "status": "FAILED", "error": str(error)[:500]}
+            logger.warning("Authentication notification failed (%s)", type(error).__name__)
+            return {"channel": "WHATSAPP", "event": f"{purpose}_OTP", "status": "FAILED", "error": "Notification request failed"}
 
     async def send_application_status(self, application: dict, status: str, details: str) -> dict:
         """Template D is reserved strictly for registration status events."""
@@ -285,8 +289,8 @@ class OutboundNotificationService:
                 company_id=user.get("company_id"),
             )
         except Exception as error:
-            logger.exception("Approval notification persistence failed")
-            return {"channel": "WHATSAPP", "event": event, "status": "FAILED", "error": str(error)[:500]}
+            logger.warning("Approval notification failed (%s)", type(error).__name__)
+            return {"channel": "WHATSAPP", "event": event, "status": "FAILED", "error": "Notification request failed"}
 
     async def notify_company_approval(
         self,

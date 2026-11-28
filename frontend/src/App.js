@@ -13,6 +13,7 @@ import Contact from "@/pages/Contact";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 import DataDeletion from "@/pages/DataDeletion";
+import RefundCancellationPolicy from "@/pages/RefundCancellationPolicy";
 import Login from "@/pages/Login";
 import ForgotPassword from "@/pages/ForgotPassword";
 import AccountActivation from "@/pages/AccountActivation";
@@ -91,6 +92,7 @@ function App() {
                 <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                 <Route path="/terms" element={<TermsOfService />} />
                 <Route path="/data-deletion" element={<DataDeletion />} />
+                <Route path="/refund-cancellation" element={<RefundCancellationPolicy />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/activate-account" element={<AccountActivation />} />

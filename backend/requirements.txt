@@ -19,6 +19,10 @@ flake8>=7.0.0
 mypy>=1.8.0
 python-jose>=3.3.0
 requests>=2.31.0
+razorpay>=1.4.2,<2.0.0
+# Razorpay 1.x currently imports pkg_resources, which setuptools 81+ no
+# longer provides. Keep this compatible runtime dependency explicit.
+setuptools<81
 pandas>=2.2.0
 numpy>=1.26.0
 python-multipart>=0.0.9

@@ -7,6 +7,8 @@ import time
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, Request
+from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 
 from core import db
 
@@ -24,16 +26,41 @@ class _PersistentRateLimiter:
     async def check_key(self, key: str, limit: int, window_seconds: int) -> None:
         now = time.time()
         stored_key = self._hash(key)
-        query = {"key": stored_key, "created_epoch": {"$gte": now - window_seconds}}
-        oldest = await db.rate_limit_events.find_one(query, sort=[("created_epoch", 1)])
-        if await db.rate_limit_events.count_documents(query) >= limit:
-            retry_after = max(1, int(window_seconds - (now - float(oldest.get("created_epoch", now))))) if oldest else window_seconds
-            raise HTTPException(429, "Too many requests. Please try again later.", headers={"Retry-After": str(retry_after)})
-        await db.rate_limit_events.insert_one({
-            "key": stored_key,
-            "created_epoch": now,
-            "purge_at": datetime.now(timezone.utc) + timedelta(seconds=window_seconds + 60),
-        })
+        # A single MongoDB counter avoids the count-then-insert race that let
+        # simultaneous requests exceed a limit across multiple API workers.
+        window_start = int(now // window_seconds) * window_seconds
+        query = {"key": stored_key, "window_start": window_start}
+        update = {
+            "$inc": {"count": 1},
+            "$setOnInsert": {
+                "key": stored_key,
+                "window_start": window_start,
+                "created_epoch": now,
+                "purge_at": datetime.now(timezone.utc) + timedelta(seconds=window_seconds + 60),
+            },
+        }
+        try:
+            bucket = await db.rate_limit_buckets.find_one_and_update(
+                query,
+                update,
+                upsert=True,
+                return_document=ReturnDocument.AFTER,
+            )
+        except DuplicateKeyError:
+            # The unique index can race only while a new bucket is created.
+            # Retrying against the now-created document remains atomic.
+            bucket = await db.rate_limit_buckets.find_one_and_update(
+                query,
+                {"$inc": {"count": 1}},
+                return_document=ReturnDocument.AFTER,
+            )
+        if not bucket or int(bucket.get("count", 0)) > limit:
+            retry_after = max(1, int(window_start + window_seconds - now))
+            raise HTTPException(
+                429,
+                "Too many requests. Please try again later.",
+                headers={"Retry-After": str(retry_after)},
+            )
 
 
 _limiter = _PersistentRateLimiter()

@@ -19,6 +19,7 @@ from design_core.design_constants import (
     PRO_MONTHLY_CREDITS,
     ENTERPRISE_MONTHLY_CREDITS,
 )
+from services.plan_catalog import canonical_plan, plan_details
 
 
 class InsufficientCreditsError(Exception):
@@ -44,13 +45,10 @@ class DesignWalletService:
         if wallet:
             return wallet
 
-        credits = FREE_CREDITS
-
-        if plan == "PRO":
-            credits = PRO_MONTHLY_CREDITS
-
-        elif plan == "ENTERPRISE":
-            credits = ENTERPRISE_MONTHLY_CREDITS
+        # The canonical catalog is also used by subscription fulfilment. This
+        # keeps legacy PRO records compatible without silently giving Premium
+        # customers free-plan credits.
+        credits = plan_details(canonical_plan(plan))["monthly_design_credits"]
 
         wallet = await design_wallet_repository.create(
             {

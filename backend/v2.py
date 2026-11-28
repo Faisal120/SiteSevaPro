@@ -6,18 +6,14 @@ Depends only on `core` — never on `server` — so the import graph is acyclic.
 """
 from __future__ import annotations
 
-import os
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from core import db, get_current_user, require_roles, new_id, now_iso
-from services.design_wallet_service import design_wallet_service
-from services.plan_catalog import PLAN_CATALOG, canonical_plan, plan_details
 from services.access_control import require_site_access
-from services.outbound_notification_service import outbound_notification_service
 
 v2_router = APIRouter(prefix="/api")
 
@@ -449,148 +445,22 @@ async def get_boq(boq_id: str, user: dict = Depends(require_roles("CONTRACTOR", 
         await require_site_access(b["site_id"], user)
     return b
 
-# ---------- QR PAYMENT FLOW (UPI) ----------
-PLAN_PRICES = {code: details["price"] for code, details in PLAN_CATALOG.items()}
-
-class PaymentRequestIn(BaseModel):
-    plan: Literal["PREMIUM", "ENTERPRISE"]
-    utr: str = Field(..., min_length=4, max_length=40)
-    screenshot_url: Optional[str] = None
-    note: Optional[str] = None
-
-@v2_router.get("/payment/config")
-async def payment_config(user: dict = Depends(get_current_user)):
-    upi_id = os.environ.get("UPI_ID", "").strip()
-    payee_name = os.environ.get("UPI_PAYEE_NAME", "").strip()
-    if not upi_id or not payee_name:
-        raise HTTPException(503, "Payment collection is not configured")
-    return {
-        "upi_id": upi_id,
-        "payee_name": payee_name,
-        "prices": PLAN_PRICES,
-    }
-
-@v2_router.post("/payment/request")
-async def create_payment_request(body: PaymentRequestIn, user: dict = Depends(require_roles("CONTRACTOR"))):
-    if not os.environ.get("UPI_ID", "").strip():
-        raise HTTPException(503, "Payment collection is not configured")
-    duplicate = await db.payment_requests.find_one({"utr": body.utr, "status": {"$in": ["PENDING", "PROCESSING", "APPROVED"]}}, {"_id": 0, "id": 1})
-    if duplicate:
-        raise HTTPException(409, "This UTR has already been submitted")
-    amount = PLAN_PRICES[body.plan]
-    doc = {
-        "id": new_id(),
-        "company_id": user["company_id"],
-        "user_id": user["id"],
-        "user_email": user["email"],
-        "company_name": user.get("company_name"),
-        "plan": body.plan,
-        "amount": amount,
-        "utr": body.utr,
-        "screenshot_url": body.screenshot_url,
-        "note": body.note,
-        "status": "PENDING",
-        "created_at": now_iso(),
-    }
-    await db.payment_requests.insert_one(dict(doc))
-    await log_audit(user, "CREATE", "payment_request", doc["id"], {"plan": body.plan, "amount": amount, "utr": body.utr})
-    await db.notifications.insert_one({
-        "id": new_id(), "user_id": user["id"], "company_id": user["company_id"],
-        "title": "Payment submitted",
-        "body": f"Your {body.plan} payment of ₹{amount} is pending admin verification.",
-        "type": "SUBSCRIPTION", "read": False, "created_at": now_iso(),
-    })
-    return doc
-
+# ---------- Legacy manual payment routes ----------
+# Historical ``payment_requests`` remain untouched for audit/reporting. New
+# UTR, screenshot and admin-approval collection is permanently disabled.
 @v2_router.get("/payment/my")
-async def my_payment_requests(user: dict = Depends(require_roles("CONTRACTOR"))):
-    return await db.payment_requests.find({"company_id": user["company_id"]}, {"_id": 0}).sort("created_at", -1).limit(50).to_list(50)
+async def legacy_payment_history(user: dict = Depends(require_roles("CONTRACTOR"))):
+    return await db.payment_requests.find({"company_id": user["company_id"]}, {"_id": 0, "utr": 0, "screenshot_url": 0, "note": 0}).sort("created_at", -1).limit(50).to_list(50)
+
 
 @v2_router.get("/admin/payments")
-async def admin_payment_requests(status: Optional[str] = None, _: dict = Depends(require_roles("SUPER_ADMIN"))):
-    q = {}
-    if status:
-        q["status"] = status
-    return await db.payment_requests.find(q, {"_id": 0}).sort("created_at", -1).limit(500).to_list(500)
+async def legacy_admin_payment_history(_: dict = Depends(require_roles("SUPER_ADMIN"))):
+    return await db.payment_requests.find({}, {"_id": 0, "utr": 0, "screenshot_url": 0, "note": 0}).sort("created_at", -1).limit(500).to_list(500)
 
-@v2_router.post("/admin/payments/{pid}/approve")
-async def approve_payment(pid: str, admin: dict = Depends(require_roles("SUPER_ADMIN"))):
-    p = await db.payment_requests.find_one({"id": pid}, {"_id": 0})
-    if not p:
-        raise HTTPException(404, "Not found")
-    if p["status"] != "PENDING":
-        raise HTTPException(400, "Already processed")
-    claim = await db.payment_requests.update_one(
-        {"id": pid, "status": "PENDING"},
-        {"$set": {"status": "PROCESSING", "processing_at": now_iso(), "processed_by": admin["id"]}},
-    )
-    if claim.modified_count == 0:
-        raise HTTPException(409, "Payment is already being processed")
-    try:
-        expires = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
-        await db.subscriptions.update_one(
-            {"company_id": p["company_id"]},
-            {"$set": {
-                "id": new_id(), "company_id": p["company_id"], "plan": p["plan"], "status": "ACTIVE",
-                "started_at": now_iso(), "expires_at": expires, "amount": p["amount"],
-            }},
-            upsert=True,
-        )
-        await db.users.update_one({"id": p["user_id"]}, {"$set": {"plan": p["plan"]}})
-        credits = plan_details(p["plan"])["monthly_design_credits"]
-        await design_wallet_service.balance(p["company_id"])
-        await design_wallet_service.add(p["company_id"], credits, f"{p['plan']} subscription credits · UTR {p['utr']}")
-        await db.payments.insert_one({
-            "id": new_id(), "company_id": p["company_id"], "site_id": None,
-            "type": "SUBSCRIPTION", "amount": p["amount"],
-            "description": f"{p['plan']} plan via UPI · UTR {p['utr']}",
-            "date": now_iso()[:10], "created_at": now_iso(),
-        })
-        await db.payment_requests.update_one({"id": pid, "status": "PROCESSING"}, {"$set": {
-            "status": "APPROVED", "approved_at": now_iso(), "approved_by": admin["id"],
-        }})
-        await db.notifications.insert_one({
-            "id": new_id(), "user_id": p["user_id"], "company_id": p["company_id"],
-            "title": "Subscription activated",
-            "body": f"Your {p['plan']} plan is now active. Expires {expires[:10]}.",
-            "type": "SUBSCRIPTION", "read": False, "created_at": now_iso(),
-        })
-        await log_audit(admin, "APPROVE", "payment_request", pid, {"plan": p["plan"], "amount": p["amount"]})
-        contractor = await db.users.find_one({"id": p["user_id"]}, {"_id": 0}) or {}
-        delivery = await outbound_notification_service.send_approval(
-            contractor,
-            "Subscription payment approved",
-            f"Your {p['plan']} plan is active until {expires[:10]}.",
-            event="SUBSCRIPTION_PAYMENT_APPROVED",
-        )
-        return {"ok": True, "whatsapp_delivery": delivery}
-    except Exception as error:
-        await db.payment_requests.update_one(
-            {"id": pid, "status": "PROCESSING"},
-            {"$set": {"status": "FAILED", "processing_error": str(error)[:500], "failed_at": now_iso()}},
-        )
-        raise HTTPException(500, "Payment approval failed and was locked for admin review") from error
 
-@v2_router.post("/admin/payments/{pid}/reject")
-async def reject_payment(pid: str, reason: str = Query(""), admin: dict = Depends(require_roles("SUPER_ADMIN"))):
-    p = await db.payment_requests.find_one({"id": pid}, {"_id": 0})
-    if not p:
-        raise HTTPException(404, "Not found")
-    if p.get("status") != "PENDING":
-        raise HTTPException(409, "Payment has already been processed")
-    result = await db.payment_requests.update_one({"id": pid, "status": "PENDING"}, {"$set": {
-        "status": "REJECTED", "rejected_at": now_iso(), "rejected_by": admin["id"], "reject_reason": reason,
-    }})
-    if result.modified_count == 0:
-        raise HTTPException(409, "Payment has already been processed")
-    await db.notifications.insert_one({
-        "id": new_id(), "user_id": p["user_id"], "company_id": p["company_id"],
-        "title": "Payment rejected",
-        "body": f"Your {p['plan']} payment was rejected. {reason or 'Please contact support.'}",
-        "type": "SUBSCRIPTION", "read": False, "created_at": now_iso(),
-    })
-    await log_audit(admin, "REJECT", "payment_request", pid, {"reason": reason})
-    return {"ok": True}
+@v2_router.post("/payment/request", status_code=410)
+async def retired_manual_payment_request(_: dict = Depends(require_roles("CONTRACTOR"))):
+    raise HTTPException(410, "Manual UPI payment requests have been retired. Use secure online checkout.")
 
 # ---------- AUDIT LOGS (admin) ----------
 @v2_router.get("/admin/audit")

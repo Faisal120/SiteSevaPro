@@ -38,6 +38,12 @@ let webpackConfig = {
     },
     configure: (webpackConfig) => {
 
+      // Nginx serves the compiled bundle publicly. Keep original source files
+      // out of the deployment artifact while retaining normal dev tooling.
+      if (!isDevServer) {
+        webpackConfig.devtool = false;
+      }
+
       // Add ignored patterns to reduce watched directories
         webpackConfig.watchOptions = {
           ...webpackConfig.watchOptions,

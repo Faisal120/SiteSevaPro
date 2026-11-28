@@ -1,5 +1,5 @@
 import React from "react";
-import { Download, FileImage, FileText, RefreshCw, Sparkles, Zap, WalletCards, X, Box, History } from "lucide-react";
+import { Download, FileImage, FileText, RefreshCw, Sparkles, Zap, WalletCards, Box, History } from "lucide-react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -13,10 +13,6 @@ export default function DesignStudio() {
     const [layout, setLayout] = React.useState(null);
     const [design, setDesign] = React.useState(null);
     const [activeDrawing, setActiveDrawing] = React.useState("FLOOR");
-    const [purchaseConfig, setPurchaseConfig] = React.useState(null);
-    const [purchaseOpen, setPurchaseOpen] = React.useState(false);
-    const [purchase, setPurchase] = React.useState({ pack: "STARTER", utr: "", note: "" });
-    const [purchaseLoading, setPurchaseLoading] = React.useState(false);
     const [transactions, setTransactions] = React.useState([]);
     const [plan, setPlan] = React.useState("FREE");
     const [selectedFloor, setSelectedFloor] = React.useState(1);
@@ -28,10 +24,9 @@ export default function DesignStudio() {
     React.useEffect(() => {
         async function load() {
             try {
-                const [siteRes, walletRes, configRes, transactionRes, subscriptionRes] = await Promise.all([api.get("/sites"), api.get("/design-wallet"), api.get("/design-wallet/purchase/config"), api.get("/design-wallet/transactions"), api.get("/subscription")]);
+                const [siteRes, walletRes, transactionRes, subscriptionRes] = await Promise.all([api.get("/sites"), api.get("/design-wallet"), api.get("/design-wallet/transactions"), api.get("/subscription")]);
                 setSites(siteRes.data || []);
                 setWallet(walletRes.data || { credits: 0 });
-                setPurchaseConfig(configRes.data || null);
                 setTransactions(transactionRes.data || []);
                 setPlan(subscriptionRes.data?.plan || "FREE");
             } catch { toast.error("Unable to load Design Studio data"); }
@@ -127,24 +122,6 @@ export default function DesignStudio() {
         finally { setThreeDLoading(false); }
     }
 
-    async function submitPurchase(event) {
-        event.preventDefault();
-        setPurchaseLoading(true);
-        try {
-            await api.post("/design-wallet/purchase/request", purchase);
-            toast.success("UPI reference submitted. Credits will be added after verification.");
-            setPurchaseOpen(false);
-            setPurchase({ pack: "STARTER", utr: "", note: "" });
-        } catch (error) {
-            toast.error(error?.response?.data?.detail || "Unable to submit credit request");
-        } finally { setPurchaseLoading(false); }
-    }
-
-    const selectedPack = purchaseConfig?.packs?.[purchase.pack];
-    const upiUrl = purchaseConfig && selectedPack
-        ? `upi://pay?pa=${encodeURIComponent(purchaseConfig.upi_id)}&pn=${encodeURIComponent(purchaseConfig.payee_name)}&am=${selectedPack.amount}&cu=INR&tn=${encodeURIComponent(`${selectedPack.credits} Design Credits`)}`
-        : "#";
-
     return (
         <div className="studio-shell space-y-6">
             <section className="studio-hero ss-card p-6 lg:p-8">
@@ -154,7 +131,7 @@ export default function DesignStudio() {
                         <h2 className="text-2xl font-bold">AI Design Studio</h2>
                         <p className="mt-2 max-w-2xl text-gray-400">Brief every floor separately, review a furnished CAD-style 2D plan, then create an open-top 3D concept for one approved floor.</p>
                     </div>
-                    <div className="studio-credit-card rounded-xl px-5 py-4"><div className="text-sm font-medium text-gray-400">Design credits</div><div className="mt-1 flex items-baseline gap-2"><span className="text-3xl font-bold text-blue-400">{wallet?.credits ?? 0}</span><span className="text-xs text-gray-500">available</span></div><button onClick={() => setPurchaseOpen(true)} className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-blue-300 hover:text-white"><WalletCards className="h-3.5 w-3.5" />Buy credits</button></div>
+                    <div className="studio-credit-card rounded-xl px-5 py-4"><div className="text-sm font-medium text-gray-400">Design credits</div><div className="mt-1 flex items-baseline gap-2"><span className="text-3xl font-bold text-blue-400">{wallet?.credits ?? 0}</span><span className="text-xs text-gray-500">available</span></div><p className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-blue-300"><WalletCards className="h-3.5 w-3.5" />Included with your subscription</p></div>
                 </div>
                 <div className="studio-pricing mt-6 grid gap-3 rounded-xl p-4 text-sm md:grid-cols-3"><p><strong>2D floor plan</strong><br />10 credits per multi-floor brief.</p><p><strong>Furnished 3D concept</strong><br />25 credits per selected floor · Pro and Enterprise.</p><p><strong>Technical plan</strong><br />5 credits each after a floor plan.</p></div>
             </section>
@@ -185,8 +162,7 @@ export default function DesignStudio() {
                 <div className="studio-tabs flex flex-wrap gap-2 border-b border-white/10 p-3"><button onClick={() => { setView3D(null); setActiveDrawing("FLOOR"); }} className={`rounded-lg px-3 py-2 text-sm font-semibold ${activeDrawing === "FLOOR" ? "bg-white text-gray-900" : "text-gray-300"}`}>Floor Plan</button>{TECHNICAL_DRAWINGS.map(([type, label]) => { const exists = design?.outputs?.technical_drawings?.[type]; return <button key={type} onClick={() => { if (exists) { setView3D(null); setActiveDrawing(type); } else generateTechnicalDrawing(type); }} disabled={Boolean(technicalLoading)} className={`inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-60 ${activeDrawing === type ? "bg-white text-gray-900" : "text-gray-300"}`}><Zap className="h-3.5 w-3.5" />{technicalLoading === type ? "Generating…" : exists ? label : `${label} · 5`}</button>; })}</div>
                 <div className="floor-plan-preview p-3 sm:p-6"><p className="mb-3 text-xs font-semibold uppercase tracking-[.15em] text-gray-500">{view3D ? "Furnished 3D conceptual renderer · selected floor" : "2D CAD plan with furniture"}</p><div dangerouslySetInnerHTML={{ __html: view3D?.svg || svg }} /></div>
             </section>}
-            <section className="ss-card p-6"><div className="mb-4 flex items-center gap-2"><History className="h-5 w-5 text-blue-400" /><div><h3 className="font-bold">Design credit history</h3><p className="text-sm text-gray-400">Usage, subscription allocations and approved UPI purchases.</p></div></div>{transactions.length ? <div className="overflow-x-auto"><table className="ss-table"><thead><tr><th>Date</th><th>Type</th><th>Description</th><th className="text-right">Credits</th></tr></thead><tbody>{transactions.map((transaction) => <tr key={transaction.id || `${transaction.created_at}-${transaction.description}`}><td>{new Date(transaction.created_at).toLocaleDateString("en-IN")}</td><td>{transaction.type}</td><td>{transaction.description}</td><td className={`text-right font-bold ${transaction.credits >= 0 ? "text-emerald-400" : "text-blue-300"}`}>{transaction.credits >= 0 ? "+" : ""}{transaction.credits}</td></tr>)}</tbody></table></div> : <p className="py-5 text-sm text-gray-500">No design credit activity yet.</p>}</section>
-            {purchaseOpen && <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4"><form onSubmit={submitPurchase} className="w-full max-w-md rounded-2xl border border-[#30323a] bg-[#111214] p-6 shadow-2xl"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[.18em] text-blue-300">Design Studio wallet</p><h3 className="mt-1 text-xl font-bold">Buy design credits</h3></div><button type="button" onClick={() => setPurchaseOpen(false)} className="rounded-lg p-1 text-gray-400 hover:bg-white/10 hover:text-white"><X /></button></div><p className="mt-3 text-sm text-gray-400">Pay using UPI, then submit the UTR. Credits are added after verification.</p><label className="mt-5 block text-sm font-semibold text-gray-200">Credit pack<select className="ss-input" value={purchase.pack} onChange={(event) => setPurchase({ ...purchase, pack: event.target.value })}>{Object.entries(purchaseConfig?.packs || {}).map(([key, pack]) => <option key={key} value={key}>{pack.credits} credits · ₹{pack.amount}</option>)}</select></label><div className="mt-4 rounded-xl border border-blue-500/25 bg-blue-500/10 p-4"><p className="text-xs text-blue-200">UPI ID</p><p className="mt-1 font-mono text-sm text-white">{purchaseConfig?.upi_id || "Loading…"}</p><a href={upiUrl} className="mt-3 inline-flex rounded-lg bg-blue-500 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-600">Pay ₹{selectedPack?.amount || 0} via UPI</a></div><label className="mt-4 block text-sm font-semibold text-gray-200">UPI transaction ID / UTR<input required minLength="4" className="ss-input" value={purchase.utr} onChange={(event) => setPurchase({ ...purchase, utr: event.target.value })} placeholder="Enter UTR after payment" /></label><label className="mt-4 block text-sm font-semibold text-gray-200">Note <span className="font-normal text-gray-500">(optional)</span><input className="ss-input" value={purchase.note} onChange={(event) => setPurchase({ ...purchase, note: event.target.value })} placeholder="Any reference for verification" /></label><button disabled={purchaseLoading} className="mt-6 w-full rounded-lg bg-blue-500 px-4 py-3 font-semibold text-white hover:bg-blue-600 disabled:opacity-60">{purchaseLoading ? "Submitting…" : "Submit for verification"}</button></form></div>}
+            <section className="ss-card p-6"><div className="mb-4 flex items-center gap-2"><History className="h-5 w-5 text-blue-400" /><div><h3 className="font-bold">Design credit history</h3><p className="text-sm text-gray-400">Usage and subscription credit allocations.</p></div></div>{transactions.length ? <div className="overflow-x-auto"><table className="ss-table"><thead><tr><th>Date</th><th>Type</th><th>Description</th><th className="text-right">Credits</th></tr></thead><tbody>{transactions.map((transaction) => <tr key={transaction.id || `${transaction.created_at}-${transaction.description}`}><td>{new Date(transaction.created_at).toLocaleDateString("en-IN")}</td><td>{transaction.type}</td><td>{transaction.description}</td><td className={`text-right font-bold ${transaction.credits >= 0 ? "text-emerald-400" : "text-blue-300"}`}>{transaction.credits >= 0 ? "+" : ""}{transaction.credits}</td></tr>)}</tbody></table></div> : <p className="py-5 text-sm text-gray-500">No design credit activity yet.</p>}</section>
         </div>
     );
 }

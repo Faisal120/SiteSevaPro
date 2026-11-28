@@ -32,15 +32,15 @@ async def whatsapp_webhook(request: Request):
     raw = await request.body()
     app_secret = os.getenv("WHATSAPP_APP_SECRET", "").strip()
     signature = request.headers.get("x-hub-signature-256", "")
-    production = os.getenv("APP_ENV", "development").strip().lower() == "production"
-    if production and not app_secret:
+    if not app_secret:
         raise HTTPException(503, "Webhook signature verification is not configured")
-    if app_secret:
-        expected = "sha256=" + hmac.new(app_secret.encode(), raw, hashlib.sha256).hexdigest()
-        if not signature or not hmac.compare_digest(signature, expected):
-            raise HTTPException(401, "Invalid webhook signature")
+    expected = "sha256=" + hmac.new(app_secret.encode(), raw, hashlib.sha256).hexdigest()
+    if not signature or not hmac.compare_digest(signature, expected):
+        raise HTTPException(401, "Invalid webhook signature")
 
     payload = await request.json()
+    if not isinstance(payload, dict):
+        raise HTTPException(400, "Invalid webhook payload")
     for entry in payload.get("entry", []):
         for change in entry.get("changes", []):
             value = change.get("value") or {}

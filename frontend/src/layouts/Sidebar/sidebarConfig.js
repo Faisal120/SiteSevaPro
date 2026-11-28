@@ -294,7 +294,7 @@ export const adminMenu = [
         icon: CreditCard,
       },
       {
-        label: "UPI Payments",
+        label: "Online Payments",
         path: "/app/admin/payments",
         icon: BadgeIndianRupee,
       },

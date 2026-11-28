@@ -89,6 +89,7 @@ from core import (
 from services.wallet_service import wallet_service
 from services.access_control import require_site_access
 from services.application_service import application_service
+from repositories.subscription_repository import subscription_repository
 from services.account_security import (
     normalize_phone,
 )
@@ -109,9 +110,6 @@ cloudinary.config(
 def gen_username(company: str) -> str:
     slug = "".join(c.lower() for c in company if c.isalnum())[:10] or "user"
     return f"{slug}{secrets.randbelow(9000) + 1000}"
-
-def gen_password() -> str:
-    return "Site@" + secrets.token_urlsafe(6).replace("-", "x").replace("_", "y")
 
 
 class NotificationIn(BaseModel):
@@ -905,64 +903,12 @@ async def current_subscription(user: dict = Depends(get_current_user)):
     }
 
 @api.post("/subscription/renewal/request")
-async def request_subscription_renewal(user: dict = Depends(require_roles("CONTRACTOR"))):
-    """Creates one verifiable renewal request; payment approval remains server-admin controlled."""
-    existing = await db.subscription_renewal_requests.find_one({
-        "company_id": user["company_id"], "status": "PENDING"
-    }, {"_id": 0})
-    if existing:
-        return existing
-    subscription = await db.subscriptions.find_one({"company_id": user["company_id"]}, {"_id": 0}) or {}
-    request = {
-        "id": new_id(), "company_id": user["company_id"], "user_id": user["id"],
-        "plan": subscription.get("plan", user.get("plan", "FREE")),
-        "status": "PENDING", "created_at": now_iso(),
-    }
-    await db.subscription_renewal_requests.insert_one(dict(request))
-    await db.notifications.insert_one({
-        "id": new_id(), "company_id": user["company_id"], "user_id": user["id"],
-        "title": "Subscription renewal requested",
-        "body": "Your renewal request is pending payment verification.",
-        "type": "SUBSCRIPTION", "read": False, "created_at": now_iso(),
-    })
-    return request
+async def request_subscription_renewal(_: dict = Depends(require_roles("CONTRACTOR"))):
+    raise HTTPException(410, "Manual renewal requests are retired. Create a Razorpay checkout order instead.")
 
 @api.post("/subscription/upgrade")
-async def upgrade_subscription(plan: Plan, user: dict = Depends(require_roles("CONTRACTOR"))):
-    if plan != "FREE":
-        raise HTTPException(
-            status_code=400,
-            detail="Paid plans must be activated through /api/payment/request and admin verification.",
-        )
-    amounts = {"FREE": 0, "PREMIUM": 2999, "ENTERPRISE": 4999}
-    amount = amounts.get(plan, 0)
-    expires = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
-    await db.subscriptions.update_one(
-        {"company_id": user["company_id"]},
-        {"$set": {
-            "id": new_id(), "company_id": user["company_id"], "plan": plan, "status": "ACTIVE",
-            "started_at": now_iso(), "expires_at": expires, "amount": amount,
-        }},
-        upsert=True,
-    )
-    await db.users.update_one({"id": user["id"]}, {"$set": {"plan": plan}})
-    if plan in ("PREMIUM", "PRO", "ENTERPRISE"):
-        credits = plan_details(plan)["monthly_design_credits"]
-        await design_wallet_service.balance(user["company_id"])
-        await design_wallet_service.add(user["company_id"], credits, f"{plan} subscription credits")
-    if amount > 0:
-        await db.payments.insert_one({
-            "id": new_id(), "company_id": user["company_id"], "site_id": None,
-            "type": "SUBSCRIPTION", "amount": amount, "description": f"{plan} plan subscription",
-            "date": now_iso()[:10], "created_at": now_iso(),
-        })
-    await db.notifications.insert_one({
-        "id": new_id(), "company_id": user["company_id"], "user_id": user["id"],
-        "title": "Subscription upgraded",
-        "body": f"You're now on the {plan} plan. Expires {expires[:10]}.",
-        "type": "SUBSCRIPTION", "read": False, "created_at": now_iso(),
-    })
-    return {"ok": True, "plan": plan, "amount": amount, "expires_at": expires}
+async def upgrade_subscription(_: Plan, __: dict = Depends(require_roles("CONTRACTOR"))):
+    raise HTTPException(410, "Direct subscription changes are retired. Paid plans activate only after verified Razorpay capture.")
 
 # ---------- CLOUDINARY ----------
 @api.get("/cloudinary/signature")
@@ -989,8 +935,11 @@ async def cloudinary_signature(
 @api.post("/ai/insight")
 async def ai_insight(body: AIInsightIn, user: dict = Depends(require_roles("CONTRACTOR", "SUPER_ADMIN"))):
     if user["role"] == "CONTRACTOR":
-        subscription = await db.subscriptions.find_one({"company_id": user["company_id"], "status": "ACTIVE"}, {"_id": 0, "plan": 1})
-        if (subscription or {}).get("plan") != "ENTERPRISE":
+        # get_active enforces both paid-plan and trial expiry before an AI
+        # capability can be used; a raw ACTIVE query would let expired plans
+        # retain access until another endpoint happened to mark them expired.
+        subscription = await subscription_repository.get_active(user["company_id"])
+        if not subscription or canonical_plan(subscription.get("plan")) != "ENTERPRISE":
             raise HTTPException(403, "AI Insights are available on the Enterprise plan.")
     reply = await ai_assistant_service.generate_insight(
         body.kind,
@@ -1018,15 +967,17 @@ app.include_router(payments_router)
 # V2 Phase A routes
 from v2 import v2_router  # noqa: E402
 app.include_router(v2_router)
+cors_origins = [origin.strip() for origin in os.environ.get(
+    "CORS_ORIGINS",
+    "" if ENVIRONMENT == "production" else "http://localhost:3000,http://127.0.0.1:3000",
+).split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=[origin.strip() for origin in os.environ.get(
-        "CORS_ORIGINS",
-        "http://localhost:3000,http://127.0.0.1:3000,https://sitesevapro.in,https://www.sitesevapro.in",
-    ).split(",") if origin.strip()],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=cors_origins,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "Origin"],
 )
 
 
@@ -1075,8 +1026,16 @@ app.include_router(public_router)
 async def on_start():
     try:
         if ENVIRONMENT == "production":
-            required = ["MONGO_URL", "JWT_SECRET", "SUPER_ADMIN_EMAIL", "SUPER_ADMIN_PASSWORD", "CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET", "CORS_ORIGINS", "FRONTEND_URL", "PASSWORD_RESET_SECRET"]
+            required = [
+                "MONGO_URL", "JWT_SECRET", "SUPER_ADMIN_EMAIL", "SUPER_ADMIN_PASSWORD",
+                "CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET",
+                "CORS_ORIGINS", "FRONTEND_URL", "PASSWORD_RESET_SECRET",
+                "AUTH_CHALLENGE_SECRET", "WHATSAPP_PHONE_NUMBER_ID",
+                "WHATSAPP_APP_SECRET", "WHATSAPP_WEBHOOK_VERIFY_TOKEN",
+            ]
             missing = [key for key in required if not os.getenv(key) or "CHANGE_" in os.getenv(key, "") or "example.com" in os.getenv(key, "")]
+            if not (os.getenv("WHATSAPP_ACCESS_TOKEN") or os.getenv("WHATSAPP_API_TOKEN")):
+                missing.append("WHATSAPP_ACCESS_TOKEN")
             if missing:
                 raise RuntimeError(f"Production configuration is incomplete: {', '.join(missing)}")
         await db.command("ping")
@@ -1118,6 +1077,8 @@ async def on_start():
         await db.sites.create_index([("company_id", 1), ("id", 1)], unique=True)
         await db.push_devices.create_index("token", unique=True)
         await db.push_devices.create_index([("company_id", 1), ("user_id", 1)])
+        await db.rate_limit_buckets.create_index([("key", 1), ("window_start", 1)], unique=True)
+        await db.rate_limit_buckets.create_index("purge_at", expireAfterSeconds=0)
         await db.notifications.create_index([("company_id", 1), ("created_at", -1)])
         await db.applications.create_index("id", unique=True)
         await db.outbound_notifications.create_index(
@@ -1142,6 +1103,16 @@ async def on_start():
         await db.outbound_notifications.create_index("dedupe_key", unique=True, sparse=True)
         await db.rate_limit_events.create_index("purge_at", expireAfterSeconds=0)
         await db.rate_limit_events.create_index([("key", 1), ("created_epoch", 1)])
+        # Razorpay identifiers are provider-wide and must never be reused by a
+        # different SiteSeva payment record. Sparse keeps historical records
+        # and unrelated construction payments unchanged.
+        await db.subscription_payments.create_index("id", unique=True)
+        await db.subscription_payments.create_index("razorpay_order_id", unique=True, sparse=True)
+        await db.subscription_payments.create_index("razorpay_payment_id", unique=True, sparse=True)
+        await db.subscription_payments.create_index([("company_id", 1), ("created_at", -1)])
+        await db.razorpay_webhook_events.create_index("event_id", unique=True)
+        await db.razorpay_webhook_events.create_index("received_at", expireAfterSeconds=60 * 60 * 24 * 180)
+        await db.subscription_credit_grants.create_index("payment_id", unique=True)
     except Exception:
         logger.exception("Startup provisioning failed")
         if ENVIRONMENT == "production":
