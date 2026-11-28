@@ -1,8 +1,8 @@
 """Real-Mongo integration tests for payment fulfilment durability.
 
 Set MONGO_INTEGRATION_URL to an isolated disposable MongoDB database server to
-run these tests.  They intentionally skip when none is supplied so developers
-cannot accidentally point the suite at a local or production database.
+run these tests. The suite fails closed when it is absent so it cannot quietly
+turn a required real-database check into a skipped test.
 """
 from __future__ import annotations
 
@@ -15,57 +15,84 @@ import pytest
 from fastapi import HTTPException
 from motor.motor_asyncio import AsyncIOMotorClient
 
-INTEGRATION_URL = os.getenv("MONGO_INTEGRATION_URL", "").strip()
-
 os.environ.setdefault("MONGO_URL", "mongodb://127.0.0.1:27018")
 os.environ.setdefault("DB_NAME", "sitesevapro_razorpay_test")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret")
 os.environ.setdefault("SUPER_ADMIN_EMAIL", "admin@example.test")
 os.environ.setdefault("SUPER_ADMIN_PASSWORD", "not-a-production-password")
 
-if not INTEGRATION_URL:
-    pytestmark = pytest.mark.skip(reason="set MONGO_INTEGRATION_URL to run real Mongo payment integration tests")
-
 from services import razorpay_payment_service as payment_module
 from services.plan_catalog import plan_details
 
 
-def run(awaitable):
-    return asyncio.run(awaitable)
+def run(loop: asyncio.AbstractEventLoop, awaitable):
+    """Run every integration coroutine on the Motor client's dedicated loop."""
+    return loop.run_until_complete(awaitable)
 
 
 @pytest.fixture
-def mongo_db(monkeypatch):
-    if not INTEGRATION_URL:
-        pytest.skip("set MONGO_INTEGRATION_URL to run real Mongo payment integration tests")
-    client = AsyncIOMotorClient(INTEGRATION_URL, serverSelectionTimeoutMS=3000)
-    run(client.admin.command("ping"))
-    database = client[f"siteseva_payment_it_{uuid.uuid4().hex}"]
-    run(database.subscription_payments.create_index("id", unique=True))
-    run(database.subscription_payments.create_index("razorpay_order_id", unique=True, sparse=True))
-    run(database.subscription_payments.create_index("razorpay_payment_id", unique=True, sparse=True))
-    run(database.subscription_fulfilment_locks.create_index("company_id", unique=True))
-    run(database.subscription_credit_grants.create_index("payment_id", unique=True))
-    run(database.design_transactions.create_index("subscription_payment_id", unique=True, sparse=True))
-    run(database.notifications.create_index("dedupe_key", unique=True, sparse=True))
-    run(database.razorpay_webhook_events.create_index("event_id", unique=True))
-
-    monkeypatch.setattr(payment_module, "db", database)
-    monkeypatch.setattr(payment_module.razorpay_gateway, "mode", lambda: "test")
-
-    async def ensure_wallet(company_id: str):
-        await database.design_wallets.update_one(
-            {"company_id": company_id},
-            {"$setOnInsert": {"company_id": company_id, "credits": 0}},
-            upsert=True,
-        )
-        return await database.design_wallets.find_one({"company_id": company_id})
-
-    monkeypatch.setattr(payment_module.design_wallet_service, "balance", ensure_wallet)
+def mongo_event_loop():
+    """A fresh registered loop, unaffected by other tests' ``asyncio.run`` calls."""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     try:
+        yield loop
+    finally:
+        # Keep the loop registered until all dependent fixture teardown has
+        # completed; pytest tears down mongo_db before this fixture.
+        asyncio.set_event_loop(None)
+        loop.close()
+
+
+def integration_url() -> str:
+    url = os.getenv("MONGO_INTEGRATION_URL", "").strip()
+    if not url:
+        pytest.fail(
+            "MONGO_INTEGRATION_URL is required and must reference an isolated MongoDB instance",
+            pytrace=False,
+        )
+    return url
+
+
+@pytest.fixture
+def mongo_db(monkeypatch, mongo_event_loop):
+    # Motor 3/Python 3.12 no longer obtains a fallback event loop in the main
+    # thread. Create/register ours first and bind this client to it explicitly.
+    client = AsyncIOMotorClient(
+        integration_url(),
+        io_loop=mongo_event_loop,
+        serverSelectionTimeoutMS=3000,
+    )
+    database = client[f"siteseva_payment_it_{uuid.uuid4().hex}"]
+    database_ready = False
+    try:
+        run(mongo_event_loop, client.admin.command("ping"))
+        database_ready = True
+        run(mongo_event_loop, database.subscription_payments.create_index("id", unique=True))
+        run(mongo_event_loop, database.subscription_payments.create_index("razorpay_order_id", unique=True, sparse=True))
+        run(mongo_event_loop, database.subscription_payments.create_index("razorpay_payment_id", unique=True, sparse=True))
+        run(mongo_event_loop, database.subscription_fulfilment_locks.create_index("company_id", unique=True))
+        run(mongo_event_loop, database.subscription_credit_grants.create_index("payment_id", unique=True))
+        run(mongo_event_loop, database.design_transactions.create_index("subscription_payment_id", unique=True, sparse=True))
+        run(mongo_event_loop, database.notifications.create_index("dedupe_key", unique=True, sparse=True))
+        run(mongo_event_loop, database.razorpay_webhook_events.create_index("event_id", unique=True))
+
+        monkeypatch.setattr(payment_module, "db", database)
+        monkeypatch.setattr(payment_module.razorpay_gateway, "mode", lambda: "test")
+
+        async def ensure_wallet(company_id: str):
+            await database.design_wallets.update_one(
+                {"company_id": company_id},
+                {"$setOnInsert": {"company_id": company_id, "credits": 0}},
+                upsert=True,
+            )
+            return await database.design_wallets.find_one({"company_id": company_id})
+
+        monkeypatch.setattr(payment_module.design_wallet_service, "balance", ensure_wallet)
         yield database
     finally:
-        run(client.drop_database(database.name))
+        if database_ready:
+            run(mongo_event_loop, client.drop_database(database.name))
         client.close()
 
 
@@ -96,15 +123,15 @@ def provider(record: dict) -> dict:
     }
 
 
-def test_concurrent_browser_and_webhook_fulfil_once(mongo_db):
+def test_concurrent_browser_and_webhook_fulfil_once(mongo_db, mongo_event_loop, monkeypatch):
     async def scenario():
         record = payment("concurrent")
         await mongo_db.subscription_payments.insert_one(record)
         service = payment_module.RazorpayPaymentService()
         async def fetch(_payment_id):
             return provider(record)
-        payment_module.razorpay_gateway.fetch_payment = fetch
-        payment_module.razorpay_gateway.verify_payment_signature = lambda *_args: None
+        monkeypatch.setattr(payment_module.razorpay_gateway, "fetch_payment", fetch)
+        monkeypatch.setattr(payment_module.razorpay_gateway, "verify_payment_signature", lambda *_args: None)
         webhook_payload = {"payload": {"payment": {"entity": {"id": "pay_concurrent", "order_id": record["razorpay_order_id"]}}}}
         results = await asyncio.gather(
             service.verify_browser_payment(record["razorpay_order_id"], "pay_concurrent", "test-signature", {"id": record["user_id"], "company_id": record["company_id"]}),
@@ -126,10 +153,10 @@ def test_concurrent_browser_and_webhook_fulfil_once(mongo_db):
         assert wallet["subscription_credit_grant_ids"] == [record["id"]]
         assert wallet["credits"] == plan_details("PREMIUM")["monthly_design_credits"]
         assert await mongo_db.notifications.count_documents({"dedupe_key": f"subscription-activated:{record['id']}"}) == 1
-    run(scenario())
+    run(mongo_event_loop, scenario())
 
 
-def test_duplicate_event_and_failed_retry_are_recoverable(mongo_db, monkeypatch):
+def test_duplicate_event_and_failed_retry_are_recoverable(mongo_db, mongo_event_loop, monkeypatch):
     async def scenario():
         record = payment("event-retry")
         await mongo_db.subscription_payments.insert_one(record)
@@ -156,10 +183,10 @@ def test_duplicate_event_and_failed_retry_are_recoverable(mongo_db, monkeypatch)
         assert second["duplicate"] is False
         assert duplicate["duplicate"] is True
         assert (await mongo_db.subscription_payments.find_one({"id": record["id"]}))["status"] == "CAPTURED"
-    run(scenario())
+    run(mongo_event_loop, scenario())
 
 
-def test_interrupted_credit_grant_and_failed_payment_recover(mongo_db):
+def test_interrupted_credit_grant_and_failed_payment_recover(mongo_db, mongo_event_loop):
     async def scenario():
         record = payment("recovery", status="FAILED")
         record["razorpay_payment_id"] = "pay_recovery"
@@ -177,10 +204,10 @@ def test_interrupted_credit_grant_and_failed_payment_recover(mongo_db):
         assert wallet["credits"] == 250
         assert grant["status"] == "APPLIED"
         assert await mongo_db.design_transactions.count_documents({"subscription_payment_id": record["id"]}) == 1
-    run(scenario())
+    run(mongo_event_loop, scenario())
 
 
-def test_concurrent_renewals_preserve_both_months(mongo_db):
+def test_concurrent_renewals_preserve_both_months(mongo_db, mongo_event_loop):
     async def scenario():
         first, second = payment("renew-a"), payment("renew-b")
         await mongo_db.subscription_payments.insert_many([first, second])
@@ -196,12 +223,12 @@ def test_concurrent_renewals_preserve_both_months(mongo_db):
         assert set(subscription["applied_payment_ids"]) == {first["id"], second["id"]}
         expiry = datetime.fromisoformat(subscription["expires_at"])
         assert expiry >= datetime.now(timezone.utc) + timedelta(days=59)
-    run(scenario())
+    run(mongo_event_loop, scenario())
 
 
-def test_test_live_mode_isolation(mongo_db, monkeypatch):
+def test_test_live_mode_isolation(mongo_db, mongo_event_loop, monkeypatch):
     record = payment("mode")
     monkeypatch.setattr(payment_module.razorpay_gateway, "mode", lambda: "live")
     with pytest.raises(HTTPException) as error:
-        run(payment_module.RazorpayPaymentService()._validate_provider_payment(record, provider(record), record["razorpay_order_id"]))
+        run(mongo_event_loop, payment_module.RazorpayPaymentService()._validate_provider_payment(record, provider(record), record["razorpay_order_id"]))
     assert error.value.status_code == 409
